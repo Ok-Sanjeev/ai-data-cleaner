@@ -40,16 +40,29 @@ def impute_missing(df, column, method):
 
     return df
 
-
 def convert_to_date(df, column):
     if column not in df.columns:
         raise ValueError(f"Column '{column}' does not exist")
 
-    df[column] = pd.to_datetime(
+    original_non_null = df[column].notna()
+
+    converted = pd.to_datetime(
         df[column],
         format="mixed",
         errors="coerce"
     )
+
+    invalid_values = original_non_null & converted.isna()
+
+    if invalid_values.any():
+        invalid_count = invalid_values.sum()
+
+        raise ValueError(
+            f"Date conversion failed for {invalid_count} "
+            f"non-null value(s) in column '{column}'"
+        )
+
+    df[column] = converted
 
     return df
 
@@ -58,9 +71,21 @@ def standardize_categories(df, column, mapping):
     if column not in df.columns:
         raise ValueError(f"Column '{column}' does not exist")
 
+    if not mapping:
+        raise ValueError(
+            f"A non-empty mapping is required to standardize "
+            f"categories in column '{column}'"
+        )
+
+    if not isinstance(mapping, dict):
+        raise ValueError(
+            f"Mapping for column '{column}' must be a dictionary"
+        )
+
     df[column] = df[column].replace(mapping)
 
     return df
+
 
 ACTION_REGISTRY = {
     "remove_duplicates": remove_duplicates,
@@ -82,10 +107,17 @@ def execute_action(df, action):
         return function(df)
 
     if action.action == "impute_missing":
+        method = action.params.get("method")
+
+        if not method:
+            raise ValueError(
+                "A valid imputation method is required"
+            )
+
         return function(
             df,
             action.column,
-            action.params.get("method")
+            method
         )
 
     if action.action == "convert_to_date":
@@ -95,10 +127,12 @@ def execute_action(df, action):
         )
 
     if action.action == "standardize_categories":
+        mapping = action.params.get("mapping")
+
         return function(
             df,
             action.column,
-            action.params.get("mapping", {})
+            mapping
         )
 
     raise ValueError(
