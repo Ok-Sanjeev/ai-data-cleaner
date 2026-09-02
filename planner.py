@@ -125,25 +125,44 @@ with open(
 # ============================================================
 # CREATE GEMINI PROMPT
 # ============================================================
-
 prompt = f"""
-You are a data cleaning planner.
+You are an expert data quality analyst and cleaning planner.
 
-Analyze the dataset profile and create a cleaning plan.
+Analyze the dataset profile and determine which data-cleaning operations are
+actually necessary to improve the dataset.
+
+Your job is to:
+1. Identify data-quality problems from the supplied profile.
+2. Select appropriate supported cleaning operations.
+3. Provide parameters required to execute those operations safely.
+4. Avoid unnecessary transformations.
+5. Never invent information that is not supported by the profile.
 
 You may ONLY use these actions:
 
 - impute_missing
 - remove_duplicates
 - convert_to_date
+- convert_to_numeric
+- convert_to_boolean
 - standardize_categories
+- normalize_text
+- normalize_whitespace
+- normalize_column_names
+- replace_empty_strings
+- remove_invalid_values
+- clip_outliers
 
 Return ONLY valid JSON.
+
+Do NOT return Markdown.
+Do NOT use code fences.
+Do NOT include explanations outside the JSON.
 
 The JSON must have exactly this structure:
 
 {{
-  "summary": "short description of the data quality issues",
+  "summary": "short description of the detected data-quality issues",
   "actions": [
     {{
       "action": "impute_missing",
@@ -151,57 +170,148 @@ The JSON must have exactly this structure:
       "params": {{
         "method": "median"
       }},
-      "reasoning": "why this action is appropriate",
+      "reasoning": "Age contains missing numerical values and median imputation is appropriate.",
       "confidence": 0.95
     }}
   ]
 }}
 
-Rules:
+============================================================
+ACTION RULES
+============================================================
 
-- Do not use Markdown.
-- Do not use code fences.
-- Do not include explanations outside the JSON.
-- Do not invent actions outside the allowed action list.
-- confidence must be between 0.0 and 1.0.
-- Use an empty object {{}} for params only when an action genuinely requires no parameters.
-- Only propose actions that are supported by the dataset profile.
-- Do not propose an action merely because a column could theoretically be cleaned.
-- Only propose an action when the profile provides evidence that cleaning is needed.
+1. impute_missing
 
-Rules for impute_missing:
+Use ONLY when the profile shows missing values.
 
-- The column must contain missing values according to the profile.
-- The "params" object MUST contain a valid "method".
-- The method must be one of: "median", "mean", or "mode".
-- Prefer "median" for numerical columns when it is appropriate.
+The column must actually contain missing values.
 
-Rules for remove_duplicates:
+The params object MUST contain:
 
-- Only propose this action when the profile provides evidence of duplicate rows or duplicate records.
-- If duplicate rows are identified, use an empty params object {{}}.
-- Do not remove rows unless the profile provides evidence that duplicates exist.
+{{
+  "method": "median"
+}}
 
-Rules for convert_to_date:
+or:
 
-- Only propose this action when the profile provides evidence that a column contains date values stored in an inappropriate format or type.
-- Use an empty params object {{}}.
+{{
+  "method": "mean"
+}}
 
-Rules for standardize_categories:
+or:
 
-- Only propose this action when the profile provides evidence of inconsistent categorical values.
-- The "params" object MUST contain a non-empty "mapping" object.
-- The mapping must contain the actual category values found in the dataset that need standardization.
-- Map each inconsistent value to its intended standardized value.
-- Do not invent category values that are not supported by the profile.
-- Do not use an empty mapping.
-- Do not propose standardize_categories if the profile does not provide enough information to construct a safe mapping.
+{{
+  "method": "mode"
+}}
 
-For example, if the profile contains these values:
+or:
 
-"Active", "active", "ACTIVE", "Inactive", "inactive", "INACTIVE"
+{{
+  "method": "constant",
+  "value": "..."
+}}
 
-then a valid action could be:
+Guidelines:
+
+- Prefer median for numerical columns when appropriate.
+- Prefer mean when the distribution makes mean appropriate.
+- Prefer mode for categorical values when appropriate.
+- Use constant only when the profile provides strong evidence for a suitable constant.
+- Never invent a constant value.
+- Do not impute columns with no missing values.
+
+============================================================
+
+2. remove_duplicates
+
+Use ONLY when:
+
+duplicate_rows > 0
+
+in the dataset profile.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Do not remove rows when no duplicates are detected.
+
+============================================================
+
+3. convert_to_date
+
+Use ONLY when the profile contains the:
+
+"possible_date"
+
+semantic hint.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Do not convert a column to dates merely because its name looks like a date.
+
+============================================================
+
+4. convert_to_numeric
+
+Use ONLY when the profile contains the:
+
+"possible_numeric"
+
+semantic hint.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Do not convert arbitrary categorical or textual columns to numeric.
+
+============================================================
+
+5. convert_to_boolean
+
+Use ONLY when the profile contains the:
+
+"possible_boolean"
+
+semantic hint.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Boolean-like values may include:
+
+- true / false
+- yes / no
+- y / n
+- 1 / 0
+
+Do not convert arbitrary categorical columns to boolean.
+
+============================================================
+
+6. standardize_categories
+
+Use ONLY when the profile contains:
+
+"inconsistent_categories"
+
+The mapping MUST contain actual values supported by the profile.
+
+The mapping MUST be non-empty.
+
+Example:
 
 {{
   "action": "standardize_categories",
@@ -218,11 +328,200 @@ then a valid action could be:
   "confidence": 0.99
 }}
 
-Dataset profile:
+Rules:
+
+- Never invent categories.
+- Use actual values from the profile.
+- Do not create an empty mapping.
+- Do not standardize categories when there is no evidence of inconsistency.
+
+============================================================
+
+7. normalize_text
+
+Use ONLY when the profile contains:
+
+"inconsistent_text_case"
+
+Allowed values for params.case:
+
+- lower
+- upper
+- title
+- none
+
+Example:
+
+{{
+  "action": "normalize_text",
+  "column": "Customer_Name",
+  "params": {{
+    "case": "title"
+  }},
+  "reasoning": "The profile shows inconsistent capitalization in text values.",
+  "confidence": 0.90
+}}
+
+Choose the case that best preserves the apparent intended representation.
+
+Do not normalize text merely because different capitalization exists when
+capitalization may carry meaning.
+
+============================================================
+
+8. normalize_whitespace
+
+Use ONLY when the profile contains:
+
+"whitespace_issues"
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+This operation removes unnecessary leading/trailing whitespace and collapses
+repeated whitespace.
+
+Do not use it when no whitespace problem is supported by the profile.
+
+============================================================
+
+9. normalize_column_names
+
+Use ONLY when:
+
+"column_name_issues"
+
+is non-empty.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Normalize names into consistent machine-friendly names.
+
+The profile provides the original and suggested names.
+
+IMPORTANT:
+
+If this action is selected, it MUST be executed before any other action that
+references a renamed column.
+
+============================================================
+
+10. replace_empty_strings
+
+Use ONLY when the profile contains:
+
+"empty_strings"
+
+If the problem is specific to one column, provide that column.
+
+If the problem is dataset-wide, column may be null.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Empty or whitespace-only strings should become missing values.
+
+============================================================
+
+11. remove_invalid_values
+
+Use ONLY when the profile provides clear evidence that particular values
+are invalid.
+
+The params object MUST contain:
+
+{{
+  "invalid_values": [...]
+}}
+
+Every value in the list MUST be supported by actual profile evidence.
+
+Do not invent invalid values.
+
+Replace invalid values with missing values.
+
+============================================================
+
+12. clip_outliers
+
+Use ONLY when the profile provides evidence of meaningful numerical outliers.
+
+The column must be numerical.
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+Do NOT automatically modify every statistical outlier.
+
+An extreme value may be legitimate business data.
+
+Only use this action when the profile provides sufficient evidence that the
+values are likely erroneous or unsuitable for the dataset.
+
+============================================================
+GENERAL SAFETY RULES
+============================================================
+
+- Every action MUST be supported by evidence in the dataset profile.
+- Use the smallest set of operations necessary to improve data quality.
+- Do not perform unnecessary transformations.
+- Do not invent values.
+- Do not invent categories.
+- Do not invent invalid values.
+- Do not invent missing information.
+- Do not modify ambiguous data.
+- Preserve valid user data whenever possible.
+- Do not generate Python code.
+- Do not generate SQL.
+- Do not request arbitrary code execution.
+- Do not use unsupported actions.
+- confidence MUST be between 0.0 and 1.0.
+- Every action MUST include reasoning.
+- Every action that operates on a column MUST specify the column.
+- Parameters MUST contain everything required to safely execute the action.
+- If no cleaning action is justified, return an empty actions list.
+- Do not create an action simply because an operation is available.
+
+============================================================
+ACTION ORDER
+============================================================
+
+When multiple operations are required, prefer this general order:
+
+1. normalize_column_names
+2. replace_empty_strings
+3. normalize_whitespace
+4. normalize_text
+5. convert_to_numeric
+6. convert_to_boolean
+7. convert_to_date
+8. standardize_categories
+9. remove_invalid_values
+10. impute_missing
+11. clip_outliers
+12. remove_duplicates
+
+Only include operations that are actually necessary.
+
+============================================================
+DATASET PROFILE
+============================================================
 
 {json.dumps(profile, indent=2)}
 """
-
 
 # ============================================================
 # ASK GEMINI FOR CLEANING PLAN
@@ -366,6 +665,7 @@ with open(
 
 original_rows = len(df)
 original_missing = df.isna().sum().to_dict()
+df_before = df.copy()
 
 
 print("\nBefore cleaning:")
@@ -382,23 +682,63 @@ print(df.dtypes)
 # EXECUTE AI-GENERATED ACTIONS
 # ============================================================
 
+original_dtypes = df.dtypes.astype(str).to_dict()
 executed_actions = []
 
+# Track column renames so later AI actions can still find
+# their intended columns after normalize_column_names.
+column_aliases = {
+    column: column
+    for column in df.columns
+}
+
+# Column-name normalization must happen before column-specific actions.
+plan.actions.sort(
+    key=lambda action: (
+        action.action != "normalize_column_names"
+    )
+)
+
 for action in plan.actions:
+
+    # Resolve a column name if an earlier action renamed it.
+    resolved_column = action.column
+
+    if resolved_column is not None:
+        resolved_column = column_aliases.get(
+            resolved_column,
+            resolved_column
+        )
 
     try:
         before_rows = len(df)
         before_missing = df.isna().sum().to_dict()
         before_dtypes = df.dtypes.astype(str).to_dict()
+        before_columns = list(df.columns)
+
+        # Temporarily use the resolved column name for execution.
+        original_action_column = action.column
+
+        if resolved_column is not None:
+            action.column = resolved_column
 
         df = execute_action(
             df,
             action
         )
 
+        # Restore the original AI-generated column name for
+        # the report where appropriate.
+        if (
+            action.action != "normalize_column_names"
+            and original_action_column is not None
+        ):
+            action.column = resolved_column
+
         after_rows = len(df)
         after_missing = df.isna().sum().to_dict()
         after_dtypes = df.dtypes.astype(str).to_dict()
+        after_columns = list(df.columns)
 
         result = {
             "id": action.id,
@@ -407,9 +747,8 @@ for action in plan.actions:
             "params": action.params,
             "reasoning": action.reasoning,
             "confidence": action.confidence,
-            "status": "success"
+            "status": "success",
         }
-
 
         # ----------------------------------------------------
         # Action-specific results
@@ -430,18 +769,21 @@ for action in plan.actions:
             result["result"] = {
                 "missing_before": before,
                 "missing_after": after,
-                "missing_values_filled": before - after
+                "missing_values_filled": max(
+                    0,
+                    before - after
+                )
             }
-
 
         elif action.action == "remove_duplicates":
 
             result["result"] = {
                 "rows_before": before_rows,
                 "rows_after": after_rows,
-                "duplicates_removed": before_rows - after_rows
+                "duplicates_removed": (
+                    before_rows - after_rows
+                )
             }
-
 
         elif action.action == "convert_to_date":
 
@@ -454,6 +796,27 @@ for action in plan.actions:
                 )
             }
 
+        elif action.action == "convert_to_numeric":
+
+            result["result"] = {
+                "dtype_before": before_dtypes.get(
+                    action.column
+                ),
+                "dtype_after": after_dtypes.get(
+                    action.column
+                )
+            }
+
+        elif action.action == "convert_to_boolean":
+
+            result["result"] = {
+                "dtype_before": before_dtypes.get(
+                    action.column
+                ),
+                "dtype_after": after_dtypes.get(
+                    action.column
+                )
+            }
 
         elif action.action == "standardize_categories":
 
@@ -464,16 +827,67 @@ for action in plan.actions:
                 )
             }
 
+        elif action.action == "normalize_text":
+
+            result["result"] = {
+                "case": action.params.get(
+                    "case",
+                    "lower"
+                )
+            }
+
+        elif action.action == "normalize_whitespace":
+
+            result["result"] = {
+                "column": action.column
+            }
+
+        elif action.action == "normalize_column_names":
+
+            result["result"] = {
+                "columns_before": before_columns,
+                "columns_after": after_columns
+            }
+
+            # Update aliases after column names change.
+            if len(before_columns) == len(after_columns):
+                column_aliases = {
+                    old: new
+                    for old, new in zip(
+                        before_columns,
+                        after_columns
+                    )
+                }
+
+        elif action.action == "replace_empty_strings":
+
+            result["result"] = {
+                "column": action.column
+            }
+
+        elif action.action == "remove_invalid_values":
+
+            result["result"] = {
+                "invalid_values": action.params.get(
+                    "invalid_values",
+                    []
+                )
+            }
+
+        elif action.action == "clip_outliers":
+
+            result["result"] = {
+                "column": action.column
+            }
 
         executed_actions.append(result)
-
 
     except Exception as error:
 
         executed_actions.append({
             "id": action.id,
             "action": action.action,
-            "column": action.column,
+            "column": resolved_column,
             "params": action.params,
             "reasoning": action.reasoning,
             "confidence": action.confidence,
@@ -483,7 +897,7 @@ for action in plan.actions:
 
         print(
             f"Action failed: {action.action} "
-            f"on column '{action.column}': {error}"
+            f"on column '{resolved_column}': {error}"
         )
 
 
@@ -500,31 +914,55 @@ cleaned_missing = df.isna().sum().to_dict()
 # VALIDATE CLEANING RESULTS
 # ============================================================
 
+successful_actions = [
+    action
+    for action in executed_actions
+    if action["status"] == "success"
+]
+
+failed_actions = [
+    action
+    for action in executed_actions
+    if action["status"] == "failed"
+]
+
 duplicate_removal_requested = any(
     action["action"] == "remove_duplicates"
-    and action["status"] == "success"
     for action in executed_actions
 )
 
+duplicates_before = int(
+    df_before.duplicated().sum()
+)
 
-rows_valid = (
-    cleaned_rows == original_rows
-    or duplicate_removal_requested
+duplicates_after = int(
+    df.duplicated().sum()
 )
 
 
-missing_values_reduced = (
-    sum(cleaned_missing.values())
-    < sum(original_missing.values())
-)
+# ------------------------------------------------------------
+# Row validation
+# ------------------------------------------------------------
+
+if duplicate_removal_requested:
+    rows_valid = (
+        duplicates_after == 0
+        and cleaned_rows <= original_rows
+    )
+else:
+    rows_valid = cleaned_rows == original_rows
 
 
-# Validate each successful action independently
+# ------------------------------------------------------------
+# Action-specific validation
+# ------------------------------------------------------------
+
 action_results_valid = True
 
 for action in executed_actions:
 
     if action["status"] != "success":
+        action_results_valid = False
         continue
 
     result = action.get(
@@ -532,31 +970,25 @@ for action in executed_actions:
         {}
     )
 
+    action_name = action["action"]
 
-    if action["action"] == "impute_missing":
+    if action_name == "impute_missing":
 
-        if result.get(
-            "missing_after",
-            0
-        ) != 0:
-
+        if result.get("missing_after", 0) != 0:
             action_results_valid = False
 
+    elif action_name == "remove_duplicates":
 
-    elif action["action"] == "remove_duplicates":
-
-        if result.get(
-            "rows_after",
-            0
-        ) > result.get(
+        if result.get("rows_after", 0) > result.get(
             "rows_before",
             0
         ):
-
             action_results_valid = False
 
+        if duplicates_after != 0:
+            action_results_valid = False
 
-    elif action["action"] == "convert_to_date":
+    elif action_name == "convert_to_date":
 
         dtype_after = result.get(
             "dtype_after",
@@ -564,11 +996,36 @@ for action in executed_actions:
         )
 
         if "datetime" not in dtype_after.lower():
-
             action_results_valid = False
 
+    elif action_name == "convert_to_numeric":
 
-    elif action["action"] == "standardize_categories":
+        dtype_after = result.get(
+            "dtype_after",
+            ""
+        )
+
+        if not any(
+            numeric_type in dtype_after.lower()
+            for numeric_type in [
+                "int",
+                "float",
+                "decimal"
+            ]
+        ):
+            action_results_valid = False
+
+    elif action_name == "convert_to_boolean":
+
+        dtype_after = result.get(
+            "dtype_after",
+            ""
+        )
+
+        if "bool" not in dtype_after.lower():
+            action_results_valid = False
+
+    elif action_name == "standardize_categories":
 
         mapping = result.get(
             "mapping",
@@ -576,32 +1033,129 @@ for action in executed_actions:
         )
 
         if not mapping:
+            action_results_valid = False
 
+    elif action_name == "normalize_column_names":
+
+        columns_after = result.get(
+            "columns_after",
+            []
+        )
+
+        if not columns_after:
+            action_results_valid = False
+
+        if len(columns_after) != len(
+            set(columns_after)
+        ):
+            action_results_valid = False
+
+    elif action_name == "remove_invalid_values":
+
+        invalid_values = result.get(
+            "invalid_values",
+            []
+        )
+
+        if not isinstance(
+            invalid_values,
+            list
+        ) or not invalid_values:
+            action_results_valid = False
+
+    elif action_name == "clip_outliers":
+
+        if action["column"] not in df.columns:
             action_results_valid = False
 
 
-all_actions_succeeded = all(
-    action["status"] == "success"
-    for action in executed_actions
+# ------------------------------------------------------------
+# Missing-value validation
+# ------------------------------------------------------------
+
+missing_values_before = int(
+    sum(original_missing.values())
 )
 
+missing_values_after = int(
+    sum(cleaned_missing.values())
+)
+
+missing_values_reduced = (
+    missing_values_after < missing_values_before
+)
+
+# Missing values do NOT have to decrease for every valid
+# cleaning operation. This is only informational.
+missing_values_improved_or_unchanged = (
+    missing_values_after <= missing_values_before
+)
+
+
+# ------------------------------------------------------------
+# Overall validation
+# ------------------------------------------------------------
+
+all_actions_succeeded = (
+    len(failed_actions) == 0
+)
 
 validation = {
     "rows_valid": rows_valid,
     "missing_values_reduced": missing_values_reduced,
+    "missing_values_improved_or_unchanged": (
+        missing_values_improved_or_unchanged
+    ),
     "action_results_valid": action_results_valid,
-    "all_actions_succeeded": all_actions_succeeded
+    "all_actions_succeeded": all_actions_succeeded,
+    "successful_actions": len(successful_actions),
+    "failed_actions": len(failed_actions),
+    "duplicates_before": duplicates_before,
+    "duplicates_after": duplicates_after
 }
 
-
-validation["overall"] = all(
-    validation.values()
-)
+validation["overall"] = all([
+    validation["rows_valid"],
+    validation["missing_values_improved_or_unchanged"],
+    validation["action_results_valid"],
+    validation["all_actions_succeeded"]
+])
 
 
 # ============================================================
 # BUILD CLEANING REPORT
 # ============================================================
+
+# Build missing-value report safely even when column names
+# were changed during cleaning.
+all_columns = list(
+    dict.fromkeys(
+        list(original_missing.keys())
+        + list(cleaned_missing.keys())
+    )
+)
+
+missing_value_report = {}
+
+for column in all_columns:
+
+    before = original_missing.get(
+        column,
+        0
+    )
+
+    after = cleaned_missing.get(
+        column,
+        0
+    )
+
+    if before != after:
+
+        missing_value_report[column] = {
+            "before": before,
+            "after": after
+        }
+
 
 report = {
     "run_id": run_id,
@@ -613,17 +1167,8 @@ report = {
         "before": original_rows,
         "after": cleaned_rows
     },
-    "missing_values": {
-        column: {
-            "before": original_missing[column],
-            "after": cleaned_missing[column]
-        }
-        for column in df.columns
-        if original_missing[column]
-        != cleaned_missing[column]
-    }
+    "missing_values": missing_value_report
 }
-
 
 # ============================================================
 # PRINT CLEANING REPORT
@@ -657,7 +1202,6 @@ print(
     validation["overall"]
 )
 
-
 print("\nRows:")
 print(
     f"  Before: {original_rows}"
@@ -667,12 +1211,15 @@ print(
     f"  After:  {cleaned_rows}"
 )
 
-
 print("\nMissing values:")
 
-for column in df.columns:
+for column in cleaned_missing:
 
-    before = original_missing[column]
+    before = original_missing.get(
+        column,
+        0
+    )
+
     after = cleaned_missing[column]
 
     if before != after:
@@ -680,7 +1227,6 @@ for column in df.columns:
         print(
             f"  {column}: {before} -> {after}"
         )
-
 
 print("\nAfter cleaning:")
 
@@ -735,7 +1281,6 @@ with open(
         file,
         indent=2
     )
-
 
 print(
     f"Cleaning report saved to {report_path}"
