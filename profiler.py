@@ -1,4 +1,6 @@
+import csv
 import json
+
 import pandas as pd
 
 
@@ -127,12 +129,161 @@ def build_profile(df):
     return profile
 
 
+def validate_csv_structure(file_path):
+    """
+    Validate the raw CSV structure before pandas parses it.
+
+    Every non-empty data row must contain the same number
+    of fields as the header.
+    """
+
+    try:
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8",
+            newline=""
+        ) as file:
+
+            reader = csv.reader(file)
+
+            try:
+                header = next(reader)
+
+            except StopIteration as error:
+                raise ValueError(
+                    f"Input CSV file is empty: {file_path}"
+                ) from error
+
+            if not header:
+                raise ValueError(
+                    f"Input CSV file contains no columns: {file_path}"
+                )
+
+            expected_fields = len(header)
+
+            for line_number, row in enumerate(
+                reader,
+                start=2
+            ):
+                if not row:
+                    continue
+
+                if len(row) != expected_fields:
+                    raise ValueError(
+                        f"Malformed CSV structure at line "
+                        f"{line_number}: expected "
+                        f"{expected_fields} fields, found "
+                        f"{len(row)}"
+                    )
+
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            f"Input CSV file not found: {file_path}"
+        ) from error
+
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            "Input CSV file has an unsupported text encoding: "
+            f"{file_path}"
+        ) from error
+
+    except PermissionError as error:
+        raise PermissionError(
+            "Permission denied while reading input file: "
+            f"{file_path}"
+        ) from error
+
+    except OSError as error:
+        raise OSError(
+            f"Could not read input CSV file '{file_path}': {error}"
+        ) from error
+
+
 def profile_dataset(file_path):
-    df = pd.read_csv(file_path)
+    """
+    Load, validate, and profile a CSV dataset.
+    """
 
-    profile = build_profile(df)
+    if not file_path:
+        raise ValueError(
+            "No input file was provided"
+        )
 
-    return df, profile
+    if not isinstance(file_path, str):
+        raise TypeError(
+            "Input file path must be a string"
+        )
+
+    # Validate raw CSV structure before pandas parsing.
+    validate_csv_structure(file_path)
+
+    # Parse the validated CSV.
+    try:
+        df = pd.read_csv(
+            file_path,
+            on_bad_lines="error"
+        )
+
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            f"Input CSV file not found: {file_path}"
+        ) from error
+
+    except pd.errors.EmptyDataError as error:
+        raise ValueError(
+            f"Input CSV file is empty: {file_path}"
+        ) from error
+
+    except pd.errors.ParserError as error:
+        raise ValueError(
+            f"Input CSV file could not be parsed: {file_path}"
+        ) from error
+
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            "Input CSV file has an unsupported text encoding: "
+            f"{file_path}"
+        ) from error
+
+    except PermissionError as error:
+        raise PermissionError(
+            "Permission denied while reading input file: "
+            f"{file_path}"
+        ) from error
+
+    except OSError as error:
+        raise OSError(
+            f"Could not read input CSV file '{file_path}': {error}"
+        ) from error
+
+    # No columns
+    if df.shape[1] == 0:
+        raise ValueError(
+            f"Input CSV file contains no columns: {file_path}"
+        )
+
+    # Header exists but no data rows
+    if df.empty:
+        raise ValueError(
+            f"Input CSV file contains no data rows: {file_path}"
+        )
+
+    # Reject blank or automatically generated unnamed columns.
+    invalid_columns = [
+        column
+        for column in df.columns
+        if not str(column).strip()
+        or str(column).startswith("Unnamed:")
+    ]
+
+    if invalid_columns:
+        raise ValueError(
+            "Input CSV contains invalid or unnamed columns: "
+            f"{invalid_columns}"
+        )
+
+    return df, build_profile(df)
 
 
 if __name__ == "__main__":
@@ -155,7 +306,15 @@ if __name__ == "__main__":
 
     print("\nDuplicate rows:", df.duplicated().sum())
 
-    with open("profile.json", "w", encoding="utf-8") as file:
-        json.dump(profile, file, indent=2)
+    with open(
+        "profile.json",
+        "w",
+        encoding="utf-8"
+    ) as file:
+        json.dump(
+            profile,
+            file,
+            indent=2
+        )
 
     print("\nProfile saved to profile.json")
