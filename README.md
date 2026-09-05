@@ -367,8 +367,6 @@ Create a `.env` file in the project root:
 GEMINI_API_KEY=your_api_key_here
 ```
 
-⚠️ **Never commit your `.env` file or API key to GitHub.**
-
 ---
 
 # ▶️ Usage
