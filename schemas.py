@@ -1,5 +1,4 @@
 from typing import Any, Literal
-
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -8,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 ALLOWED_ACTIONS = Literal[
     "impute_missing",
     "remove_duplicates",
+    "remove_column",
     "convert_to_date",
     "convert_to_numeric",
     "convert_to_boolean",
@@ -17,7 +17,7 @@ ALLOWED_ACTIONS = Literal[
     "normalize_column_names",
     "replace_empty_strings",
     "remove_invalid_values",
-    "clip_outliers"
+    "clip_outliers",
 ]
 
 
@@ -38,7 +38,7 @@ class CleaningAction(BaseModel):
 
     confidence: float = Field(
         ge=0.0,
-        le=1.0
+        le=1.0,
     )
 
     @model_validator(mode="after")
@@ -54,7 +54,8 @@ class CleaningAction(BaseModel):
             "normalize_whitespace",
             "replace_empty_strings",
             "remove_invalid_values",
-            "clip_outliers"
+            "clip_outliers",
+            "remove_column",
         }
 
         if self.action in column_actions and not self.column:
@@ -70,7 +71,7 @@ class CleaningAction(BaseModel):
                 "median",
                 "mean",
                 "mode",
-                "constant"
+                "constant",
             }:
                 raise ValueError(
                     "impute_missing requires method: "
@@ -99,14 +100,14 @@ class CleaningAction(BaseModel):
 
             case = self.params.get(
                 "case",
-                "lower"
+                "lower",
             )
 
             if case not in {
                 "lower",
                 "upper",
                 "title",
-                "none"
+                "none",
             }:
                 raise ValueError(
                     "normalize_text case must be "
@@ -115,9 +116,7 @@ class CleaningAction(BaseModel):
 
         elif self.action == "remove_invalid_values":
 
-            values = self.params.get(
-                "invalid_values"
-            )
+            values = self.params.get("invalid_values")
 
             if not isinstance(values, list) or not values:
                 raise ValueError(

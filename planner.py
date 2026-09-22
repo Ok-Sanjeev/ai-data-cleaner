@@ -137,11 +137,14 @@ Your job is to:
 3. Provide parameters required to execute those operations safely.
 4. Avoid unnecessary transformations.
 5. Never invent information that is not supported by the profile.
+6. Identify objectively unnecessary columns, but remove them only when
+   there is strong evidence that doing so is safe.
 
 You may ONLY use these actions:
 
 - impute_missing
 - remove_duplicates
+- remove_column
 - convert_to_date
 - convert_to_numeric
 - convert_to_boolean
@@ -186,7 +189,7 @@ Use ONLY when the profile shows missing values.
 
 The column must actually contain missing values.
 
-The params object MUST contain:
+The params object MUST contain one of the following:
 
 {{
   "method": "median"
@@ -219,6 +222,7 @@ Guidelines:
 - Use constant only when the profile provides strong evidence for a suitable constant.
 - Never invent a constant value.
 - Do not impute columns with no missing values.
+- Do not impute missing values when the column's meaning is unclear.
 
 ============================================================
 
@@ -240,7 +244,46 @@ Do not remove rows when no duplicates are detected.
 
 ============================================================
 
-3. convert_to_date
+3. remove_column
+
+Use ONLY when the profile provides strong evidence that a column is
+objectively unnecessary.
+
+The profile may contain these indicators:
+
+- empty_column
+- constant_column
+
+Rules:
+
+- An entirely empty column may be removed.
+- A constant column may be removed only when its value provides no meaningful
+  information.
+- Do not remove the last remaining column.
+- Do not remove a column merely because it may be irrelevant to a particular
+  analysis or machine-learning task.
+- Do not assume identifiers, URLs, dates, names, or raw columns are useless.
+- Do not remove columns based only on their names.
+- Do not assume two columns are redundant just because their names or values
+  appear related.
+- Preserve potentially useful information by default.
+- Do not remove columns when the evidence is ambiguous.
+
+For each removal, provide the exact column name in "column".
+
+Use:
+
+{{
+  "params": {{}}
+}}
+
+The reasoning MUST explain the profile evidence that justifies removal.
+
+If no column can safely be removed, do not generate a remove_column action.
+
+============================================================
+
+4. convert_to_date
 
 Use ONLY when the profile contains the:
 
@@ -258,7 +301,7 @@ Do not convert a column to dates merely because its name looks like a date.
 
 ============================================================
 
-4. convert_to_numeric
+5. convert_to_numeric
 
 Use ONLY when the profile contains the:
 
@@ -274,9 +317,12 @@ Use:
 
 Do not convert arbitrary categorical or textual columns to numeric.
 
+Do not convert a column marked with "possible_identifier" unless the profile
+provides strong evidence that it represents a genuine numerical measurement.
+
 ============================================================
 
-5. convert_to_boolean
+6. convert_to_boolean
 
 Use ONLY when the profile contains the:
 
@@ -301,7 +347,7 @@ Do not convert arbitrary categorical columns to boolean.
 
 ============================================================
 
-6. standardize_categories
+7. standardize_categories
 
 Use ONLY when the profile contains:
 
@@ -334,10 +380,12 @@ Rules:
 - Use actual values from the profile.
 - Do not create an empty mapping.
 - Do not standardize categories when there is no evidence of inconsistency.
+- Prefer this action for categorical values rather than applying broad text
+  normalization to free-form text.
 
 ============================================================
 
-7. normalize_text
+8. normalize_text
 
 Use ONLY when the profile contains:
 
@@ -364,12 +412,14 @@ Example:
 
 Choose the case that best preserves the apparent intended representation.
 
-Do not normalize text merely because different capitalization exists when
-capitalization may carry meaning.
+Do not normalize free-form text, descriptions, job postings, or other long
+text fields merely because capitalization varies.
+
+Do not normalize text when capitalization may carry meaning.
 
 ============================================================
 
-8. normalize_whitespace
+9. normalize_whitespace
 
 Use ONLY when the profile contains:
 
@@ -388,7 +438,7 @@ Do not use it when no whitespace problem is supported by the profile.
 
 ============================================================
 
-9. normalize_column_names
+10. normalize_column_names
 
 Use ONLY when:
 
@@ -413,7 +463,7 @@ references a renamed column.
 
 ============================================================
 
-10. replace_empty_strings
+11. replace_empty_strings
 
 Use ONLY when the profile contains:
 
@@ -433,7 +483,7 @@ Empty or whitespace-only strings should become missing values.
 
 ============================================================
 
-11. remove_invalid_values
+12. remove_invalid_values
 
 Use ONLY when the profile provides clear evidence that particular values
 are invalid.
@@ -450,9 +500,11 @@ Do not invent invalid values.
 
 Replace invalid values with missing values.
 
+Do not treat unusual but potentially valid values as invalid without evidence.
+
 ============================================================
 
-12. clip_outliers
+13. clip_outliers
 
 Use ONLY when the profile provides evidence of meaningful numerical outliers.
 
@@ -478,10 +530,7 @@ GENERAL SAFETY RULES
 - Every action MUST be supported by evidence in the dataset profile.
 - Use the smallest set of operations necessary to improve data quality.
 - Do not perform unnecessary transformations.
-- Do not invent values.
-- Do not invent categories.
-- Do not invent invalid values.
-- Do not invent missing information.
+- Do not invent values, categories, invalid values, or missing information.
 - Do not modify ambiguous data.
 - Preserve valid user data whenever possible.
 - Do not generate Python code.
@@ -494,6 +543,8 @@ GENERAL SAFETY RULES
 - Parameters MUST contain everything required to safely execute the action.
 - If no cleaning action is justified, return an empty actions list.
 - Do not create an action simply because an operation is available.
+- Do not create multiple actions that perform the same transformation on the
+  same column unless each action has a distinct, justified purpose.
 
 ============================================================
 ACTION ORDER
@@ -513,14 +564,18 @@ When multiple operations are required, prefer this general order:
 10. impute_missing
 11. clip_outliers
 12. remove_duplicates
+13. remove_column
 
 Only include operations that are actually necessary.
+
+Column removal MUST occur after all other operations so that a column is not
+removed before another planned action can use it.
 
 ============================================================
 DATASET PROFILE
 ============================================================
 
-{json.dumps(profile, indent=2)}
+{json.dumps(profile, indent=2, default=str)}
 """
 
 # ============================================================
@@ -677,7 +732,6 @@ print(df.isna().sum())
 print("\nData types:")
 print(df.dtypes)
 
-
 # ============================================================
 # EXECUTE AI-GENERATED ACTIONS
 # ============================================================
@@ -716,6 +770,9 @@ for action in plan.actions:
         before_dtypes = df.dtypes.astype(str).to_dict()
         before_columns = list(df.columns)
 
+        # Clear any replacement count left by a previous action.
+        df.attrs.pop("values_replaced", None)
+
         # Temporarily use the resolved column name for execution.
         original_action_column = action.column
 
@@ -727,8 +784,12 @@ for action in plan.actions:
             action
         )
 
-        # Restore the original AI-generated column name for
-        # the report where appropriate.
+        # Capture replacement count immediately after execution.
+        values_replaced = int(
+            df.attrs.pop("values_replaced", 0) or 0
+        )
+
+        # Keep the resolved column name in the report.
         if (
             action.action != "normalize_column_names"
             and original_action_column is not None
@@ -862,7 +923,8 @@ for action in plan.actions:
         elif action.action == "replace_empty_strings":
 
             result["result"] = {
-                "column": action.column
+                "column": action.column,
+                "values_replaced": values_replaced
             }
 
         elif action.action == "remove_invalid_values":
@@ -871,13 +933,24 @@ for action in plan.actions:
                 "invalid_values": action.params.get(
                     "invalid_values",
                     []
-                )
+                ),
+                "values_replaced": values_replaced
             }
 
         elif action.action == "clip_outliers":
 
             result["result"] = {
                 "column": action.column
+            }
+
+        elif action.action == "remove_column":
+
+            result["result"] = {
+                "columns_before": before_columns,
+                "columns_after": after_columns,
+                "column_removed": (
+                    action.column not in after_columns
+                )
             }
 
         executed_actions.append(result)
@@ -899,8 +972,6 @@ for action in plan.actions:
             f"Action failed: {action.action} "
             f"on column '{resolved_column}': {error}"
         )
-
-
 # ============================================================
 # CAPTURE AFTER-CLEANING STATE
 # ============================================================
@@ -908,7 +979,6 @@ for action in plan.actions:
 cleaned_rows = len(df)
 
 cleaned_missing = df.isna().sum().to_dict()
-
 
 # ============================================================
 # VALIDATE CLEANING RESULTS
@@ -977,6 +1047,9 @@ for action in executed_actions:
         if result.get("missing_after", 0) != 0:
             action_results_valid = False
 
+        if result.get("missing_values_filled", 0) < 0:
+            action_results_valid = False
+
     elif action_name == "remove_duplicates":
 
         if result.get("rows_after", 0) > result.get(
@@ -986,6 +1059,9 @@ for action in executed_actions:
             action_results_valid = False
 
         if duplicates_after != 0:
+            action_results_valid = False
+
+        if result.get("duplicates_removed", 0) < 0:
             action_results_valid = False
 
     elif action_name == "convert_to_date":
@@ -1032,7 +1108,7 @@ for action in executed_actions:
             {}
         )
 
-        if not mapping:
+        if not isinstance(mapping, dict) or not mapping:
             action_results_valid = False
 
     elif action_name == "normalize_column_names":
@@ -1050,6 +1126,26 @@ for action in executed_actions:
         ):
             action_results_valid = False
 
+        if columns_after != list(df.columns):
+            action_results_valid = False
+
+    elif action_name == "replace_empty_strings":
+
+        values_replaced = result.get(
+            "values_replaced"
+        )
+
+        if (
+            not isinstance(values_replaced, int)
+            or values_replaced < 0
+        ):
+            action_results_valid = False
+
+        column = result.get("column")
+
+        if column is not None and column not in df.columns:
+            action_results_valid = False
+
     elif action_name == "remove_invalid_values":
 
         invalid_values = result.get(
@@ -1057,15 +1153,48 @@ for action in executed_actions:
             []
         )
 
-        if not isinstance(
-            invalid_values,
-            list
-        ) or not invalid_values:
+        values_replaced = result.get(
+            "values_replaced"
+        )
+
+        if not isinstance(invalid_values, list) or not invalid_values:
+            action_results_valid = False
+
+        if (
+            not isinstance(values_replaced, int)
+            or values_replaced < 0
+        ):
+            action_results_valid = False
+
+        column = action.get("column")
+
+        if column is not None and column not in df.columns:
             action_results_valid = False
 
     elif action_name == "clip_outliers":
 
         if action["column"] not in df.columns:
+            action_results_valid = False
+
+    elif action_name == "remove_column":
+
+        column_removed = result.get(
+            "column_removed",
+            False
+        )
+
+        if not column_removed:
+            action_results_valid = False
+
+        if action["column"] in df.columns:
+            action_results_valid = False
+
+        columns_after = result.get(
+            "columns_after",
+            []
+        )
+
+        if columns_after != list(df.columns):
             action_results_valid = False
 
 
@@ -1081,14 +1210,48 @@ missing_values_after = int(
     sum(cleaned_missing.values())
 )
 
+# Count missing values intentionally introduced by actions
+# that replace empty strings or explicitly invalid values.
+intentional_missing_increase = 0
+
+for action in executed_actions:
+
+    if action["status"] != "success":
+        continue
+
+    action_name = action["action"]
+    result = action.get(
+        "result",
+        {}
+    )
+
+    if action_name in [
+        "remove_invalid_values",
+        "replace_empty_strings"
+    ]:
+
+        values_replaced = result.get(
+            "values_replaced",
+            0
+        )
+
+        if isinstance(values_replaced, int) and values_replaced > 0:
+            intentional_missing_increase += values_replaced
+
+
+# Missing values may increase when previously hidden empty or
+# invalid values are converted to explicit NA values.
+unexpected_missing_increase = (
+    missing_values_after
+    > missing_values_before + intentional_missing_increase
+)
+
 missing_values_reduced = (
     missing_values_after < missing_values_before
 )
 
-# Missing values do NOT have to decrease for every valid
-# cleaning operation. This is only informational.
 missing_values_improved_or_unchanged = (
-    missing_values_after <= missing_values_before
+    not unexpected_missing_increase
 )
 
 
@@ -1106,6 +1269,8 @@ validation = {
     "missing_values_improved_or_unchanged": (
         missing_values_improved_or_unchanged
     ),
+    "unexpected_missing_increase": unexpected_missing_increase,
+    "intentional_missing_increase": intentional_missing_increase,
     "action_results_valid": action_results_valid,
     "all_actions_succeeded": all_actions_succeeded,
     "successful_actions": len(successful_actions),
@@ -1170,6 +1335,7 @@ report = {
     "missing_values": missing_value_report
 }
 
+
 # ============================================================
 # PRINT CLEANING REPORT
 # ============================================================
@@ -1177,6 +1343,7 @@ report = {
 print("\nCleaning report:")
 
 print("\nValidation:")
+
 print(
     "  Rows valid:",
     validation["rows_valid"]
@@ -1185,6 +1352,21 @@ print(
 print(
     "  Missing values reduced:",
     validation["missing_values_reduced"]
+)
+
+print(
+    "  Missing values improved or unchanged:",
+    validation["missing_values_improved_or_unchanged"]
+)
+
+print(
+    "  Unexpected missing increase:",
+    validation["unexpected_missing_increase"]
+)
+
+print(
+    "  Intentional missing increase:",
+    validation["intentional_missing_increase"]
 )
 
 print(
@@ -1203,6 +1385,7 @@ print(
 )
 
 print("\nRows:")
+
 print(
     f"  Before: {original_rows}"
 )

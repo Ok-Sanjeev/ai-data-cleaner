@@ -6,6 +6,7 @@ import pandas as pd
 ALLOWED_ACTIONS = {
     "impute_missing",
     "remove_duplicates",
+    "remove_column",
     "convert_to_date",
     "convert_to_numeric",
     "convert_to_boolean",
@@ -15,15 +16,21 @@ ALLOWED_ACTIONS = {
     "normalize_column_names",
     "replace_empty_strings",
     "remove_invalid_values",
-    "clip_outliers"
+    "clip_outliers",
 }
 
+
+# ============================================================
+# MISSING VALUE IMPUTATION
+# ============================================================
 
 def impute_missing(df, column, method, value=None):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     if method == "median":
         value = df[column].median()
@@ -32,7 +39,7 @@ def impute_missing(df, column, method, value=None):
         value = df[column].mean()
 
     elif method == "mode":
-        mode = df[column].mode()
+        mode = df[column].mode(dropna=True)
 
         if mode.empty:
             raise ValueError(
@@ -63,15 +70,45 @@ def impute_missing(df, column, method, value=None):
     return df
 
 
+# ============================================================
+# REMOVE DUPLICATES
+# ============================================================
+
 def remove_duplicates(df):
     return df.drop_duplicates().copy()
 
+
+# ============================================================
+# REMOVE COLUMN
+# ============================================================
+
+def remove_column(df, column):
+    """Remove a column after the planner determines it is safe."""
+
+    if column not in df.columns:
+        raise ValueError(
+            f"Column '{column}' does not exist"
+        )
+
+    if len(df.columns) <= 1:
+        raise ValueError(
+            "Cannot remove the last remaining column"
+        )
+
+    return df.drop(columns=[column]).copy()
+
+
+# ============================================================
+# CONVERT TO DATE
+# ============================================================
 
 def convert_to_date(df, column):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     original_non_null = df[column].notna()
 
@@ -98,11 +135,17 @@ def convert_to_date(df, column):
     return df
 
 
+# ============================================================
+# CONVERT TO NUMERIC
+# ============================================================
+
 def convert_to_numeric(df, column):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     original_non_null = df[column].notna()
 
@@ -128,11 +171,17 @@ def convert_to_numeric(df, column):
     return df
 
 
+# ============================================================
+# CONVERT TO BOOLEAN
+# ============================================================
+
 def convert_to_boolean(df, column):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     mapping = {
         "true": True,
@@ -142,7 +191,7 @@ def convert_to_boolean(df, column):
         "y": True,
         "n": False,
         "1": True,
-        "0": False
+        "0": False,
     }
 
     original_non_null = df[column].notna()
@@ -173,6 +222,10 @@ def convert_to_boolean(df, column):
     return df
 
 
+# ============================================================
+# STANDARDIZE CATEGORIES
+# ============================================================
+
 def standardize_categories(df, column, mapping):
     if column not in df.columns:
         raise ValueError(
@@ -184,16 +237,24 @@ def standardize_categories(df, column, mapping):
             "A non-empty category mapping is required"
         )
 
+    df = df.copy()
+
     df[column] = df[column].replace(mapping)
 
     return df
 
+
+# ============================================================
+# NORMALIZE TEXT
+# ============================================================
 
 def normalize_text(df, column, case="lower"):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     series = df[column].astype("string")
 
@@ -216,11 +277,17 @@ def normalize_text(df, column, case="lower"):
     return df
 
 
+# ============================================================
+# NORMALIZE WHITESPACE
+# ============================================================
+
 def normalize_whitespace(df, column):
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
         )
+
+    df = df.copy()
 
     df[column] = (
         df[column]
@@ -235,6 +302,10 @@ def normalize_whitespace(df, column):
 
     return df
 
+
+# ============================================================
+# NORMALIZE COLUMN NAMES
+# ============================================================
 
 def normalize_column_names(df):
     df = df.copy()
@@ -271,7 +342,18 @@ def normalize_column_names(df):
     return df
 
 
+# ============================================================
+# REPLACE EMPTY STRINGS
+# ============================================================
+
 def replace_empty_strings(df, column=None):
+    """
+    Replace empty or whitespace-only strings with pandas NA.
+
+    Returns a dataframe with an attrs entry named
+    'values_replaced' containing the number of replacements.
+    """
+
     df = df.copy()
 
     columns = (
@@ -279,6 +361,8 @@ def replace_empty_strings(df, column=None):
         if column is not None
         else list(df.columns)
     )
+
+    values_replaced = 0
 
     for current_column in columns:
 
@@ -288,30 +372,36 @@ def replace_empty_strings(df, column=None):
             )
 
         if (
-            pd.api.types.is_object_dtype(
-                df[current_column]
-            )
-            or pd.api.types.is_string_dtype(
-                df[current_column]
-            )
+            pd.api.types.is_object_dtype(df[current_column])
+            or pd.api.types.is_string_dtype(df[current_column])
         ):
-            df[current_column] = (
+            empty_mask = (
                 df[current_column]
-                .replace(
-                    r"^\s*$",
-                    pd.NA,
-                    regex=True
-                )
+                .astype("string")
+                .str.fullmatch(r"\s*", na=False)
             )
+
+            values_replaced += int(empty_mask.sum())
+
+            df.loc[empty_mask, current_column] = pd.NA
+
+    df.attrs["values_replaced"] = values_replaced
 
     return df
 
 
-def remove_invalid_values(
-    df,
-    column,
-    invalid_values
-):
+# ============================================================
+# REMOVE INVALID VALUES
+# ============================================================
+
+def remove_invalid_values(df, column, invalid_values):
+    """
+    Replace explicitly specified invalid values with pandas NA.
+
+    Returns a dataframe with an attrs entry named
+    'values_replaced' containing the number of replacements.
+    """
+
     if column not in df.columns:
         raise ValueError(
             f"Column '{column}' does not exist"
@@ -325,13 +415,22 @@ def remove_invalid_values(
             "invalid_values must be a non-empty list"
         )
 
-    df[column] = df[column].replace(
-        invalid_values,
-        pd.NA
-    )
+    df = df.copy()
+
+    invalid_mask = df[column].isin(invalid_values)
+
+    values_replaced = int(invalid_mask.sum())
+
+    df.loc[invalid_mask, column] = pd.NA
+
+    df.attrs["values_replaced"] = values_replaced
 
     return df
 
+
+# ============================================================
+# CLIP OUTLIERS
+# ============================================================
 
 def clip_outliers(df, column):
     if column not in df.columns:
@@ -339,17 +438,20 @@ def clip_outliers(df, column):
             f"Column '{column}' does not exist"
         )
 
-    if not pd.api.types.is_numeric_dtype(
-        df[column]
-    ):
+    if not pd.api.types.is_numeric_dtype(df[column]):
         raise ValueError(
             f"Column '{column}' must be numeric"
         )
+
+    df = df.copy()
 
     q1 = df[column].quantile(0.25)
     q3 = df[column].quantile(0.75)
 
     iqr = q3 - q1
+
+    if pd.isna(iqr) or iqr == 0:
+        return df
 
     lower = q1 - 1.5 * iqr
     upper = q3 + 1.5 * iqr
@@ -362,9 +464,14 @@ def clip_outliers(df, column):
     return df
 
 
+# ============================================================
+# ACTION REGISTRY
+# ============================================================
+
 ACTION_REGISTRY = {
     "impute_missing": impute_missing,
     "remove_duplicates": remove_duplicates,
+    "remove_column": remove_column,
     "convert_to_date": convert_to_date,
     "convert_to_numeric": convert_to_numeric,
     "convert_to_boolean": convert_to_boolean,
@@ -374,9 +481,13 @@ ACTION_REGISTRY = {
     "normalize_column_names": normalize_column_names,
     "replace_empty_strings": replace_empty_strings,
     "remove_invalid_values": remove_invalid_values,
-    "clip_outliers": clip_outliers
+    "clip_outliers": clip_outliers,
 }
 
+
+# ============================================================
+# ACTION EXECUTION
+# ============================================================
 
 def execute_action(df, action):
 
@@ -389,6 +500,9 @@ def execute_action(df, action):
 
     if action.action == "remove_duplicates":
         return function(df)
+
+    if action.action == "remove_column":
+        return function(df, action.column)
 
     if action.action == "normalize_column_names":
         return function(df)
@@ -406,7 +520,7 @@ def execute_action(df, action):
         "convert_to_numeric",
         "convert_to_boolean",
         "normalize_whitespace",
-        "clip_outliers"
+        "clip_outliers",
     }:
         return function(
             df,

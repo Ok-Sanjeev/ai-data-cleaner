@@ -212,7 +212,6 @@ def compute_iqr_statistics(series):
         "outlier_count": int(len(outliers))
     }
 
-
 def profile_column(series):
     semantic_hints = detect_semantic_hints(series)
 
@@ -229,6 +228,12 @@ def profile_column(series):
         ),
         "unique_count": int(
             series.nunique()
+        ),
+        "empty_column": bool(
+            series.isna().all()
+        ),
+        "constant_column": bool(
+            series.nunique(dropna=True) <= 1
         ),
         "sample_values": (
             series
@@ -263,7 +268,6 @@ def profile_column(series):
         ] = compute_iqr_statistics(series)
 
     return column_profile
-
 
 def build_profile(df):
     profile = {
