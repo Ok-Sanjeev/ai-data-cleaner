@@ -1,395 +1,509 @@
 # 🤖 AI Data Cleaner
 
-### AI-powered, evidence-based data cleaning for messy CSV datasets
+### Privacy-Aware AI Planning · Deterministic Data Cleaning · Validated Execution
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python)](https://www.python.org/) [![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas)](https://pandas.pydata.org/) [![Gemini](https://img.shields.io/badge/Google%20Gemini-AI%20Planning-4285F4?logo=google)](https://ai.google.dev/) [![Pydantic](https://img.shields.io/badge/Pydantic-Validation-E92063)](https://docs.pydantic.dev/) 
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas" alt="Pandas">
+  <img src="https://img.shields.io/badge/Google%20Gemini-AI%20Planning-4285F4?logo=google" alt="Google Gemini">
+  <img src="https://img.shields.io/badge/Pydantic-Schema%20Validation-E92063" alt="Pydantic">
+  <img src="https://img.shields.io/badge/Pytest-Automated%20Testing-0A9EDC?logo=pytest" alt="Pytest">
+</p>
 
-> **Give it a messy CSV. It profiles the data, identifies quality problems, creates a cleaning plan, validates that plan, and safely produces a cleaned dataset.**
+**AI Data Cleaner is a Python-based data quality automation project that profiles messy CSV datasets, uses Google Gemini to recommend appropriate cleaning operations, validates the proposed plan, and executes approved transformations through trusted Python functions.**
 
----
+Rather than allowing an AI model to modify data directly, the project separates AI-generated recommendations from local execution.
 
-## ✨ What is this?
+**Profile → Recommend → Validate → Approve → Execute → Verify → Report**
 
-Real-world datasets are rarely clean.
-
-They often contain:
-
-- Missing values
-- Duplicate records
-- Inconsistent categories
-- Mixed date formats
-- Incorrect data types
-- Empty strings
-- Whitespace problems
-- Invalid values
-- Outliers
-- Inconsistent column names
-
-**AI Data Cleaner** combines **AI-based planning** with a **deterministic and validated execution layer**.
-
-The AI does not directly modify the dataset or execute arbitrary code. Instead, it analyzes the dataset profile and selects appropriate operations from a trusted cleaning library.
-
-> **AI decides → Pydantic validates → Trusted Python code executes → Results are validated**
+[View Source Code](https://github.com/Ok-Sanjeev/ai-data-cleaner) · [Report an Issue](https://github.com/Ok-Sanjeev/ai-data-cleaner/issues)
 
 ---
 
-# 🧠 How It Works
+## 📌 Overview
+
+Real-world datasets frequently contain missing values, duplicate records, inconsistent data types, malformed dates, and other data quality issues.
+
+Cleaning these datasets manually can be repetitive, error-prone, and difficult to reproduce.
+
+AI Data Cleaner explores a safer approach to automating this process.
+
+The application:
+
+- Profiles an input CSV locally.
+- Detects data quality issues and gathers relevant statistics.
+- Sends a privacy-filtered profile to Google Gemini.
+- Generates a structured cleaning plan.
+- Validates recommendations against predefined schemas and safety rules.
+- Presents recommendations for user approval.
+- Executes approved transformations using local Python functions.
+- Checks the resulting dataset and produces a JSON cleaning report.
+
+### The Core Design Principle
+
+> **AI recommends the transformation. Validated Python code performs it.**
+
+The AI does not generate executable Python or SQL for modifying the dataset. Its recommendations must pass the application's validation and safety checks before execution.
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|---|---|
+| 🔍 Automated profiling | Inspects CSV structure and identifies data quality issues. |
+| 🧠 AI-assisted planning | Uses Google Gemini to recommend targeted cleaning operations. |
+| 🔐 Privacy-aware prompting | Excludes raw cell values and category labels from the AI prompt. |
+| 📋 Structured output | Uses Pydantic to validate the proposed cleaning plan. |
+| 🛡️ Safety guardrails | Restricts execution to supported operations and validated parameters. |
+| 👤 Human-in-the-loop approval | Lets users select individual recommendations before execution. |
+| ⚙️ Deterministic execution | Applies transformations using trusted local Python functions. |
+| ✅ Post-cleaning validation | Checks the resulting dataset and records validation outcomes. |
+| 📊 Run-level artifacts | Keeps profiles, plans, cleaned data, and reports organized by run. |
+| 🧪 Automated tests | Tests cleaning logic, privacy controls, selection handling, and safety rules. |
+
+---
+
+## 🏗️ Architecture
 
 ```text
-                    ┌─────────────────┐
-                    │   CSV Dataset   │
-                    └────────┬────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │  Universal Profiler │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │  Data Quality       │
-                  │      Profile        │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │   Google Gemini     │
-                  │   AI Planner        │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │ Structured Cleaning │
-                  │       Plan         │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │ Pydantic Validation │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │ Trusted Action      │
-                  │     Registry        │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │ Deterministic       │
-                  │ Python Cleaning     │
-                  └──────────┬──────────┘
-                             │
-                             ▼
-                  ┌─────────────────────┐
-                  │ Post-Cleaning       │
-                  │    Validation       │
-                  └──────────┬──────────┘
-                             │
-                    ┌────────┴────────┐
-                    ▼                 ▼
-           ┌─────────────────┐ ┌─────────────────┐
-           │  Cleaned CSV    │ │  JSON Report    │
-           └─────────────────┘ └─────────────────┘
----
-
-# 🚀 Key Features
-
-| Feature                        | Description                                    |
-| ------------------------------ | ---------------------------------------------- |
-| 🔍 **Automatic Profiling**     | Analyzes unfamiliar CSV datasets               |
-| 🧠 **AI Planning**             | Gemini identifies required cleaning operations |
-| 🛡️ **Safe Execution**         | AI cannot execute arbitrary Python or SQL      |
-| 📋 **Structured Plans**        | Cleaning plans validated using Pydantic        |
-| ⚙️ **12 Operations**           | Trusted deterministic cleaning functions       |
-| 📊 **Before/After Analysis**   | Tracks changes to the dataset                  |
-| ✅ **Post-Cleaning Validation** | Verifies cleaning results                      |
-| 📄 **JSON Reports**            | Generates detailed run reports                 |
-| 🧪 **Automated Testing**       | 19 tests currently passing                     |
-
----
-
-# 🧹 Supported Cleaning Operations
-
-The cleaning engine currently supports **12 operations**.
-
-### Missing & Duplicate Data
-
-* `impute_missing`
-* `remove_duplicates`
-
-### Data Type Conversion
-
-* `convert_to_date`
-* `convert_to_numeric`
-* `convert_to_boolean`
-
-### Text & Category Cleaning
-
-* `standardize_categories`
-* `normalize_text`
-* `normalize_whitespace`
-
-### Schema & Value Cleaning
-
-* `normalize_column_names`
-* `replace_empty_strings`
-* `remove_invalid_values`
-
-### Statistical Cleaning
-
-* `clip_outliers`
-
-The AI does **not** blindly apply all operations.
-
-It selects operations based on evidence found during profiling.
-
-## Privacy-first pipeline
-
-**Profile → Detect → Diagnose → Explain → Recommend → Validate → Approve → Repair → Revalidate → Monitor**
-
-- **Profile / Detect:** inspect the CSV locally and identify quality issues.
-- **Diagnose / Explain / Recommend:** Gemini receives original column names, locally detected semantic types (such as email, phone number, date of birth, or salary-like fields), and aggregate metadata. Actual cell values, sample rows, category labels, and category frequency keys are excluded from the prompt.
-- **Validate:** validate the returned JSON and action parameters against the Pydantic schema and supported operations.
-- **Approve:** display the plan and require explicit approval before modifying the local dataset. Use `--auto-approve` only when you intentionally want unattended execution.
-- **Repair / Revalidate:** run deterministic approved actions locally, then check row counts, missing values, duplicates, and action outcomes.
-- **Monitor:** write per-run quality metrics to `cleaning_report.json`.
-
-Confidence scores have been removed. Gemini is not allowed to generate category mappings because category labels are withheld; the existing category action remains available to local code but is excluded from AI-generated plans.
-
----
-
-# 🔎 Dataset Profiling
-
-Before asking Gemini for a cleaning plan, the profiler analyzes the dataset.
-
-It can identify:
-
-* Missing values
-* Duplicate rows
-* Possible dates
-* Possible numeric columns
-* Possible boolean columns
-* Email-like values
-* Identifier-like columns
-* Empty strings
-* Whitespace inconsistencies
-* Inconsistent categories
-* Text-case inconsistencies
-* Invalid negative values
-* Column-name issues
-* Numeric IQR statistics
-
-The resulting profile becomes the evidence used by the AI planner.
-
----
-
-# 🤖 AI Cleaning Planner
-
-Gemini receives the structured dataset profile and determines:
-
-1. What problems exist
-2. Which cleaning operations are necessary
-3. Which columns should be changed
-4. What parameters should be used
-5. Why each operation is appropriate
-6. How confident the model is
-
-Example AI-generated action:
-
-```json
-{
-  "action": "impute_missing",
-  "column": "age_years",
-  "params": {
-    "method": "median"
-  },
-  "reasoning": "The column contains missing numerical values.",
-  }
+                    ┌──────────────────────┐
+                    │     Input CSV        │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Dataset Profiler    │
+                    │  Local Data Analysis  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Privacy Filtering   │
+                    │  Profile Preparation │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    Gemini Planner    │
+                    │  Cleaning Proposals  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Schema Validation   │
+                    │      Pydantic        │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Safety Guardrails   │
+                    │  Plan Verification   │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  User Approval Gate  │
+                    │   Select Operations  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Trusted Action      │
+                    │      Registry        │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │ Deterministic Local  │
+                    │   Data Processing    │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │ Post-Cleaning Checks │
+                    └──────────┬───────────┘
+                               │
+                    ┌──────────┴───────────┐
+                    ▼                      ▼
+          ┌──────────────────┐   ┌──────────────────┐
+          │   Cleaned CSV    │   │   JSON Report    │
+          └──────────────────┘   └──────────────────┘
 ```
 
-The model is explicitly instructed to avoid unnecessary transformations.
+### Why separate planning from execution?
+
+AI-generated output can be incomplete, invalid, or inappropriate for a particular dataset.
+
+Separating planning from execution creates distinct validation boundaries:
+
+1. The profiler gathers evidence.
+2. The AI proposes operations.
+3. The schema validates the structure and parameters.
+4. Safety guardrails check the proposed plan.
+5. The user approves the operations.
+6. Local functions execute the approved transformations.
+7. Validation checks and reporting document the result.
+
+This architecture reduces the risk of arbitrary AI-generated instructions being executed against a dataset.
 
 ---
 
-# 🛡️ Safety Architecture
+## 🔐 Privacy-Aware AI Planning
 
-One of the core design decisions is separating **AI decision-making** from **code execution**.
+Privacy is an important design consideration because datasets may contain sensitive or identifying information.
 
-### ❌ The AI does NOT do this:
+The application profiles the dataset locally and prepares a restricted representation for the AI planner.
+
+### Information excluded from the Gemini prompt
+
+- Raw cell values.
+- Sample data rows.
+- Category labels.
+- Category-frequency keys.
+
+The application can provide original column names, locally detected semantic types, and relevant aggregate metadata to help Gemini understand the dataset's structure.
+
+For example, a profile may indicate that a column contains missing values and has a numeric type without sending the actual values in that column.
+
+### Privacy pipeline
 
 ```text
-Gemini
-   ↓
-Generate Python
-   ↓
-Execute Python
+Local Dataset
+     │
+     ▼
+Local Profiling
+     │
+     ▼
+Privacy Filtering
+     │
+     ▼
+Structured Metadata
+     │
+     ▼
+Google Gemini
 ```
 
-### ✅ Instead:
+The application uses privacy filtering to limit the information supplied to the model.
 
-```text
-Gemini
-   ↓
-Select supported operation
-   ↓
-Pydantic validation
-   ↓
-Trusted Action Registry
-   ↓
-Deterministic Python function
-   ↓
-Dataset
-```
-
-This prevents the model from executing arbitrary code or SQL against the dataset.
+**Important:** This is a privacy-aware design, not a guarantee that every dataset or execution environment is risk-free. Column names and aggregate statistics may themselves reveal information. Review the metadata sent to external services before using the application with confidential data.
 
 ---
 
-# 📊 Example
+## 🧹 Supported Cleaning Operations
 
-The included customer dataset intentionally contains multiple data-quality problems.
+The current AI planning workflow supports the following operations:
 
-### Problems
+| Operation | Purpose |
+|---|---|
+| `impute_missing` | Fill missing values using a supported imputation method. |
+| `remove_duplicates` | Remove duplicate records. |
+| `convert_to_date` | Convert eligible columns to date or datetime values. |
+| `standardize_categories` | Standardize categorical values through the supported local cleaning logic. |
 
-```text
-205 rows
-7 columns
+Recommendations are subject to schema validation and application safety rules.
 
-Missing Age:        31
-Missing Income:     20
-Duplicate rows:      5
-Mixed category case
-Dates stored as text
-Inconsistent column names
-```
+The AI planner is intentionally restricted from generating category mappings because category labels are excluded from its input. This prevents the model from proposing mappings based on labels it cannot see.
 
-### AI-generated plan
-
-Gemini selected only the operations supported by the profile:
-
-```text
-1. normalize_column_names
-2. convert_to_date
-3. standardize_categories
-4. impute_missing → age_years
-5. impute_missing → income
-6. remove_duplicates
-```
-
-### Result
-
-```text
-                    BEFORE          AFTER
-
-Rows                  205             200
-Age missing            31               0
-Income missing         20               0
-Duplicates              5               0
-
-Registration_Date
-str                         →     datetime64
-
-Validation
-Overall                     →     TRUE
-```
-
-This demonstrates that the AI is selecting **targeted operations** instead of applying every available transformation.
+The local implementation may support capabilities that are not available to the AI planner. The supported AI-generated action set should therefore not be interpreted as a complete inventory of every function in the codebase.
 
 ---
 
-# 📁 Project Structure
+## 👤 Human-in-the-Loop Approval
+
+AI Data Cleaner includes an interactive approval step so users can decide which recommended transformations should run.
+
+For example, a plan may contain three recommendations:
+
+```text
+A. Convert Join_Date to a date type
+B. Impute missing values in Age
+C. Impute missing values in Salary
+```
+
+The user can select individual recommendations instead of accepting the entire plan.
+
+### Available selection options
+
+| Input | Behavior |
+|---|---|
+| `A` | Execute recommendation A. |
+| `AC` | Execute recommendations A and C. |
+| `A,C` | Execute recommendations A and C. |
+| `A C` | Execute recommendations A and C. |
+| `ALL` | Approve all recommendations. |
+| `NONE` | Reject all recommendations and leave the original dataset unchanged. |
+| `Q` | Quit without applying changes. |
+
+Selection is validated against the recommendations available for the current run. Invalid selections are rejected.
+
+### Why approval matters
+
+Human approval helps prevent unnecessary transformations and gives the user control over potentially destructive operations.
+
+The application defaults to requiring approval. Automatic execution should only be used when explicitly enabled and appropriate for the workflow.
+
+---
+
+## 🛡️ Safety and Validation
+
+The application uses multiple layers of validation instead of trusting model output directly.
+
+### 1. Structured plan validation
+
+Pydantic schemas validate the structure of the cleaning plan and the permitted action parameters.
+
+### 2. Recommendation guardrails
+
+The application checks proposed operations against its supported action set and safety rules.
+
+### 3. Controlled execution
+
+Approved operations are dispatched to trusted local Python functions.
+
+The application does not execute arbitrary Python code or SQL generated by Gemini.
+
+### 4. Explicit user approval
+
+Users can approve selected actions, reject all recommendations, or quit without applying changes.
+
+### 5. Post-cleaning checks
+
+The pipeline validates the resulting dataset and records relevant outcomes in the run report.
+
+### Execution model
+
+```text
+Untrusted AI Output
+        │
+        ▼
+Schema Validation
+        │
+        ▼
+Safety Checks
+        │
+        ▼
+User Approval
+        │
+        ▼
+Trusted Local Functions
+        │
+        ▼
+Validated Output
+```
+
+These controls improve predictability and testability, but they do not replace backups, code review, or validation against the requirements of a specific dataset.
+
+---
+
+## 📊 Example Workflow
+
+Consider a dataset containing employee records with missing values and inconsistent date formats.
+
+### Input
+
+```text
+employee_id,Age,Salary,Join_Date
+101,25,45000,2024-01-15
+102,,52000,15/02/2024
+103,29,,2024-03-10
+104,31,61000,20/04/2024
+```
+
+### Step 1 — Profile
+
+The application inspects the CSV and gathers information about its structure and data quality.
+
+Potential findings include:
+
+- Missing values in `Age`.
+- Missing values in `Salary`.
+- Dates represented using different formats.
+- Column-level type inconsistencies.
+
+### Step 2 — Generate recommendations
+
+Gemini receives the permitted dataset metadata and recommends appropriate operations.
+
+### Step 3 — Validate and approve
+
+The application validates the plan and displays the recommendations for selection.
+
+### Step 4 — Execute
+
+Only the approved operations are executed through local Python functions.
+
+### Step 5 — Validate and report
+
+The application checks the resulting dataset and records the run's results.
+
+The example above illustrates the workflow; actual recommendations and results depend on the input dataset, the generated plan, and the actions approved by the user.
+
+---
+
+## 📁 Project Structure
 
 ```text
 ai-data-cleaner/
 │
-├── 📂 data/
-│   └── test_customers.csv
+├── actions.py
+├── ai_privacy.py
+├── approval_selection.py
+├── approval_utils.py
+├── planner.py
+├── profiler.py
+├── recommendation_guardrails.py
+├── schemas.py
 │
-├── 📂 runs/
-│   └── <run_id>/
+├── test_actions.py
+├── test_ai_privacy.py
+├── test_approval_selection.py
+├── test_approval_utils.py
+├── test_planner_safety_rules.py
+├── test_profiler.py
+├── test_recommendation_guardrails.py
+├── test_schemas.py
+├── test_semantic_detection.py
+│
+├── data/                   # Local input datasets
+├── runs/                   # Generated run artifacts
+│   └── run_<timestamp>/
 │       ├── profile.json
 │       ├── plan_raw.txt
 │       ├── plan.json
 │       ├── cleaned_data.csv
 │       └── cleaning_report.json
 │
-├── actions.py
-├── profiler.py
-├── planner.py
-├── schemas.py
-├── generate_test_data.py
-│
-├── test_actions.py
-├── test_profiler.py
-├── test_schemas.py
-│
-├── .env
+├── .env                    # Local API credentials
 ├── .gitignore
-└── README.md
+├── README.md
+└── requirements.txt        # If maintained in the repository
 ```
 
----
+The `data/`, `runs/`, and `.env` paths are local working files and should not be committed when they contain private data, generated artifacts, or credentials.
 
-# ⚙️ Tech Stack
-
-| Technology          | Purpose                     |
-| ------------------- | --------------------------- |
-| 🐍 **Python**       | Core application            |
-| 🐼 **Pandas**       | Data processing             |
-| ✨ **Google Gemini** | AI cleaning-plan generation |
-| 🧩 **Pydantic**     | Structured plan validation  |
-| 🧪 **Pytest**       | Automated testing           |
-| 🔧 **Git / GitHub** | Version control             |
+The exact files generated during a run may vary according to the execution path.
 
 ---
 
-# 🛠️ Installation
+## ⚙️ Technology Stack
 
-## 1. Clone the repository
+| Technology | Role |
+|---|---|
+| Python | Application logic and orchestration |
+| Pandas | CSV processing and data transformations |
+| NumPy | Numerical operations |
+| Google Gemini API | AI-assisted cleaning-plan generation |
+| Pydantic | Schema and parameter validation |
+| python-dotenv | Local environment-variable configuration |
+| Pytest | Automated testing |
+| Git and GitHub | Version control and project collaboration |
+
+---
+
+## 🚀 Installation
+
+### Prerequisites
+
+- Python 3.12 recommended.
+- Git.
+- A Google Gemini API key.
+- A CSV dataset to process.
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Ok-Sanjeev/ai-data-cleaner.git
 cd ai-data-cleaner
 ```
 
-## 2. Create a virtual environment
+### 2. Create a virtual environment
 
 ```bash
 python -m venv venv
 ```
 
-### Windows
+Activate it on Windows PowerShell:
 
 ```powershell
-venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1
 ```
 
-## 3. Install dependencies
+On macOS or Linux:
 
 ```bash
-pip install pandas pydantic google-genai python-dotenv pytest
+source venv/bin/activate
 ```
 
-## 4. Configure Gemini
+### 3. Install dependencies
+
+If the repository contains a maintained `requirements.txt`:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Otherwise, install the required dependencies:
+
+```bash
+python -m pip install pandas numpy pydantic python-dotenv google-genai ydata-profiling pytest
+```
+
+### 4. Configure the API key
 
 Create a `.env` file in the project root:
 
-```text
-GEMINI_API_KEY=your_api_key_here
+```env
+GEMINI_API_KEY=your_gemini_api_key
 ```
+
+Keep your API key private. Do not commit `.env` or include credentials in logs, screenshots, or issue reports.
 
 ---
 
-# ▶️ Usage
+## ▶️ Usage
 
-Run the cleaner with a CSV file:
+Activate your virtual environment and run the application from the project root.
 
-```bash
-python planner.py data/test_customers.csv
+### Run the default workflow
+
+```powershell
+python .\planner.py
 ```
 
-Each run creates its own directory:
+The application uses its configured default input dataset.
+
+### Process a specific CSV
+
+If your current `planner.py` supports a positional CSV argument, run:
+
+```powershell
+python .\planner.py .\data\your_dataset.csv
+```
+
+Replace the example path with your dataset's actual location.
+
+### Select recommendations
+
+When the approval prompt appears, enter the recommendation letters:
+
+```text
+Select recommendations to execute:
+  Enter letters to select individual actions (e.g., ABC or A,C)
+  ALL     Approve all recommendations
+  NONE    Reject all; leave the original dataset unchanged
+  Q       Quit without changes
+```
+
+Review each recommendation before approving it.
+
+---
+
+## 📦 Run Artifacts
+
+The application organizes execution outputs into run-specific directories.
+
+Example:
 
 ```text
 runs/
@@ -401,142 +515,138 @@ runs/
     └── cleaning_report.json
 ```
 
-### Generated Artifacts
+### Artifact descriptions
 
-| File                   | Purpose                        |
-| ---------------------- | ------------------------------ |
-| `profile.json`         | Dataset quality profile        |
-| `plan_raw.txt`         | Raw Gemini response            |
-| `plan.json`            | Validated cleaning plan        |
-| `cleaned_data.csv`     | Final cleaned dataset          |
-| `cleaning_report.json` | Cleaning and validation report |
+| Artifact | Purpose |
+|---|---|
+| `profile.json` | Records the dataset profile generated during the run. |
+| `plan_raw.txt` | Stores the raw AI planner response when generated and saved by the application. |
+| `plan.json` | Stores the structured cleaning plan when produced. |
+| `cleaned_data.csv` | Contains the resulting dataset. |
+| `cleaning_report.json` | Records cleaning outcomes and validation information. |
+
+These artifacts help make individual runs easier to inspect and debug.
+
+Keep in mind that profiles and reports may contain information about dataset structure. Treat them according to the sensitivity of the input data.
 
 ---
 
-# 🧪 Testing
+## 🧪 Automated Testing
+
+The project includes automated tests for its cleaning logic, validation, and safety mechanisms.
 
 Run the complete test suite:
 
-```bash
+```powershell
 python -m pytest -q
 ```
 
-Current result:
+### Latest recorded test result
 
 ```text
-19 passed
+47 passed
 ```
 
-Tests currently cover:
+This result reflects the test run recorded during development. Run the suite locally to verify the current checkout.
 
-* Cleaning operations
-* Invalid operations
-* Parameter validation
-* Missing-value handling
-* Data-type conversions
-* Dataset profiling
-* CSV structure validation
-* Pydantic cleaning plans
+### Test coverage areas
 
----
+- Cleaning action behavior.
+- Dataset profiling.
+- CSV input validation.
+- Privacy filtering.
+- Semantic detection.
+- Approval selection parsing.
+- Approval utilities.
+- Recommendation guardrails.
+- Cleaning-plan schema validation.
+- Planner safety rules.
 
-# 🏗️ Design Principles
-
-## 1. AI for Decisions, Code for Execution
-
-Gemini determines **what should happen**.
-
-Python determines **how it happens**.
-
-This separation provides a safer and more predictable architecture.
+Automated tests help verify local behavior without requiring every test to call the external AI service.
 
 ---
 
-## 2. Evidence-Based Cleaning
+## 🧠 Engineering Principles
 
-The system should only recommend transformations supported by evidence in the dataset profile.
+### 1. AI for decisions, Python for execution
 
-A transformation should not be performed simply because it is available.
+The model recommends a plan; trusted code performs the transformations.
 
----
+### 2. Privacy-aware data handling
 
-## 3. Minimal Transformation
+Raw cell values and category labels are excluded from the Gemini planning prompt.
 
-The goal is to improve data quality while preserving as much original information as possible.
+### 3. Evidence-based recommendations
 
-```text
-Detect problem
-     ↓
-Choose smallest appropriate operation
-     ↓
-Execute deterministically
-     ↓
-Validate result
-```
+Cleaning actions should be supported by information gathered during profiling rather than applied indiscriminately.
 
----
+### 4. Human control
 
-## 4. Reproducible Execution
+Users can review recommendations and choose which actions to execute.
 
-Although the cleaning plan is AI-generated, the actual transformations are performed by deterministic functions.
+### 5. Minimal transformation
 
-This makes the execution layer:
+The goal is to improve data quality while avoiding unnecessary changes to valid records.
 
-* Testable
-* Debuggable
-* Reproducible
-* Auditable
+### 6. Reproducibility and auditability
+
+Structured plans, deterministic operations, and run-level artifacts make it easier to investigate what happened during a cleaning run.
+
+### 7. Testable architecture
+
+Separating profiling, planning, validation, approval, and execution makes individual components easier to test and maintain.
 
 ---
 
-# 📈 Current Status
+## ⚠️ Current Limitations
 
-### Core Pipeline: ✅ Functional
+AI Data Cleaner is an evolving project, and several considerations remain important:
 
-Currently implemented:
+- AI recommendations depend on the quality and completeness of the generated profile.
+- Ambiguous data may require human judgment.
+- Schema validation cannot guarantee that every semantically valid operation is appropriate for a particular business context.
+- Privacy filtering reduces information exposure but does not guarantee complete anonymity.
+- Cleaning results should be checked against domain-specific rules before production use.
+- Automatic execution should be enabled only when the workflow and its safeguards have been reviewed.
+- Support for additional formats, interfaces, and cleaning operations depends on future implementation.
 
-* ✅ Universal CSV profiling
-* ✅ AI-based cleaning-plan generation
-* ✅ 12 cleaning operations
-* ✅ Pydantic plan validation
-* ✅ Trusted action registry
-* ✅ Deterministic execution
-* ✅ Post-cleaning validation
-* ✅ JSON reporting
-* ✅ Run artifacts
-* ✅ Automated tests
-* ✅ 19/19 tests passing
-
-The next development phase focuses on broader testing against unfamiliar and difficult datasets, stronger safety validation, and portfolio-facing improvements.
+Always preserve the original dataset and verify important transformations before relying on the output.
 
 ---
 
-# 🔮 Future Improvements
+## 🗺️ Roadmap
 
-* [ ] Test against a wider range of unfamiliar datasets
-* [ ] Stronger safety and action validation
-* [ ] More advanced data-quality scoring
-* [ ] Improved post-cleaning verification
-* [ ] Better handling of ambiguous data
-* [ ] Support for additional file formats
-* [ ] Interactive web interface
-* [ ] Cleaning-plan visualization
-* [ ] Data-quality dashboard
-* [ ] Explainable before/after comparisons
+Potential future improvements include:
 
----
+- [ ] Expand testing across diverse real-world datasets.
+- [ ] Strengthen semantic validation and execution guardrails.
+- [ ] Add configurable data-quality metrics.
+- [ ] Improve before-and-after quality comparisons.
+- [ ] Expand supported cleaning operations.
+- [ ] Add more detailed run summaries.
+- [ ] Develop an interactive web interface.
+- [ ] Add visualizations for data-quality issues.
+- [ ] Explore support for additional input formats.
 
-# 👨‍💻 Author
-
-## Sanjeev Kumar Rai
-
-**AI / Data / Software Engineering**
-
-GitHub: [https://github.com/Ok-Sanjeev](https://github.com/Ok-Sanjeev)
+These are planned enhancements, not claims about currently implemented functionality.
 
 ---
 
-⭐ If you find this project interesting, consider giving it a star!
+## 👨‍💻 Author
 
-```
-```
+**Sanjeev Kumar Rai**
+
+BE Computer Science & Engineering · 2026 Graduate
+
+Interested in data analytics, Python automation, data quality engineering, and practical AI applications.
+
+- **GitHub:** [Ok-Sanjeev](https://github.com/Ok-Sanjeev)
+- **Project:** [AI Data Cleaner](https://github.com/Ok-Sanjeev/ai-data-cleaner)
+
+---
+
+## ⭐ Support
+
+If you find this project useful or interesting, consider starring the repository.
+
+Contributions, bug reports, and suggestions for improving the safety and reliability of automated data cleaning are welcome.
