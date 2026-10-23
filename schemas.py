@@ -1,7 +1,7 @@
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 ALLOWED_ACTIONS = Literal[
@@ -22,6 +22,8 @@ ALLOWED_ACTIONS = Literal[
 
 
 class CleaningAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(
         default_factory=lambda: str(uuid4())
     )
@@ -36,10 +38,6 @@ class CleaningAction(BaseModel):
 
     reasoning: str
 
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-    )
 
     @model_validator(mode="after")
     def validate_action_parameters(self):
@@ -128,5 +126,7 @@ class CleaningAction(BaseModel):
 
 
 class CleaningPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     summary: str
     actions: list[CleaningAction]

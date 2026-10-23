@@ -1,6 +1,8 @@
 import argparse
 import json
 import os
+
+import pandas as pd
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -9,7 +11,10 @@ from google.genai import types
 from pydantic import ValidationError
 
 from actions import execute_action
+from ai_privacy import build_ai_safe_profile, remap_plan_columns
 from profiler import profile_dataset
+from recommendation_guardrails import filter_unsafe_text_normalization
+from approval_selection import labels_for_count, parse_selection
 from schemas import CleaningPlan
 
 
@@ -29,6 +34,12 @@ parser.add_argument(
     nargs="?",
     default="data/Messy_Employee_dataset.csv",
     help="Path to the input CSV file"
+)
+
+parser.add_argument(
+    "--auto-approve",
+    action="store_true",
+    help="Skip the interactive approval gate and execute the validated plan",
 )
 
 args = parser.parse_args()
@@ -123,13 +134,24 @@ with open(
 
 
 # ============================================================
-# CREATE GEMINI PROMPT
+# CREATE PRIVACY-SAFE GEMINI PROMPT
 # ============================================================
+ai_safe_profile, token_to_column = build_ai_safe_profile(profile)
+
 prompt = f"""
 You are an expert data quality analyst and cleaning planner.
 
-Analyze the dataset profile and determine which data-cleaning operations are
+Analyze the privacy-safe dataset profile and determine which data-cleaning operations are
 actually necessary to improve the dataset.
+
+COLUMN CONTRACT (MANDATORY): The only valid column names are the exact keys in
+DATASET PROFILE -> column_profiles. Copy column names character-for-character.
+Never invent, infer, correct, or substitute a column name. If no safe action applies,
+return an empty actions list. Before returning JSON, verify every action column exists
+exactly in that key set. Original column names and locally inferred semantic
+types are provided to preserve context (for example, email, phone number, or date of birth).
+Never request or infer raw cell values, sample rows, or category labels. Do not use
+standardize_categories: category mappings must be created locally without sending labels.
 
 Your job is to:
 1. Identify data-quality problems from the supplied profile.
@@ -137,8 +159,13 @@ Your job is to:
 3. Provide parameters required to execute those operations safely.
 4. Avoid unnecessary transformations.
 5. Never invent information that is not supported by the profile.
-6. Identify objectively unnecessary columns, but remove them only when
-   there is strong evidence that doing so is safe.
+6. Preserve columns unless there is a clear data-quality or analysis reason to remove them.
+7. A constant column (one non-null unique value) may be recommended for removal because
+   it cannot distinguish records in most analyses. Explain the exact profile evidence;
+   user approval is still required. Never remove it automatically.
+8. Preserve descriptive_text columns by default. Sentence/description columns can be useful
+   for text analytics, search, classification, sentiment, and topic analysis. Flag them as
+   high-cardinality/descriptive rather than deleting them merely because they contain sentences.
 
 You may ONLY use these actions:
 
@@ -148,7 +175,6 @@ You may ONLY use these actions:
 - convert_to_date
 - convert_to_numeric
 - convert_to_boolean
-- standardize_categories
 - normalize_text
 - normalize_whitespace
 - normalize_column_names
@@ -173,8 +199,7 @@ The JSON must have exactly this structure:
       "params": {{
         "method": "median"
       }},
-      "reasoning": "Age contains missing numerical values and median imputation is appropriate.",
-      "confidence": 0.95
+      "reasoning": "Age contains missing numerical values and median imputation is appropriate."
     }}
   ]
 }}
@@ -187,7 +212,14 @@ ACTION RULES
 
 Use ONLY when the profile shows missing values.
 
-The column must actually contain missing values.
+The column must actually contain missing values. Choose the method based on data type:
+- Numeric measures: median is the robust default; mean is acceptable when appropriate.
+- Categorical/text/boolean columns: use mode. Never use mean or median for categories.
+- Descriptive text columns: use mode only when a small number of repeated values makes
+  that reasonable; otherwise recommend review or a clearly justified constant, not an
+  invented sentence.
+- Identifiers, email, phone, government/identity IDs, and person names should not be
+  imputed with mean/median. Prefer mode only if justified, otherwise leave missing values.
 
 The params object MUST contain one of the following:
 
@@ -256,9 +288,12 @@ The profile may contain these indicators:
 
 Rules:
 
-- An entirely empty column may be removed.
-- A constant column may be removed only when its value provides no meaningful
-  information.
+- An entirely empty column may be proposed for removal, but it still requires
+  user approval.
+- A constant column may be proposed for removal after considering its role and profile.
+  It must still be shown to the user and approved before any change. Explain that it has
+  no variation and may not help distinguish records. Preserve it if it is meaningful
+  metadata, a business rule, a label, or required for traceability.
 - Do not remove the last remaining column.
 - Do not remove a column merely because it may be irrelevant to a particular
   analysis or machine-learning task.
@@ -347,41 +382,7 @@ Do not convert arbitrary categorical columns to boolean.
 
 ============================================================
 
-7. standardize_categories
-
-Use ONLY when the profile contains:
-
-"inconsistent_categories"
-
-The mapping MUST contain actual values supported by the profile.
-
-The mapping MUST be non-empty.
-
-Example:
-
-{{
-  "action": "standardize_categories",
-  "column": "Membership_Status",
-  "params": {{
-    "mapping": {{
-      "Active": "active",
-      "ACTIVE": "active",
-      "Inactive": "inactive",
-      "INACTIVE": "inactive"
-    }}
-  }},
-  "reasoning": "The profile shows multiple casing variants representing the same categories.",
-  "confidence": 0.99
-}}
-
-Rules:
-
-- Never invent categories.
-- Use actual values from the profile.
-- Do not create an empty mapping.
-- Do not standardize categories when there is no evidence of inconsistency.
-- Prefer this action for categorical values rather than applying broad text
-  normalization to free-form text.
+Category labels are intentionally withheld from the model. Do not propose category mappings.
 
 ============================================================
 
@@ -402,20 +403,20 @@ Example:
 
 {{
   "action": "normalize_text",
-  "column": "Customer_Name",
+  "column": "Age",
   "params": {{
     "case": "title"
   }},
   "reasoning": "The profile shows inconsistent capitalization in text values.",
-  "confidence": 0.90
 }}
 
 Choose the case that best preserves the apparent intended representation.
 
-Do not normalize free-form text, descriptions, job postings, or other long
-text fields merely because capitalization varies.
-
-Do not normalize text when capitalization may carry meaning.
+Do not normalize free-form text, descriptions, job postings, salary text, skill
+lists, company names, product names, acronyms, identifiers, or other fields where
+capitalization may carry meaning. In particular, do not blindly alter SQL, AWS,
+Power BI, company branding, or raw salary descriptions. If the profile does not
+provide evidence of inconsistent casing, do not propose this action.
 
 ============================================================
 
@@ -454,7 +455,7 @@ Use:
 
 Normalize names into consistent machine-friendly names.
 
-The profile provides the original and suggested names.
+The profile provides the original and suggested column names.
 
 IMPORTANT:
 
@@ -516,12 +517,10 @@ Use:
   "params": {{}}
 }}
 
-Do NOT automatically modify every statistical outlier.
-
-An extreme value may be legitimate business data.
-
-Only use this action when the profile provides sufficient evidence that the
-values are likely erroneous or unsuitable for the dataset.
+Do NOT propose clip_outliers for this project. Statistical outliers must be
+flagged for human review, not automatically changed. An extreme value may be
+legitimate business data, and clipping can silently corrupt it. If outliers are
+present, describe them in the summary without adding a repair action.
 
 ============================================================
 GENERAL SAFETY RULES
@@ -537,7 +536,6 @@ GENERAL SAFETY RULES
 - Do not generate SQL.
 - Do not request arbitrary code execution.
 - Do not use unsupported actions.
-- confidence MUST be between 0.0 and 1.0.
 - Every action MUST include reasoning.
 - Every action that operates on a column MUST specify the column.
 - Parameters MUST contain everything required to safely execute the action.
@@ -559,7 +557,6 @@ When multiple operations are required, prefer this general order:
 5. convert_to_numeric
 6. convert_to_boolean
 7. convert_to_date
-8. standardize_categories
 9. remove_invalid_values
 10. impute_missing
 11. clip_outliers
@@ -575,7 +572,11 @@ removed before another planned action can use it.
 DATASET PROFILE
 ============================================================
 
-{json.dumps(profile, indent=2, default=str)}
+{json.dumps(ai_safe_profile, indent=2, default=str)}
+
+Before returning the plan, check each action's column against the exact
+column_profiles keys above. If a column is absent, remove that action. Never
+use column names remembered from examples or other datasets.
 """
 
 # ============================================================
@@ -664,11 +665,11 @@ with open(
 
 
 try:
-    plan = CleaningPlan.model_validate_json(
-        response_text
-    )
+    raw_plan_data = json.loads(response_text)
+    local_plan_data = remap_plan_columns(raw_plan_data, token_to_column)
+    plan = CleaningPlan.model_validate(local_plan_data)
 
-except (ValidationError, ValueError) as error:
+except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as error:
     print(f"Gemini returned an invalid cleaning plan: {error}")
 
     error_report = {
@@ -694,6 +695,40 @@ except (ValidationError, ValueError) as error:
 
 
 # ============================================================
+# APPLY LOCAL TEXT-NORMALIZATION GUARDRAILS
+# ============================================================
+# Do not trust the model alone to decide whether lower/title/upper casing is safe.
+# Descriptions, free text, skills, titles, salaries, brands, and company names are
+# preserved. Only locally evidenced categorical casing cleanup may remain.
+plan.actions, text_guardrail_messages = filter_unsafe_text_normalization(
+    plan.actions, df, profile
+)
+for guardrail_message in text_guardrail_messages:
+    print(f"Safety guardrail: {guardrail_message}")
+
+# ============================================================
+# APPLY LOCAL IMPUTATION-METHOD GUARDRAILS
+# ============================================================
+# Gemini proposes actions, but local dtype/semantic rules decide which statistical
+# imputation methods are valid. Categorical data must use mode, never mean/median.
+for action in plan.actions:
+    if action.action != "impute_missing" or action.column not in df.columns:
+        continue
+    series = df[action.column]
+    semantic_type = profile.get("column_profiles", {}).get(action.column, {}).get("semantic_type", "")
+    is_numeric = pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series)
+    requested_method = action.params.get("method", "median")
+    if not is_numeric and requested_method in {"mean", "median"}:
+        action.params["method"] = "mode"
+        action.reasoning += " Local safety rule changed imputation to mode because this column is categorical/text or boolean."
+    elif is_numeric and requested_method == "mode":
+        # Mode is valid for numeric data too; retain it if explicitly selected.
+        pass
+    if semantic_type in {"email", "phone_number", "government_or_identity_id", "person_name", "address"} and action.params.get("method") in {"mean", "median"}:
+        action.params["method"] = "mode"
+        action.reasoning += " Local semantic rule prevents mean/median imputation for this identifier/contact field."
+
+# ============================================================
 # SAVE VALIDATED PLAN
 # ============================================================
 
@@ -712,6 +747,123 @@ with open(
         file,
         indent=2
     )
+
+
+# ============================================================
+# APPROVE INDIVIDUAL RECOMMENDATIONS
+# ============================================================
+print("\nProposed cleaning plan:")
+print("Explanation:", plan.summary)
+
+all_actions = list(plan.actions)
+labels = labels_for_count(len(all_actions))
+
+if not all_actions:
+    print("No cleaning actions were recommended. Nothing to execute.")
+    with open(os.path.join(run_dir, "approval.json"), "w", encoding="utf-8") as file:
+        json.dump({
+            "run_id": run_id,
+            "status": "no_actions",
+            "stage": "approve",
+            "selected": [],
+            "rejected": [],
+        }, file, indent=2)
+    raise SystemExit(0)
+
+for label, action in zip(labels, all_actions):
+    print(f"\n[{label}] {action.action} | column={action.column!r} | params={action.params}")
+    print(f"    Reason: {action.reasoning}")
+
+if args.auto_approve:
+    selected_labels = set(labels)
+    selection_command = "ALL"
+else:
+    print("\nSelect recommendations to execute:")
+    print("  Enter letters to select individual actions (e.g., ABC or A,C)")
+    print("  ALL     Approve all recommendations")
+    print("  NONE    Reject all; leave the original dataset unchanged")
+    print("  Q       Quit without changes")
+
+    while True:
+        try:
+            raw_selection = input("\nYour choice: ")
+        except EOFError:
+            raw_selection = "Q"
+        try:
+            parsed_selection = parse_selection(raw_selection, labels)
+        except ValueError as error:
+            print(f"Invalid selection: {error}")
+            continue
+
+        if parsed_selection == "Q":
+            approval_report = {
+                "run_id": run_id,
+                "status": "quit",
+                "stage": "approve",
+                "selection": raw_selection.strip(),
+                "selected": [],
+                "rejected": labels,
+                "message": "User quit before applying any repair.",
+                "plan_path": plan_path,
+            }
+            with open(os.path.join(run_dir, "approval.json"), "w", encoding="utf-8") as file:
+                json.dump(approval_report, file, indent=2)
+            print("Exited without changes. Original dataset remains unchanged.")
+            raise SystemExit(0)
+
+        if parsed_selection == "NONE":
+            approval_report = {
+                "run_id": run_id,
+                "status": "not_approved",
+                "stage": "approve",
+                "selection": "NONE",
+                "selected": [],
+                "rejected": labels,
+                "message": "No actions selected; original dataset remains unchanged.",
+                "plan_path": plan_path,
+            }
+            with open(os.path.join(run_dir, "approval.json"), "w", encoding="utf-8") as file:
+                json.dump(approval_report, file, indent=2)
+            print("No actions selected. Original dataset remains unchanged.")
+            raise SystemExit(0)
+
+        if parsed_selection == "ALL":
+            selected_labels = set(labels)
+            selection_command = "ALL"
+        else:
+            selected_labels = set(parsed_selection)
+            selection_command = ",".join(label for label in labels if label in selected_labels)
+        break
+
+selected_actions = [
+    action for label, action in zip(labels, all_actions)
+    if label in selected_labels
+]
+rejected_labels = [label for label in labels if label not in selected_labels]
+
+# Only selected, already validated actions reach the execution loop. Keep the
+# full original plan in plan.json for auditability.
+plan.actions = selected_actions
+approval_report = {
+    "run_id": run_id,
+    "status": "approved",
+    "stage": "approve",
+    "selection": selection_command,
+    "selected": [
+        {"label": label, "action": action.action, "column": action.column, "params": action.params}
+        for label, action in zip(labels, all_actions) if label in selected_labels
+    ],
+    "rejected": [
+        {"label": label, "action": action.action, "column": action.column, "params": action.params}
+        for label, action in zip(labels, all_actions) if label not in selected_labels
+    ],
+    "plan_path": plan_path,
+}
+with open(os.path.join(run_dir, "approval.json"), "w", encoding="utf-8") as file:
+    json.dump(approval_report, file, indent=2)
+
+print(f"\nSelected {len(selected_actions)} of {len(all_actions)} recommendation(s).")
+print("Only selected actions will be executed.")
 
 
 # ============================================================
@@ -807,7 +959,6 @@ for action in plan.actions:
             "column": action.column,
             "params": action.params,
             "reasoning": action.reasoning,
-            "confidence": action.confidence,
             "status": "success",
         }
 
@@ -963,7 +1114,6 @@ for action in plan.actions:
             "column": resolved_column,
             "params": action.params,
             "reasoning": action.reasoning,
-            "confidence": action.confidence,
             "status": "failed",
             "error": str(error)
         })
@@ -1332,7 +1482,18 @@ report = {
         "before": original_rows,
         "after": cleaned_rows
     },
-    "missing_values": missing_value_report
+    "missing_values": missing_value_report,
+    "monitoring": {
+        "rows_changed": original_rows != cleaned_rows,
+        "missing_values_before": int(sum(original_missing.values())),
+        "missing_values_after": int(sum(cleaned_missing.values())),
+        "missing_values_delta": int(sum(cleaned_missing.values()) - sum(original_missing.values())),
+        "duplicate_rows_before": int(duplicates_before),
+        "duplicate_rows_after": int(duplicates_after),
+        "successful_actions": len(successful_actions),
+        "failed_actions": len(failed_actions),
+        "overall_validation_passed": bool(validation["overall"]),
+    }
 }
 
 

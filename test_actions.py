@@ -16,8 +16,7 @@ actions = [
         action="impute_missing",
         column="Age",
         params={"method": "median"},
-        reasoning="Fill missing Age values.",
-        confidence=0.95
+        reasoning="Fill missing Age values."
     ),
 
     CleaningAction(
@@ -30,16 +29,14 @@ actions = [
                 "inactive": "Inactive"
             }
         },
-        reasoning="Standardize Status values.",
-        confidence=0.96
+        reasoning="Standardize Status values."
     ),
 
     CleaningAction(
         action="convert_to_date",
         column="Join_Date",
         params={},
-        reasoning="Convert Join_Date to datetime.",
-        confidence=0.99
+        reasoning="Convert Join_Date to datetime."
     )
 ]
 

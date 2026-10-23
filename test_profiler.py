@@ -17,7 +17,7 @@ def test_missing_file():
 def test_empty_file():
     with pytest.raises(
         ValueError,
-        match="Input CSV file contains no columns"
+        match="Input CSV file is empty"
     ):
         profile_dataset(
             "data/robustness_tests/empty.csv"

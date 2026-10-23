@@ -188,6 +188,60 @@ def detect_semantic_hints(series):
     return list(dict.fromkeys(hints))
 
 
+
+def detect_semantic_type(column_name, series):
+    """Classify a field locally from its header and value patterns.
+
+    Only the classification is eligible for the Gemini profile; the values used
+    to infer it are never copied into the AI-safe payload.
+    """
+    name = re.sub(r"[^a-z0-9]+", "_", str(column_name).strip().lower()).strip("_")
+    compact = name.replace("_", "")
+    values = series.dropna().astype("string").str.strip()
+    nonempty = values[values.ne("")]
+
+    rules = [
+        (("email", "e_mail", "email_address"), "email", True),
+        (("phone", "phone_number", "mobile", "telephone", "contact_number", "tel"), "phone_number", True),
+        (("dob", "date_of_birth", "birth_date", "birthdate"), "date_of_birth", True),
+        (("ssn", "social_security", "national_id", "passport", "tax_id"), "government_or_identity_id", True),
+        (("salary", "wage", "income", "compensation", "pay_amount"), "salary_or_income", True),
+        (("address", "street_address", "postal_address"), "address", True),
+        (("first_name", "last_name", "full_name", "customer_name", "employee_name"), "person_name", True),
+        (("date", "_at", "_on", "timestamp", "created_time", "updated_time"), "date_or_timestamp", False),
+    ]
+    for needles, semantic_type, sensitive in rules:
+        if any(needle in name for needle in needles) or any(needle.replace("_", "") in compact for needle in needles if len(needle) >= 4):
+            result = {"semantic_type": semantic_type, "sensitive_field": sensitive}
+            if semantic_type == "phone_number" and len(nonempty):
+                digits = nonempty.str.replace(r"\D", "", regex=True)
+                valid = digits.str.len().between(7, 15)
+                result["invalid_format_count"] = int((~valid).sum())
+            elif semantic_type == "email" and len(nonempty):
+                valid = nonempty.str.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+                result["invalid_format_count"] = int((~valid).sum())
+            return result
+
+    if len(nonempty):
+        email_match = nonempty.str.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+        if email_match.mean() >= 0.8:
+            return {"semantic_type": "email", "sensitive_field": True, "invalid_format_count": int((~email_match).sum())}
+        digits = nonempty.str.replace(r"\D", "", regex=True)
+        phone_like = digits.str.len().between(7, 15) & nonempty.str.contains(r"[0-9]", regex=True)
+        if phone_like.mean() >= 0.8 and (series.nunique(dropna=True) / max(len(nonempty), 1)) >= 0.5:
+            return {"semantic_type": "phone_number", "sensitive_field": True, "invalid_format_count": int((~phone_like).sum())}
+
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return {"semantic_type": "date_or_timestamp", "sensitive_field": False}
+    if pd.api.types.is_numeric_dtype(series):
+        return {"semantic_type": "numeric_measure_or_identifier", "sensitive_field": False}
+    # Length-based classification only: no text samples are included in the AI payload.
+    if len(nonempty):
+        lengths = nonempty.str.len()
+        if float(lengths.median()) >= 80 or float((lengths >= 40).mean()) >= 0.75:
+            return {"semantic_type": "descriptive_text", "sensitive_field": False}
+    return {"semantic_type": "categorical_or_text", "sensitive_field": False}
+
 def compute_iqr_statistics(series):
     q1 = series.quantile(0.25)
     q3 = series.quantile(0.75)
@@ -303,11 +357,9 @@ def build_profile(df):
                 }
             )
 
-        profile[
-            "column_profiles"
-        ][column] = profile_column(
-            df[column]
-        )
+        column_profile = profile_column(df[column])
+        column_profile.update(detect_semantic_type(column_string, df[column]))
+        profile["column_profiles"][column] = column_profile
 
     return profile
 
@@ -332,7 +384,7 @@ def validate_csv_structure(file_path):
 
             if not header:
                 raise ValueError(
-                    f"Input CSV file contains no columns: "
+                    f"Input CSV file is empty (contains no columns): "
                     f"{file_path}"
                 )
 
@@ -416,7 +468,7 @@ def profile_dataset(file_path):
 
     if df.shape[1] == 0:
         raise ValueError(
-            f"Input CSV file contains no columns: "
+            f"Input CSV file is empty (contains no columns): "
             f"{file_path}"
         )
 

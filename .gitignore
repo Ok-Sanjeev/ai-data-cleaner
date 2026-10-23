@@ -1,8 +1,15 @@
-venv/
+# Secrets
 .env
-__pycache__/
-*.pyc
 
+# Python
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated outputs
 runs/
 profile.json
-data/cleaned_data.csv
+
+# Local datasets
+data/

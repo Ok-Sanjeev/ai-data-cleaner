@@ -144,6 +144,19 @@ The AI does **not** blindly apply all operations.
 
 It selects operations based on evidence found during profiling.
 
+## Privacy-first pipeline
+
+**Profile → Detect → Diagnose → Explain → Recommend → Validate → Approve → Repair → Revalidate → Monitor**
+
+- **Profile / Detect:** inspect the CSV locally and identify quality issues.
+- **Diagnose / Explain / Recommend:** Gemini receives original column names, locally detected semantic types (such as email, phone number, date of birth, or salary-like fields), and aggregate metadata. Actual cell values, sample rows, category labels, and category frequency keys are excluded from the prompt.
+- **Validate:** validate the returned JSON and action parameters against the Pydantic schema and supported operations.
+- **Approve:** display the plan and require explicit approval before modifying the local dataset. Use `--auto-approve` only when you intentionally want unattended execution.
+- **Repair / Revalidate:** run deterministic approved actions locally, then check row counts, missing values, duplicates, and action outcomes.
+- **Monitor:** write per-run quality metrics to `cleaning_report.json`.
+
+Confidence scores have been removed. Gemini is not allowed to generate category mappings because category labels are withheld; the existing category action remains available to local code but is excluded from AI-generated plans.
+
 ---
 
 # 🔎 Dataset Profiling
@@ -192,8 +205,7 @@ Example AI-generated action:
     "method": "median"
   },
   "reasoning": "The column contains missing numerical values.",
-  "confidence": 0.95
-}
+  }
 ```
 
 The model is explicitly instructed to avoid unnecessary transformations.
