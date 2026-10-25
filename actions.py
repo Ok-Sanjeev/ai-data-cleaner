@@ -5,8 +5,10 @@ import pandas as pd
 
 ALLOWED_ACTIONS = {
     "impute_missing",
+    "drop_missing_rows",
     "remove_duplicates",
     "remove_column",
+    "rename_column",
     "convert_to_date",
     "convert_to_numeric",
     "convert_to_boolean",
@@ -17,6 +19,7 @@ ALLOWED_ACTIONS = {
     "replace_empty_strings",
     "remove_invalid_values",
     "clip_outliers",
+    "clean_phone_number",
 }
 
 
@@ -71,6 +74,27 @@ def impute_missing(df, column, method, value=None):
 
 
 # ============================================================
+# DROP MISSING ROWS
+# ============================================================
+
+def drop_missing_rows(df, column=None, how="any"):
+    """Drop rows with missing values in the specified column or all columns."""
+    if column is not None and column not in df.columns:
+        raise ValueError(
+            f"Column '{column}' does not exist"
+        )
+    if how not in {"any", "all"}:
+        raise ValueError("how must be 'any' or 'all'")
+
+    df = df.copy()
+    subset = [column] if column is not None else None
+    before_rows = len(df)
+    df = df.dropna(subset=subset, how=how).copy()
+    df.attrs["rows_dropped"] = before_rows - len(df)
+    return df
+
+
+# ============================================================
 # REMOVE DUPLICATES
 # ============================================================
 
@@ -99,6 +123,25 @@ def remove_column(df, column):
 
 
 # ============================================================
+# RENAME COLUMN
+# ============================================================
+
+def rename_column(df, column, new_name):
+    """Rename a specific column to a new name."""
+    if column not in df.columns:
+        raise ValueError(
+            f"Column '{column}' does not exist"
+        )
+    if not isinstance(new_name, str) or not new_name.strip():
+        raise ValueError("new_name must be a non-empty string")
+    if new_name in df.columns and new_name != column:
+        raise ValueError(f"Column '{new_name}' already exists")
+
+    df = df.copy()
+    return df.rename(columns={column: new_name})
+
+
+# ============================================================
 # CONVERT TO DATE
 # ============================================================
 
@@ -111,19 +154,29 @@ def convert_to_date(df, column):
     df = df.copy()
 
     original_non_null = df[column].notna()
+    if original_non_null.sum() == 0:
+        df[column] = pd.to_datetime(df[column], errors="coerce")
+        return df
+
+    if pd.api.types.is_datetime64_any_dtype(df[column]):
+        return df
+
+    cleaned = df[column].astype("string").str.strip()
 
     converted = pd.to_datetime(
-        df[column],
+        cleaned,
         format="mixed",
         errors="coerce"
     )
 
-    invalid = (
-        original_non_null
-        & converted.isna()
-    )
+    valid_count = converted.notna().sum()
+    total_non_null = original_non_null.sum()
 
-    if invalid.any():
+    if total_non_null > 0 and (valid_count / total_non_null) < 0.5:
+        invalid = (
+            original_non_null
+            & converted.isna()
+        )
         raise ValueError(
             f"Date conversion failed for "
             f"{int(invalid.sum())} non-null value(s) "
@@ -148,18 +201,39 @@ def convert_to_numeric(df, column):
     df = df.copy()
 
     original_non_null = df[column].notna()
+    if original_non_null.sum() == 0:
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+        return df
+
+    if pd.api.types.is_numeric_dtype(df[column]) and not pd.api.types.is_bool_dtype(df[column]):
+        return df
+
+    cleaned = (
+        df[column]
+        .astype("string")
+        .str.strip()
+        .str.replace(r"[$€£¥₹%]", "", regex=True)
+        .str.replace(r"(?i)\b(usd|eur|gbp|inr|cad|aud)\b", "", regex=True)
+        .str.replace(",", "", regex=False)
+        .str.strip()
+    )
+
+    # Handle accounting parenthesized negative values: (123.45) -> -123.45
+    cleaned = cleaned.str.replace(r"^\((.*)\)$", r"-\1", regex=True).str.strip()
 
     converted = pd.to_numeric(
-        df[column],
+        cleaned,
         errors="coerce"
     )
 
-    invalid = (
-        original_non_null
-        & converted.isna()
-    )
+    valid_count = converted.notna().sum()
+    total_non_null = original_non_null.sum()
 
-    if invalid.any():
+    if total_non_null > 0 and (valid_count / total_non_null) < 0.5:
+        invalid = (
+            original_non_null
+            & converted.isna()
+        )
         raise ValueError(
             f"Numeric conversion failed for "
             f"{int(invalid.sum())} non-null value(s) "
@@ -192,9 +266,22 @@ def convert_to_boolean(df, column):
         "n": False,
         "1": True,
         "0": False,
+        "t": True,
+        "f": False,
+        "on": True,
+        "off": False,
+        "enabled": True,
+        "disabled": False,
+        "active": True,
+        "inactive": False,
+        "pass": True,
+        "fail": False,
     }
 
     original_non_null = df[column].notna()
+    if original_non_null.sum() == 0:
+        df[column] = df[column].astype("boolean")
+        return df
 
     normalized = (
         df[column]
@@ -205,12 +292,14 @@ def convert_to_boolean(df, column):
 
     converted = normalized.map(mapping)
 
-    invalid = (
-        original_non_null
-        & converted.isna()
-    )
+    valid_count = converted.notna().sum()
+    total_non_null = original_non_null.sum()
 
-    if invalid.any():
+    if total_non_null > 0 and (valid_count / total_non_null) < 0.5:
+        invalid = (
+            original_non_null
+            & converted.isna()
+        )
         raise ValueError(
             f"Boolean conversion failed for "
             f"{int(invalid.sum())} non-null value(s) "
@@ -311,31 +400,32 @@ def normalize_column_names(df):
     df = df.copy()
 
     new_columns = []
+    seen = {}
 
-    for column in df.columns:
+    for i, column in enumerate(df.columns, start=1):
 
-        normalized = str(column).strip().lower()
+        col_str = str(column).strip().lower()
 
         normalized = re.sub(
-            r"[^a-z0-9]+",
+            r"[^\w]+",
             "_",
-            normalized
+            col_str,
+            flags=re.UNICODE
         )
 
         normalized = normalized.strip("_")
 
         if not normalized:
-            raise ValueError(
-                f"Column '{column}' cannot be normalized"
-            )
+            normalized = f"column_{i}"
 
-        new_columns.append(normalized)
+        if normalized in seen:
+            seen[normalized] += 1
+            unique_name = f"{normalized}_{seen[normalized]}"
+        else:
+            seen[normalized] = 0
+            unique_name = normalized
 
-    if len(new_columns) != len(set(new_columns)):
-        raise ValueError(
-            "Column normalization would create "
-            "duplicate column names"
-        )
+        new_columns.append(unique_name)
 
     df.columns = new_columns
 
@@ -465,13 +555,33 @@ def clip_outliers(df, column):
 
 
 # ============================================================
+# CLEAN PHONE NUMBER
+# ============================================================
+
+def clean_phone_number(df, column):
+    """Standardize phone numbers by stripping non-digit characters while preserving missing values."""
+    if column not in df.columns:
+        raise ValueError(
+            f"Column '{column}' does not exist"
+        )
+
+    df = df.copy()
+    series = df[column].astype("string")
+    digits = series.str.replace(r"\D", "", regex=True)
+    df[column] = digits.where(series.notna() & (series != ""), pd.NA)
+    return df
+
+
+# ============================================================
 # ACTION REGISTRY
 # ============================================================
 
 ACTION_REGISTRY = {
     "impute_missing": impute_missing,
+    "drop_missing_rows": drop_missing_rows,
     "remove_duplicates": remove_duplicates,
     "remove_column": remove_column,
+    "rename_column": rename_column,
     "convert_to_date": convert_to_date,
     "convert_to_numeric": convert_to_numeric,
     "convert_to_boolean": convert_to_boolean,
@@ -482,6 +592,7 @@ ACTION_REGISTRY = {
     "replace_empty_strings": replace_empty_strings,
     "remove_invalid_values": remove_invalid_values,
     "clip_outliers": clip_outliers,
+    "clean_phone_number": clean_phone_number,
 }
 
 
@@ -504,6 +615,16 @@ def execute_action(df, action):
     if action.action == "remove_column":
         return function(df, action.column)
 
+    if action.action == "rename_column":
+        return function(df, action.column, action.params["new_name"])
+
+    if action.action == "drop_missing_rows":
+        return function(
+            df,
+            action.column,
+            action.params.get("how", "any")
+        )
+
     if action.action == "normalize_column_names":
         return function(df)
 
@@ -521,6 +642,7 @@ def execute_action(df, action):
         "convert_to_boolean",
         "normalize_whitespace",
         "clip_outliers",
+        "clean_phone_number",
     }:
         return function(
             df,

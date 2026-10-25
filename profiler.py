@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import re
 
 import pandas as pd
@@ -16,7 +17,17 @@ BOOLEAN_VALUES = {
     "y",
     "n",
     "1",
-    "0"
+    "0",
+    "t",
+    "f",
+    "on",
+    "off",
+    "enabled",
+    "disabled",
+    "active",
+    "inactive",
+    "pass",
+    "fail",
 }
 
 
@@ -129,12 +140,15 @@ def detect_semantic_hints(series):
         pd.api.types.is_object_dtype(series)
         or pd.api.types.is_string_dtype(series)
     ):
+        cleaned_num = (
+            non_null.astype("string")
+            .str.replace(r"[$€£¥₹%]", "", regex=True)
+            .str.replace(",", "", regex=False)
+            .str.strip()
+        )
+
         numeric = pd.to_numeric(
-            non_null.astype("string").str.replace(
-                ",",
-                "",
-                regex=False
-            ),
+            cleaned_num,
             errors="coerce"
         )
 
@@ -202,16 +216,23 @@ def detect_semantic_type(column_name, series):
 
     rules = [
         (("email", "e_mail", "email_address"), "email", True),
+        (("url", "website", "web_url", "link", "uri", "href", "job_url"), "url", False),
         (("phone", "phone_number", "mobile", "telephone", "contact_number", "tel"), "phone_number", True),
         (("dob", "date_of_birth", "birth_date", "birthdate"), "date_of_birth", True),
-        (("ssn", "social_security", "national_id", "passport", "tax_id"), "government_or_identity_id", True),
-        (("salary", "wage", "income", "compensation", "pay_amount"), "salary_or_income", True),
-        (("address", "street_address", "postal_address"), "address", True),
-        (("first_name", "last_name", "full_name", "customer_name", "employee_name"), "person_name", True),
-        (("date", "_at", "_on", "timestamp", "created_time", "updated_time"), "date_or_timestamp", False),
+        (("ssn", "social_security", "national_id", "passport", "tax_id", "aadhaar", "pan"), "government_or_identity_id", True),
+        (("salary", "wage", "income", "compensation", "pay_amount", "revenue", "price", "cost"), "salary_or_income", True),
+        (("address", "street_address", "postal_address", "city", "state", "pincode", "zipcode", "zip_code"), "address", True),
+        (("first_name", "last_name", "full_name", "customer_name", "employee_name", "client_name"), "person_name", True),
+        (("date", "_at", "_on", "timestamp", "created_time", "updated_time", "hire_date", "joining_date"), "date_or_timestamp", False),
     ]
     for needles, semantic_type, sensitive in rules:
         if any(needle in name for needle in needles) or any(needle.replace("_", "") in compact for needle in needles if len(needle) >= 4):
+            # For date types, verify that non-empty values actually resemble dates, not relative text
+            if semantic_type == "date_or_timestamp" and len(nonempty):
+                parsed_dates = pd.to_datetime(nonempty, format="mixed", errors="coerce")
+                if parsed_dates.notna().mean() < 0.5:
+                    continue
+
             result = {"semantic_type": semantic_type, "sensitive_field": sensitive}
             if semantic_type == "phone_number" and len(nonempty):
                 digits = nonempty.str.replace(r"\D", "", regex=True)
@@ -223,13 +244,20 @@ def detect_semantic_type(column_name, series):
             return result
 
     if len(nonempty):
+        url_match = nonempty.str.match(r"^https?://[^\s]+$")
+        if url_match.mean() >= 0.7:
+            return {"semantic_type": "url", "sensitive_field": False}
+
         email_match = nonempty.str.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
         if email_match.mean() >= 0.8:
             return {"semantic_type": "email", "sensitive_field": True, "invalid_format_count": int((~email_match).sum())}
-        digits = nonempty.str.replace(r"\D", "", regex=True)
-        phone_like = digits.str.len().between(7, 15) & nonempty.str.contains(r"[0-9]", regex=True)
-        if phone_like.mean() >= 0.8 and (series.nunique(dropna=True) / max(len(nonempty), 1)) >= 0.5:
-            return {"semantic_type": "phone_number", "sensitive_field": True, "invalid_format_count": int((~phone_like).sum())}
+
+        has_words = nonempty.str.contains(r"[a-zA-Z]{3,}", regex=True).mean() >= 0.2
+        if not has_words:
+            digits = nonempty.str.replace(r"\D", "", regex=True)
+            phone_like = digits.str.len().between(7, 15) & nonempty.str.contains(r"[0-9]", regex=True)
+            if phone_like.mean() >= 0.8 and (series.nunique(dropna=True) / max(len(nonempty), 1)) >= 0.5:
+                return {"semantic_type": "phone_number", "sensitive_field": True, "invalid_format_count": int((~phone_like).sum())}
 
     if pd.api.types.is_datetime64_any_dtype(series):
         return {"semantic_type": "date_or_timestamp", "sensitive_field": False}
@@ -364,16 +392,79 @@ def build_profile(df):
     return profile
 
 
-def validate_csv_structure(file_path):
+def detect_encoding_and_delimiter(file_path):
+    if not isinstance(file_path, str):
+        raise TypeError("Input file path must be a string")
+    if not file_path:
+        raise ValueError("No input file was provided")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Input CSV file not found: {file_path}")
+
+    try:
+        size = os.path.getsize(file_path)
+    except OSError as error:
+        raise OSError(f"Could not read input CSV file '{file_path}': {error}") from error
+
+    if size == 0:
+        raise ValueError(f"Input CSV file is empty: {file_path}")
+
+    encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252", "iso-8859-1"]
+    valid_encoding = None
+    sample_text = ""
+    for enc in encodings:
+        try:
+            with open(file_path, "r", encoding=enc, newline="") as file:
+                sample_text = file.read(8192)
+                valid_encoding = enc
+                break
+        except UnicodeDecodeError:
+            continue
+        except PermissionError as error:
+            raise PermissionError(f"Permission denied while reading input file: {file_path}") from error
+        except OSError as error:
+            raise OSError(f"Could not read input CSV file '{file_path}': {error}") from error
+
+    if not valid_encoding:
+        raise ValueError(f"Input CSV file has an unsupported text encoding: {file_path}")
+
+    if not sample_text.strip():
+        raise ValueError(f"Input CSV file is empty: {file_path}")
+
+    delimiter = ","
+    try:
+        lines = [line for line in sample_text.splitlines() if line.strip()]
+        if lines:
+            sniffer = csv.Sniffer()
+            dialect = sniffer.sniff("\n".join(lines[:5]), delimiters=",\t;|")
+            delimiter = dialect.delimiter
+    except Exception:
+        delimiter = ","
+
+    return valid_encoding, delimiter
+
+
+def validate_csv_structure(file_path, encoding=None, delimiter=None):
+    if not isinstance(file_path, str):
+        raise TypeError("Input file path must be a string")
+    if not file_path:
+        raise ValueError("No input file was provided")
+
+    if encoding is None or delimiter is None:
+        det_enc, det_delim = detect_encoding_and_delimiter(file_path)
+        if encoding is None:
+            encoding = det_enc
+        if delimiter is None:
+            delimiter = det_delim
+
     try:
         with open(
             file_path,
             "r",
-            encoding="utf-8",
+            encoding=encoding,
             newline=""
         ) as file:
 
-            reader = csv.reader(file)
+            reader = csv.reader(file, delimiter=delimiter)
 
             try:
                 header = next(reader)
@@ -382,7 +473,7 @@ def validate_csv_structure(file_path):
                     f"Input CSV file is empty: {file_path}"
                 ) from error
 
-            if not header:
+            if not header or not any(str(field).strip() for field in header):
                 raise ValueError(
                     f"Input CSV file is empty (contains no columns): "
                     f"{file_path}"
@@ -394,7 +485,7 @@ def validate_csv_structure(file_path):
                 reader,
                 start=2
             ):
-                if not row:
+                if not row or not any(str(field).strip() for field in row):
                     continue
 
                 if len(row) != expected_fields:
@@ -441,11 +532,14 @@ def profile_dataset(file_path):
             "Input file path must be a string"
         )
 
-    validate_csv_structure(file_path)
+    encoding, delimiter = detect_encoding_and_delimiter(file_path)
+    validate_csv_structure(file_path, encoding=encoding, delimiter=delimiter)
 
     try:
         df = pd.read_csv(
             file_path,
+            encoding=encoding,
+            sep=delimiter,
             on_bad_lines="error"
         )
 
@@ -478,22 +572,20 @@ def profile_dataset(file_path):
             f"{file_path}"
         )
 
-    invalid_columns = [
-        column
-        for column in df.columns
-        if (
-            not str(column).strip()
-            or str(column).startswith("Unnamed:")
-        )
-    ]
+    # Auto-repair blank or Unnamed columns so the dataset can be processed
+    renamed_columns = {}
+    for i, col in enumerate(df.columns, start=1):
+        col_name = str(col).strip()
+        if not col_name or col_name.startswith("Unnamed:"):
+            renamed_columns[col] = f"unnamed_column_{i}"
 
-    if invalid_columns:
-        raise ValueError(
-            "Input CSV contains invalid or unnamed "
-            f"columns: {invalid_columns}"
-        )
+    if renamed_columns:
+        df = df.rename(columns=renamed_columns)
 
-    return df, build_profile(df)
+    profile = build_profile(df)
+    profile["encoding"] = encoding
+    profile["delimiter"] = delimiter
+    return df, profile
 
 
 if __name__ == "__main__":

@@ -137,3 +137,44 @@ def test_confidence_field_is_rejected_as_removed_from_schema():
             reasoning="Duplicate rows were detected.",
             confidence=0.95,
         )
+
+
+def test_valid_drop_missing_rows():
+    action = CleaningAction(
+        action="drop_missing_rows",
+        column="id",
+        params={"how": "any"},
+        reasoning="Drop rows where primary key is missing."
+    )
+    assert action.action == "drop_missing_rows"
+
+
+def test_valid_rename_column():
+    action = CleaningAction(
+        action="rename_column",
+        column="old_name",
+        params={"new_name": "new_name"},
+        reasoning="Rename column for clarity."
+    )
+    assert action.params["new_name"] == "new_name"
+
+
+def test_invalid_rename_column():
+    with pytest.raises(ValidationError):
+        CleaningAction(
+            action="rename_column",
+            column="old_name",
+            params={"new_name": ""},
+            reasoning="Rename column."
+        )
+
+
+def test_valid_clean_phone_number():
+    action = CleaningAction(
+        action="clean_phone_number",
+        column="phone",
+        params={},
+        reasoning="Clean phone numbers."
+    )
+    assert action.column == "phone"
+

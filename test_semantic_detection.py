@@ -25,3 +25,20 @@ def test_long_sentence_column_is_classified_as_descriptive_text():
     ])
     result = detect_semantic_type("description", series)
     assert result["semantic_type"] == "descriptive_text"
+
+
+def test_url_column_is_not_classified_as_phone_number():
+    series = pd.Series([
+        "https://www.example.com/job-listings-data-scientist-270326504991",
+        "https://www.example.com/job-listings-data-scientist-010526502121",
+    ])
+    result = detect_semantic_type("job_url", series)
+    assert result["semantic_type"] == "url"
+    assert result["sensitive_field"] is False
+
+
+def test_relative_date_text_is_not_classified_as_date():
+    series = pd.Series(["3+ weeks ago", "Not Available", "2 days ago"])
+    result = detect_semantic_type("posted_date_raw", series)
+    assert result["semantic_type"] != "date_or_timestamp"
+

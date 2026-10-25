@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ALLOWED_ACTIONS = Literal[
     "impute_missing",
+    "drop_missing_rows",
     "remove_duplicates",
     "remove_column",
+    "rename_column",
     "convert_to_date",
     "convert_to_numeric",
     "convert_to_boolean",
@@ -18,6 +20,7 @@ ALLOWED_ACTIONS = Literal[
     "replace_empty_strings",
     "remove_invalid_values",
     "clip_outliers",
+    "clean_phone_number",
 ]
 
 
@@ -54,6 +57,8 @@ class CleaningAction(BaseModel):
             "remove_invalid_values",
             "clip_outliers",
             "remove_column",
+            "rename_column",
+            "clean_phone_number",
         }
 
         if self.action in column_actions and not self.column:
@@ -121,6 +126,18 @@ class CleaningAction(BaseModel):
                     "remove_invalid_values requires "
                     "a non-empty invalid_values list"
                 )
+
+        elif self.action == "rename_column":
+            new_name = self.params.get("new_name")
+            if not isinstance(new_name, str) or not new_name.strip():
+                raise ValueError(
+                    "rename_column requires a non-empty string in params['new_name']"
+                )
+
+        elif self.action == "drop_missing_rows":
+            how = self.params.get("how", "any")
+            if how not in {"any", "all"}:
+                raise ValueError("drop_missing_rows 'how' parameter must be 'any' or 'all'")
 
         return self
 
