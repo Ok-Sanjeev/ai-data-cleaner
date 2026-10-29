@@ -12,4 +12,9 @@ runs/
 profile.json
 
 # Local datasets
-data/
+data/*
+!data/Messy_Employee_dataset.csv
+!data/indian_tech_jobs_2026.csv
+!data/test_customers.csv
+!data/robustness_tests/
+!data/benchmark/

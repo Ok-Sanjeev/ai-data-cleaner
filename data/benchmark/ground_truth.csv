@@ -1,0 +1,11 @@
+customer_id,name,age,join_date,salary,phone,is_member,status
+C101,Alice Smith,25.0,2023-01-15,50000.0,15551234567,True,Active
+C102,Bob Jones,31.0,2023-02-15,65000.0,5552345678,True,
+C103,Charlie Brown,30.0,2023-03-10,45000.0,5553456789,False,Pending
+C104,Diana Prince,35.0,2023-04-05,80000.0,5554567890,False,Active
+C105,Edward Norton,31.0,2023-05-12,55000.0,5555678901,True,
+C106,Fiona Gallagher,40.0,2023-06-18,72000.0,15556789012,False,Pending
+C107,George Clark,28.0,2023-07-22,48000.0,5557890123,True,Active
+C108,Hannah Abbott,32.0,2023-08-30,61000.0,5558901234,True,
+C109,Ian Malcolm,45.0,2023-09-14,90000.0,5559012345,False,Pending
+C110,Julia Roberts,29.0,2023-10-01,53000.0,15550123456,True,Active

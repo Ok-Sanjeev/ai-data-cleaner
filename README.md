@@ -7,15 +7,15 @@
   <img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas" alt="Pandas">
   <img src="https://img.shields.io/badge/Google%20Gemini-AI%20Planning-4285F4?logo=google" alt="Google Gemini">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-80%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Pytest-91%20Passed-0A9EDC?logo=pytest" alt="Pytest">
   <img src="https://img.shields.io/badge/Status-Production%20Ready%20CLI-success" alt="Status">
 </p>
 
-**AI Data Cleaner is a production-grade Python automation tool that profiles messy CSV datasets, uses Google Gemini to recommend targeted data cleaning operations under strict privacy constraints, validates the proposed plan with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions.**
+**AI Data Cleaner is a production-grade Python automation tool that profiles messy CSV datasets, uses Google Gemini to recommend targeted data cleaning operations under strict privacy constraints, validates the proposed plan with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions with step-by-step undo, complete rollback, and benchmarked quality evaluation.**
 
 Rather than letting an LLM execute arbitrary code or write directly to your database, AI Data Cleaner enforces a strict separation of concerns:
 
-**Profile → Privacy Filter → AI Plan → Schema Validation & Retry → Safety Guardrails → User Approval → Deterministic Execution → Post-Validation → Audit Report**
+**Profile → Privacy Filter → AI Plan → Schema Validation & Retry → Safety Guardrails → User Approval → Checkpointed Execution & Rollback → Validation & Evaluation → Audit Report**
 
 [View Source Code](https://github.com/Ok-Sanjeev/ai-data-cleaner) · [Report an Issue](https://github.com/Ok-Sanjeev/ai-data-cleaner/issues)
 
@@ -36,7 +36,9 @@ Cleaning these datasets manually is tedious and non-reproducible. Conversely, bl
 5. **Human-in-the-Loop Approval**: Presents the guarded plan with clear explanations and allows users to selectively approve (`A,C`), approve `ALL`, reject `NONE`, or quit `Q`.
 6. **Local Category Harmonization**: Clusters near-duplicate category values locally via fuzzy matching without exposing labels externally.
 7. **Deterministic Execution**: Applies approved vectorized transformations using hardened Pandas routines.
-8. **Audit Trail & Artifacts**: Every run generates an isolated artifact directory with run metadata, cleaned data, validation metrics, and an unresolved data-quality registry.
+8. **Step-by-Step Undo & Rollback**: Records isolated DataFrame checkpoints before and after every action, enabling interactive single-step undo (`U`), full rollback (`R`), or programmatic state reversal.
+9. **Quality Evaluation against Ground Truth**: Calculates cell-level and row-level Precision, Recall, and F1 score against gold-standard data, penalizing over-cleaning and missed errors.
+10. **Audit Trail & Artifacts**: Every run generates an isolated artifact directory with run metadata, cleaned data, validation metrics, session checkpoints, and an unresolved data-quality registry.
 
 ---
 
@@ -51,9 +53,11 @@ Cleaning these datasets manually is tedious and non-reproducible. Conversely, bl
 | 🔤 **Offline Category Clustering** | Standardizes misspelled or inconsistent category labels locally without external API leaks. |
 | 👤 **Granular Human Approval** | Interactive approval gate supporting individual selection (`A`, `B,D`), `ALL`, `NONE`, or `Q`. |
 | ⚙️ **Deterministic Execution** | Only trusted Python routines in `actions.py` execute modifications; no arbitrary AI-generated code is run. |
+| ⏪ **Step-by-Step Undo & Rollback** | Checkpoints DataFrame states per action; interactive session allows granular undo (`U`), complete rollback (`R`), and checkpoint diffing. |
+| 🎯 **Cleaning Quality Evaluation** | Scores cleaning precision, recall, and F1 against a known ground-truth benchmark, penalizing over-cleaning and missed errors. |
 | 📋 **Accurate Unresolved Issue Tracking** | Distinguishes intentional non-imputations (e.g. missing URLs) from execution failures; records preserved data points. |
-| 📊 **Run-Level Audit Artifacts** | Automatically saves `profile.json`, `plan.json`, `approval.json`, `cleaned_data.csv`, and `cleaning_report.json`. |
-| 🧪 **Comprehensive Test Suite** | 80 automated unit, integration, and regression tests covering multi-dataset pipelines and robustness edge cases. |
+| 📊 **Run-Level Audit Artifacts** | Automatically saves `profile.json`, `plan.json`, `approval.json`, `cleaned_data.csv`, `cleaning_report.json`, and session checkpoints. |
+| 🧪 **Comprehensive Test Suite** | 91 automated unit, integration, and regression tests covering multi-dataset pipelines, rollback engine, and quality metrics. |
 
 ---
 
@@ -110,23 +114,37 @@ Cleaning these datasets manually is tedious and non-reproducible. Conversely, bl
                            └───────────┬────────────┘
                                        │ Approved Actions
                                        ▼
-                           ┌────────────────────────┐
-                           │ Deterministic Actions  │
-                           │ (Vectorized Pandas)    │
-                           └───────────┬────────────┘
-                                       │
-                                       ▼
-                           ┌────────────────────────┐
-                           │ Validation & Reporting │
-                           │ (Deltas & Unresolved)  │
-                           └───────────┬────────────┘
-                                       │
-                           ┌───────────┴────────────┐
-                           ▼                        ▼
-                ┌─────────────────────┐  ┌─────────────────────┐
-                │  cleaned_data.csv   │  │cleaning_report.json │
-                └─────────────────────┘  └─────────────────────┘
-```
+                            ┌────────────────────────┐
+                            │ Deterministic Actions  │
+                            │ (Vectorized Pandas)    │
+                            └───────────┬────────────┘
+                                        │
+                                        ▼
+               ┌─────────────────────────────────────────────────┐
+               │    Checkpointed Session & Undo/Rollback Engine  │
+               │    - Deepcopy DataFrame checkpoint per step     │
+               │    - Track row/column counts & values replaced  │
+               └───────────┬─────────────────────────▲───────────┘
+                           │                         │
+                           │ Step-by-step Execution  │ Undo ('U') / Rollback ('R')
+                           ▼                         │
+               ┌─────────────────────────────────────┴───────────┐
+               │         Interactive Post-Execution Gate         │
+               │  [ENTER] Accept & Save  │  'U' Undo  │  'R' All │
+               └───────────┬─────────────────────────────────────┘
+                           │ Accepted Final State
+                           ▼
+               ┌─────────────────────────────────────────────────┐
+               │          Validation & Quality Evaluation        │
+               │  - Unresolved issues tracking                   │
+               │  - Ground-truth Precision / Recall / F1 Score   │
+               └───────────┬─────────────────────────────────────┘
+                           │
+               ┌───────────┴────────────────────────┐
+               ▼                                    ▼
+    ┌─────────────────────┐              ┌─────────────────────┐
+    │  cleaned_data.csv   │              │cleaning_report.json │
+    └─────────────────────┘              └─────────────────────┘
 
 ---
 
@@ -183,6 +201,80 @@ Your choice:
 ```
 
 Selections are parsed robustly: case-insensitive, punctuation-tolerant (`A, C`, `AC`, `A C`), and verified against available options.
+
+---
+
+## ⏪ Step-by-Step Undo & Rollback Engine
+
+Real-world data cleaning workflows frequently require stepping back when an automated transformation introduces unintended side effects. AI Data Cleaner features a transactional **`CleaningSession`** engine (`session.py`) with per-action checkpointing:
+
+1. **State Checkpointing**: Before and after every approved action executes, an isolated snapshot of the DataFrame is saved along with full action metadata (step number, action name, target column, parameter payload, execution timestamp, and row/column counts).
+2. **Interactive Review Gate**: In interactive mode, once actions complete, the user is presented with the complete step history and an interactive prompt:
+   ```text
+   Session Checkpoints:
+     Step 1: normalize_whitespace on 'first_name'
+     Step 2: convert_to_numeric on 'salary'
+     Step 3: impute_missing on 'age'
+
+   Review changes: [ENTER] to accept and save, 'U' to undo last action, 'R' to rollback all:
+   ```
+   - Press **`[ENTER]`**: Commits the cleaned dataset to disk and builds audit artifacts.
+   - Press **`U`**: Reverts the most recent action, restores the prior DataFrame checkpoint, and decrements the step counter.
+   - Press **`R`**: Rolls back the entire session to Step 0 (original data state) immediately.
+3. **Programmatic Session API**: For pipeline automation or UI integrations:
+   - `session.undo()`: Reverts to step $n-1$.
+   - `session.redo()`: Re-applies step $n+1$ if currently undone.
+   - `session.rollback_to(step_k)`: Jumps back to any specific checkpoint.
+   - `session.rollback_all()`: Returns directly to step 0.
+   - `session.diff(step_a, step_b)`: Computes exact cell-level changes, row count deltas, and column differences between any two checkpoints.
+
+---
+
+## 🎯 Cleaning Quality Evaluation & Benchmark
+
+Pipeline testing proves that transformations run without errors, but does not prove that the data is *correctly* cleaned. AI Data Cleaner includes a dedicated **`evaluator.py`** module and gold-standard ground truth benchmark to objectively score cleaning accuracy.
+
+### Benchmark Dataset (`data/benchmark/`)
+- **`dirty_sample.csv`** (11 rows): Contains synthetic dirty customer records featuring exact duplicate records, leading/trailing whitespace, inconsistent text casing (`"NEW YORK"`, `"chicago"`), unparsed dates (`"2023/05/14"`, `"12-01-2022"`), currency symbols and commas (`"$50,000"`, `"65,000"`), boolean strings (`"yes"`, `"false"`, `"Y"`), invalid placeholder tokens (`"N/A"`, `"-999"`), and missing numeric fields.
+- **`ground_truth.csv`** (10 rows): The verified, perfectly clean gold standard.
+
+### Scoring Metrics & Formulation
+Evaluates cell-by-cell alignment using primary key alignment (`customer_id`):
+- **True Positive ($TP$)**: Cell was dirty in the original CSV, was modified during cleaning, and now matches ground truth.
+- **False Positive ($FP$)**: Cell was altered during cleaning, but does **not** match ground truth (penalizes *over-cleaning* or incorrect modifications).
+- **False Negative ($FN$)**: Cell was dirty in the original CSV, but was left unchanged or remains incorrect (penalizes *missed errors*).
+- **True Negative ($TN$)**: Cell was clean in the original CSV and was correctly left untouched.
+
+$$\text{Precision} = \frac{TP}{TP + FP} \qquad \text{Recall} = \frac{TP}{TP + FN} \qquad \text{F1 Score} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}$$
+
+### Quality Scorecard Output
+```text
+================================================================================
+                    CLEANING QUALITY EVALUATION SCORECARD
+================================================================================
+Overall Metrics:
+  Precision:             1.0000 (100.0%)
+  Recall:                1.0000 (100.0%)
+  F1 Score:              1.0000 (100.0%)
+  Accuracy (Original):   0.6286 (62.9%)
+  Accuracy (Cleaned):    1.0000 (100.0%)
+  Accuracy Delta:        +0.3714 (+37.1%)
+
+Cell-Level Counts:
+  True Positives (Repairs):        26
+  False Positives (Over-cleaned):  0
+  False Negatives (Missed Errors): 0
+  True Negatives (Preserved):      44
+  Total Cells Evaluated:           70
+
+Row-Level Alignment:
+  Ground Truth Rows:    10
+  Cleaned Rows:         10
+  Duplicate Rows Purged: 1
+  Row Precision:        1.0000
+  Row Recall:           1.0000
+================================================================================
+```
 
 ---
 
@@ -255,10 +347,12 @@ ai-data-cleaner/
 ├── approval_selection.py          # Input parser for approval gate
 ├── approval_utils.py              # CLI label formatting utilities
 ├── category_standardizer.py       # Offline local fuzzy-matching category clusterer
+├── evaluator.py                   # Precision/Recall/F1 cleaning quality evaluator
 ├── planner.py                     # Main orchestrator, Gemini client, & guardrails
 ├── profiler.py                    # CSV profiler, type inferencer, & format sniffer
 ├── recommendation_guardrails.py   # Text-normalization & acronym protectors
 ├── schemas.py                     # Pydantic models (CleaningAction, CleaningPlan)
+├── session.py                     # Transactional checkpoint, undo, & rollback engine
 │
 ├── test_actions.py                # Unit tests for transformations
 ├── test_ai_privacy.py             # Privacy leak prevention tests
@@ -266,14 +360,19 @@ ai-data-cleaner/
 ├── test_approval_selection.py     # Approval input validation tests
 ├── test_approval_utils.py         # Label generation tests
 ├── test_category_standardizer.py  # Local category harmonization tests
+├── test_evaluation.py             # Precision, recall, F1, & benchmark tests
 ├── test_planner_safety_rules.py   # Safety prompt requirement tests
 ├── test_profiler.py               # Profiler & CSV structure tests
 ├── test_recommendation_guardrails.py # Text & date safety guardrail tests
+├── test_rollback.py               # Stepwise undo, redo, & rollback tests
 ├── test_schemas.py                # Pydantic schema validation tests
 ├── test_semantic_detection.py     # Regex & semantic type detection tests
 ├── test_validation_retries.py     # Retry loop & unresolved issue tests
 │
 ├── data/                          # Input datasets (original data is NEVER overwritten)
+│   ├── benchmark/                 # Evaluation gold standard & dirty pairs
+│   │   ├── dirty_sample.csv
+│   │   └── ground_truth.csv
 │   ├── indian_tech_jobs_2026.csv
 │   ├── Messy_Employee_dataset.csv
 │   ├── ott_viewer_dropoff_retention_us_v1.0.csv
@@ -362,11 +461,27 @@ python .\planner.py .\data\test_customers.csv --auto-approve
 python .\planner.py .\data\test_customers.csv -o .\output\cleaned_customers.csv --auto-approve
 ```
 
+### Running with Ground-Truth Quality Evaluation
+
+Automatically score cleaning Precision, Recall, and F1 against a known clean dataset:
+
+```powershell
+python .\planner.py .\data\benchmark\dirty_sample.csv -g .\data\benchmark\ground_truth.csv --auto-approve
+```
+
+### Standalone Quality Evaluation CLI
+
+Evaluate any cleaned dataset against its dirty original and ground truth directly:
+
+```powershell
+python .\evaluator.py -d .\data\benchmark\dirty_sample.csv -c .\runs\run_xxx\cleaned_data.csv -g .\data\benchmark\ground_truth.csv
+```
+
 ---
 
 ## 🧪 Automated Testing
 
-The project contains a comprehensive automated test suite with **80 passing tests** covering every layer of the architecture:
+The project contains a comprehensive automated test suite with **91 passing tests** covering every layer of the architecture:
 
 ```powershell
 python -m pytest -v
@@ -376,22 +491,24 @@ python -m pytest -v
 
 ```text
 ============================= test session starts =============================
-collected 80 items
+collected 91 items
 
-test_actions.py ........                                                 [ 10%]
-test_ai_privacy.py ......                                                [ 17%]
-test_all_datasets_pipeline.py ........                                   [ 27%]
-test_approval_selection.py .........                                     [ 38%]
-test_approval_utils.py ....                                              [ 43%]
-test_category_standardizer.py ..                                         [ 46%]
-test_planner_safety_rules.py ..                                          [ 48%]
-test_profiler.py .........                                               [ 60%]
-test_recommendation_guardrails.py .....                                  [ 66%]
-test_schemas.py ................                                         [ 86%]
-test_semantic_detection.py .....                                         [ 92%]
+test_actions.py ........                                                 [  8%]
+test_ai_privacy.py ......                                                [ 15%]
+test_all_datasets_pipeline.py ........                                   [ 24%]
+test_approval_selection.py .........                                     [ 34%]
+test_approval_utils.py ....                                              [ 38%]
+test_category_standardizer.py ..                                         [ 40%]
+test_evaluation.py ....                                                  [ 45%]
+test_planner_safety_rules.py ..                                          [ 47%]
+test_profiler.py .........                                               [ 57%]
+test_recommendation_guardrails.py .....                                  [ 62%]
+test_rollback.py .......                                                 [ 70%]
+test_schemas.py ................                                         [ 87%]
+test_semantic_detection.py .....                                         [ 93%]
 test_validation_retries.py ......                                        [100%]
 
-============================== 80 passed in 18.99s =============================
+============================= 91 passed in 13.28s =============================
 ```
 
 ### Multi-Dataset Test Matrix
@@ -402,6 +519,7 @@ test_validation_retries.py ......                                        [100%]
 | `Messy_Employee_dataset.csv` | 1,000 rows · 10 cols | Text casing, whitespace, dirty types, invalid emails/phones | **PASS** |
 | `ott_viewer_dropoff_retention_us_v1.0.csv` | 33,171 rows · 24 cols | High-cardinality retention data, memory stability | **PASS** |
 | `test_customers.csv` | 100 rows · 6 cols | Numerical median imputation, duplicate drop | **PASS** |
+| `benchmark/dirty_sample.csv` | 11 rows · 7 cols | Precision/Recall/F1 gold-standard benchmark evaluation | **PASS** |
 | `robustness_tests/empty.csv` | 0 bytes | Clean exception handling for empty files | **PASS** |
 | `robustness_tests/malformed.csv` | Corrupted row | Catches malformed CSV delimiter mismatches | **PASS** |
 | `robustness_tests/no_data.csv` | Header only | Rejects files without data rows | **PASS** |
@@ -415,10 +533,11 @@ test_validation_retries.py ......                                        [100%]
 - [x] Local category standardization without leaking category dictionaries
 - [x] Text normalization guardrails protecting acronyms and branding
 - [x] Accurate recording of unresolved data issues without inventing fake values
+- [x] **Stepwise Rollback & Undo**: Transactional `CleaningSession` checkpointing with single-step undo and full rollback
+- [x] **Quality Measurement & Benchmark**: Ground-truth evaluation measuring cell-level precision, recall, and F1
 - [ ] **Provider-Agnostic LLM Engine**: Add adapters for Groq (free cloud Llama-3) and Ollama (local/offline models)
 - [ ] **Out-of-Core Processing**: Integrate Polars / DuckDB for multi-gigabyte datasets (>10M rows)
 - [ ] **Interactive Web UI**: Build a Streamlit or FastAPI + React dashboard with visual side-by-side diffs
-- [ ] **Stepwise Rollback**: Interactive undo stack to revert individual approved actions
 
 ---
 

@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -17,7 +18,9 @@ from category_standardizer import generate_local_category_standardizations
 from profiler import profile_dataset
 from recommendation_guardrails import filter_unsafe_text_normalization
 from approval_selection import labels_for_count, parse_selection
+from evaluator import evaluate_cleaning, format_evaluation_report
 from schemas import CleaningAction, CleaningPlan
+from session import CleaningSession
 
 
 load_dotenv()
@@ -730,7 +733,9 @@ def apply_local_guardrails(plan: CleaningPlan, df: pd.DataFrame, profile: dict) 
 # EXECUTE AI-GENERATED ACTIONS
 # ============================================================
 
-def execute_cleaning_plan(df: pd.DataFrame, actions: list) -> tuple[pd.DataFrame, list[dict]]:
+def execute_cleaning_plan(df: pd.DataFrame, actions: list, session: Optional[CleaningSession] = None) -> tuple[pd.DataFrame, list[dict]]:
+    if session is None:
+        session = CleaningSession(df)
     executed_actions = []
     column_aliases = {column: column for column in df.columns}
 
@@ -759,6 +764,22 @@ def execute_cleaning_plan(df: pd.DataFrame, actions: list) -> tuple[pd.DataFrame
                 action.column = resolved_column
 
             df = execute_action(df, action)
+
+            # Record checkpoint in session
+            checkpoint = {
+                "step": session.current_step + 1,
+                "action": action.model_dump() if hasattr(action, "model_dump") else action,
+                "action_name": action.action,
+                "column": action.column,
+                "params": action.params,
+                "df": df.copy(deep=True),
+                "timestamp": datetime.now().isoformat(),
+                "rows": len(df),
+                "columns": list(df.columns),
+                "description": f"{action.action} on column '{action.column}'",
+            }
+            session.current_df = df
+            session.checkpoints.append(checkpoint)
 
             values_replaced = int(df.attrs.pop("values_replaced", 0) or 0)
             rows_dropped = int(df.attrs.pop("rows_dropped", 0) or 0)
@@ -913,6 +934,8 @@ def validate_cleaning_results(
     executed_actions: list[dict],
     original_missing: dict[str, int],
     cleaned_missing: dict[str, int],
+    session_history: Optional[List[Dict[str, Any]]] = None,
+    quality_evaluation: Optional[Dict[str, Any]] = None,
 ) -> dict:
     original_rows = len(df_before)
     cleaned_rows = len(df)
@@ -1114,6 +1137,8 @@ def build_cleaning_report(
     profile: dict,
     original_missing: dict[str, int],
     cleaned_missing: dict[str, int],
+    session_history: Optional[List[Dict[str, Any]]] = None,
+    quality_evaluation: Optional[Dict[str, Any]] = None,
 ) -> dict:
     original_rows = len(df_before)
     cleaned_rows = len(df_cleaned)
@@ -1229,6 +1254,10 @@ def build_cleaning_report(
             "overall_validation_passed": bool(validation["overall"]),
         }
     }
+    if session_history:
+        report["session_checkpoints"] = session_history
+    if quality_evaluation:
+        report["quality_evaluation"] = quality_evaluation
     return report
 
 
@@ -1358,6 +1387,12 @@ def main(argv=None):
         "-o",
         default=None,
         help="Optional destination path for the cleaned CSV file",
+    )
+    parser.add_argument(
+        "--ground-truth",
+        "-g",
+        default=None,
+        help="Optional path to known clean ground truth CSV for quality evaluation (Precision/Recall/F1)",
     )
     args = parser.parse_args(argv)
     input_file = args.input_file
@@ -1577,7 +1612,37 @@ def main(argv=None):
     # ============================================================
     # EXECUTE APPROVED ACTIONS
     # ============================================================
-    df, executed_actions = execute_cleaning_plan(df, plan.actions)
+    session = CleaningSession(df_before)
+    df, executed_actions = execute_cleaning_plan(df, plan.actions, session=session)
+
+    # Interactive Step-by-Step Review (Undo / Rollback)
+    if not args.auto_approve and executed_actions:
+        print("\nSession Checkpoints:")
+        for cp in session.get_history():
+            if cp["step"] > 0:
+                print(f"  Step {cp['step']}: {cp['action']} on '{cp['column']}'")
+
+        while session.can_undo():
+            try:
+                cmd = input("\nReview changes: [ENTER] to accept and save, 'U' to undo last action, 'R' to rollback all: ").strip().upper()
+            except EOFError:
+                cmd = ""
+            if cmd == "U":
+                undo_result = session.undo()
+                print(undo_result["message"])
+                df = session.get_current_df()
+                if executed_actions:
+                    executed_actions.pop()
+                print(f"Current rows: {len(df)}, active steps: {session.current_step}")
+            elif cmd == "R":
+                rollback_result = session.rollback_all()
+                print(rollback_result["message"])
+                df = session.get_current_df()
+                executed_actions = []
+                print(f"Dataset reverted to original state ({len(df)} rows).")
+                break
+            else:
+                break
 
     cleaned_rows = len(df)
     cleaned_missing = df.isna().sum().to_dict()
@@ -1591,6 +1656,7 @@ def main(argv=None):
         executed_actions=executed_actions,
         original_missing=original_missing,
         cleaned_missing=cleaned_missing,
+        session_history=session.get_history(),
     )
 
     report = build_cleaning_report(
@@ -1604,6 +1670,7 @@ def main(argv=None):
         profile=profile,
         original_missing=original_missing,
         cleaned_missing=cleaned_missing,
+        session_history=session.get_history(),
     )
 
     print("\nCleaning report:")
@@ -1630,6 +1697,29 @@ def main(argv=None):
     with open(report_path, "w", encoding="utf-8") as file:
         json.dump(report, file, indent=2)
     print(f"Cleaning report saved to {report_path}")
+
+    # ============================================================
+    # OPTIONAL GROUND TRUTH QUALITY EVALUATION (PRECISION, RECALL, F1)
+    # ============================================================
+    if args.ground_truth:
+        if os.path.exists(args.ground_truth):
+            print("\nEvaluating cleaning quality against ground truth...")
+            df_truth = pd.read_csv(args.ground_truth)
+            eval_results = evaluate_cleaning(
+                df_dirty=df_before,
+                df_cleaned=df,
+                df_ground_truth=df_truth,
+            )
+            print(format_evaluation_report(eval_results))
+            eval_path = os.path.join(run_dir, "evaluation_report.json")
+            with open(eval_path, "w", encoding="utf-8") as file:
+                json.dump(eval_results, file, indent=2, default=str)
+            print(f"Evaluation report saved to {eval_path}")
+            report["quality_evaluation"] = eval_results["overall"]
+            with open(report_path, "w", encoding="utf-8") as file:
+                json.dump(report, file, indent=2)
+        else:
+            print(f"Warning: Ground truth CSV not found: {args.ground_truth}")
 
 
 if __name__ == "__main__":

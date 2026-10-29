@@ -1,0 +1,12 @@
+customer_id,name,age,join_date,salary,phone,is_member,status
+C101,  alice smith  ,25,2023/01/15,"$50,000",+1 (555) 123-4567,yes,Active
+C102,BOB JONES,,15-02-2023,"$65,000",555-234-5678,TRUE,N/A
+C102,BOB JONES,,15-02-2023,"$65,000",555-234-5678,TRUE,N/A
+C103,charlie brown,30,2023-03-10,"$45,000",555.345.6789,0,Pending
+C104,Diana Prince,35,2023.04.05,"$80,000",(555) 456-7890,False,Active
+C105,  edward norton,,05/12/2023,"$55,000",5555678901,y,missing
+C106,Fiona Gallagher,40,2023-06-18,"$72,000",+1-555-678-9012,no,Pending
+C107,george clark,28,2023-07-22,"$48,000",555 789 0123,1,Active
+C108,Hannah Abbott,32,2023/08/30,"$61,000",(555) 890-1234,True,-999
+C109,Ian Malcolm,45,2023-09-14,"$90,000",555-901-2345,n,Pending
+C110,Julia Roberts,29,2023-10-01,"$53,000",+1 (555) 012-3456,TRUE,Active
