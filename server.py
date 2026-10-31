@@ -1531,8 +1531,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 @app.get("/", response_class=HTMLResponse)
 @app.get("/ui", response_class=HTMLResponse)
 def index_page():
-    """Serve the interactive single-page web dashboard."""
-    return HTMLResponse(content=DASHBOARD_HTML, status_code=200)
+    """Serve the interactive single-page web dashboard with no-cache headers."""
+    return HTMLResponse(
+        content=DASHBOARD_HTML,
+        status_code=200,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
 
 def main():
