@@ -5,13 +5,14 @@
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas" alt="Pandas">
-  <img src="https://img.shields.io/badge/Google%20Gemini-AI%20Planning-4285F4?logo=google" alt="Google Gemini">
+  <img src="https://img.shields.io/badge/FastAPI-Web%20UI%20%26%20REST%20API-009688?logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-91%20Passed-0A9EDC?logo=pytest" alt="Pytest">
-  <img src="https://img.shields.io/badge/Status-Production%20Ready%20CLI-success" alt="Status">
+  <img src="https://img.shields.io/badge/Pytest-102%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
 
-**AI Data Cleaner is a production-grade Python automation tool that profiles messy CSV datasets, uses Google Gemini to recommend targeted data cleaning operations under strict privacy constraints, validates the proposed plan with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions with step-by-step undo, complete rollback, and benchmarked quality evaluation.**
+**AI Data Cleaner is a production-grade Python automation system that profiles messy CSV datasets, uses a provider-agnostic LLM planning layer (Google Gemini, OpenAI, Claude, or air-gapped local Ollama/vLLM) to recommend targeted cleaning operations under strict privacy constraints, validates plans with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions with step-by-step undo, complete rollback, benchmarked quality evaluation, and an interactive FastAPI web dashboard.**
 
 Rather than letting an LLM execute arbitrary code or write directly to your database, AI Data Cleaner enforces a strict separation of concerns:
 
@@ -53,11 +54,13 @@ Cleaning these datasets manually is tedious and non-reproducible. Conversely, bl
 | 🔤 **Offline Category Clustering** | Standardizes misspelled or inconsistent category labels locally without external API leaks. |
 | 👤 **Granular Human Approval** | Interactive approval gate supporting individual selection (`A`, `B,D`), `ALL`, `NONE`, or `Q`. |
 | ⚙️ **Deterministic Execution** | Only trusted Python routines in `actions.py` execute modifications; no arbitrary AI-generated code is run. |
+| 🌐 **Provider-Agnostic LLM Layer** | Seamlessly integrates Google Gemini, OpenAI, Anthropic Claude, and Ollama/vLLM for air-gapped offline environments. |
+| 🖥️ **Interactive Web UI & REST API** | Full-featured FastAPI service featuring side-by-side visual diffs, distributions viewer, and one-click approvals. |
 | ⏪ **Step-by-Step Undo & Rollback** | Checkpoints DataFrame states per action; interactive session allows granular undo (`U`), complete rollback (`R`), and checkpoint diffing. |
 | 🎯 **Cleaning Quality Evaluation** | Scores cleaning precision, recall, and F1 against a known ground-truth benchmark, penalizing over-cleaning and missed errors. |
 | 📋 **Accurate Unresolved Issue Tracking** | Distinguishes intentional non-imputations (e.g. missing URLs) from execution failures; records preserved data points. |
 | 📊 **Run-Level Audit Artifacts** | Automatically saves `profile.json`, `plan.json`, `approval.json`, `cleaned_data.csv`, `cleaning_report.json`, and session checkpoints. |
-| 🧪 **Comprehensive Test Suite** | 91 automated unit, integration, and regression tests covering multi-dataset pipelines, rollback engine, and quality metrics. |
+| 🧪 **Comprehensive Test Suite** | 102 automated unit, integration, and regression tests covering multi-dataset pipelines, API, and providers. |
 
 ---
 
@@ -337,6 +340,65 @@ The `cleaning_report.json` explicitly documents both resolved transformations an
 
 ---
 
+## 🌐 Provider-Agnostic LLM Layer
+
+AI Data Cleaner is completely decoupled from any single LLM vendor. Through the unified **`llm_providers.py`** abstraction, you can choose the planning engine that best fits your security, cost, or compliance constraints:
+
+| Provider | Backend | Best For | Configuration |
+|---|---|---|---|
+| **Google Gemini** | `google-genai` | Default cloud model (`gemini-2.5-flash`), high speed | `GEMINI_API_KEY` |
+| **OpenAI** | `openai` | `gpt-4o-mini`, `gpt-4o` with native JSON mode | `OPENAI_API_KEY` |
+| **OpenAI-Compatible** | `openai` | **Groq**, **vLLM**, **Together AI**, **LocalAI**, **DeepSeek** | `--base-url <url>` |
+| **Anthropic Claude** | `anthropic` | `claude-3-5-haiku`, `claude-3-7-sonnet` | `ANTHROPIC_API_KEY` |
+| **Ollama (Air-Gapped)** | Native HTTP | Enterprise, strictly offline, air-gapped on-premise setups | `OLLAMA_HOST` (e.g. `http://localhost:11434`) |
+| **Deterministic Mock** | In-memory | Fast CI/CD pipelines, deterministic offline test harnesses | `--provider mock` |
+
+### Running with Different Providers
+
+```powershell
+# Using OpenAI GPT-4o-mini
+python .\planner.py .\data\test_customers.csv --provider openai --model gpt-4o-mini
+
+# Using Anthropic Claude 3.5 Haiku
+python .\planner.py .\data\test_customers.csv --provider anthropic --model claude-3-5-haiku-20241022
+
+# Using a Local Air-Gapped Ollama Instance (Zero External Network)
+python .\planner.py .\data\test_customers.csv --provider ollama --model llama3 --base-url http://localhost:11434
+
+# Using vLLM or Groq OpenAI-Compatible Endpoints
+python .\planner.py .\data\test_customers.csv --provider openai --model llama-3.3-70b-versatile --base-url https://api.groq.com/openai/v1
+```
+
+---
+
+## 🖥️ Interactive Web UI & FastAPI Service
+
+In addition to the interactive terminal CLI, AI Data Cleaner includes a modern, responsive web application and full REST API powered by **FastAPI** (`server.py`).
+
+### Launching the Dashboard
+
+```powershell
+# Directly via server.py
+python .\server.py --port 8000
+
+# Or via planner CLI flag
+python .\planner.py --ui
+```
+
+Open your browser to: **`http://127.0.0.1:8000`**
+
+### Web Dashboard Features
+
+1. **Dataset Explorer & Uploader**: Select from bundled sample CSVs (`indian_tech_jobs_2026.csv`, `Messy_Employee_dataset.csv`, `benchmark/dirty_sample.csv`, etc.) or drag-and-drop custom CSV files.
+2. **Column Quality & Distribution Viewer**: Inspect data types, semantic type badges (`email`, `phone_number`, `possible_date`), missing value percentage progress bars, and value distribution breakdowns.
+3. **One-Click Approval Gate**: Switch between Gemini, Claude, OpenAI, or Ollama in the UI, view evidence-based reasoning, and toggle recommendations individually or with "Approve All" / "Reject All".
+4. **Side-by-Side Visual Diff**: Compares original and cleaned tables with green/amber highlighted cells displaying verified modifications, plus summary deltas for rows and missing values.
+5. **Interactive Rollback Bar**: Visual checkpoint timeline with one-click **Undo Step**, **Redo Step**, and **Rollback All** buttons.
+6. **Benchmark Scorecard**: One-click quality evaluation displaying Precision, Recall, F1 score, and repair breakdowns ($TP, FP, FN, TN$).
+7. **One-Click Downloads**: Download the cleaned CSV dataset and audit report JSON directly.
+
+---
+
 ## 📁 Project Structure
 
 ```text
@@ -348,10 +410,12 @@ ai-data-cleaner/
 ├── approval_utils.py              # CLI label formatting utilities
 ├── category_standardizer.py       # Offline local fuzzy-matching category clusterer
 ├── evaluator.py                   # Precision/Recall/F1 cleaning quality evaluator
-├── planner.py                     # Main orchestrator, Gemini client, & guardrails
+├── llm_providers.py               # Provider-agnostic LLM layer (Gemini, OpenAI, Claude, Ollama)
+├── planner.py                     # Main orchestrator, CLI parser, & safety guardrails
 ├── profiler.py                    # CSV profiler, type inferencer, & format sniffer
 ├── recommendation_guardrails.py   # Text-normalization & acronym protectors
 ├── schemas.py                     # Pydantic models (CleaningAction, CleaningPlan)
+├── server.py                      # FastAPI backend service & interactive Web UI
 ├── session.py                     # Transactional checkpoint, undo, & rollback engine
 │
 ├── test_actions.py                # Unit tests for transformations
@@ -361,12 +425,14 @@ ai-data-cleaner/
 ├── test_approval_utils.py         # Label generation tests
 ├── test_category_standardizer.py  # Local category harmonization tests
 ├── test_evaluation.py             # Precision, recall, F1, & benchmark tests
+├── test_llm_providers.py          # Provider abstraction tests (Gemini, Claude, OpenAI, Ollama)
 ├── test_planner_safety_rules.py   # Safety prompt requirement tests
 ├── test_profiler.py               # Profiler & CSV structure tests
 ├── test_recommendation_guardrails.py # Text & date safety guardrail tests
 ├── test_rollback.py               # Stepwise undo, redo, & rollback tests
 ├── test_schemas.py                # Pydantic schema validation tests
 ├── test_semantic_detection.py     # Regex & semantic type detection tests
+├── test_server_api.py             # FastAPI REST endpoints & Web UI tests
 ├── test_validation_retries.py     # Retry loop & unresolved issue tests
 │
 ├── data/                          # Input datasets (original data is NEVER overwritten)
@@ -481,7 +547,7 @@ python .\evaluator.py -d .\data\benchmark\dirty_sample.csv -c .\runs\run_xxx\cle
 
 ## 🧪 Automated Testing
 
-The project contains a comprehensive automated test suite with **91 passing tests** covering every layer of the architecture:
+The project contains a comprehensive automated test suite with **102 passing tests** covering every layer of the architecture:
 
 ```powershell
 python -m pytest -v
@@ -491,24 +557,26 @@ python -m pytest -v
 
 ```text
 ============================= test session starts =============================
-collected 91 items
+collected 102 items
 
-test_actions.py ........                                                 [  8%]
-test_ai_privacy.py ......                                                [ 15%]
-test_all_datasets_pipeline.py ........                                   [ 24%]
-test_approval_selection.py .........                                     [ 34%]
-test_approval_utils.py ....                                              [ 38%]
-test_category_standardizer.py ..                                         [ 40%]
-test_evaluation.py ....                                                  [ 45%]
-test_planner_safety_rules.py ..                                          [ 47%]
+test_actions.py ........                                                 [  7%]
+test_ai_privacy.py ......                                                [ 13%]
+test_all_datasets_pipeline.py ........                                   [ 21%]
+test_approval_selection.py .........                                     [ 30%]
+test_approval_utils.py ....                                              [ 34%]
+test_category_standardizer.py ..                                         [ 36%]
+test_evaluation.py ....                                                  [ 40%]
+test_llm_providers.py .......                                            [ 47%]
+test_planner_safety_rules.py ..                                          [ 49%]
 test_profiler.py .........                                               [ 57%]
 test_recommendation_guardrails.py .....                                  [ 62%]
-test_rollback.py .......                                                 [ 70%]
-test_schemas.py ................                                         [ 87%]
-test_semantic_detection.py .....                                         [ 93%]
+test_rollback.py .......                                                 [ 69%]
+test_schemas.py ................                                         [ 85%]
+test_semantic_detection.py .....                                         [ 90%]
+test_server_api.py ....                                                  [ 94%]
 test_validation_retries.py ......                                        [100%]
 
-============================= 91 passed in 13.28s =============================
+============================ 102 passed in 39.81s =============================
 ```
 
 ### Multi-Dataset Test Matrix
@@ -535,9 +603,9 @@ test_validation_retries.py ......                                        [100%]
 - [x] Accurate recording of unresolved data issues without inventing fake values
 - [x] **Stepwise Rollback & Undo**: Transactional `CleaningSession` checkpointing with single-step undo and full rollback
 - [x] **Quality Measurement & Benchmark**: Ground-truth evaluation measuring cell-level precision, recall, and F1
-- [ ] **Provider-Agnostic LLM Engine**: Add adapters for Groq (free cloud Llama-3) and Ollama (local/offline models)
+- [x] **Provider-Agnostic LLM Engine**: Multi-provider support for Google Gemini, OpenAI, Claude, and local Ollama/vLLM
+- [x] **Interactive Web UI & REST API**: FastAPI dashboard with distributions, side-by-side visual diffs, and one-click approvals
 - [ ] **Out-of-Core Processing**: Integrate Polars / DuckDB for multi-gigabyte datasets (>10M rows)
-- [ ] **Interactive Web UI**: Build a Streamlit or FastAPI + React dashboard with visual side-by-side diffs
 
 ---
 

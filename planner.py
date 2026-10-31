@@ -19,6 +19,12 @@ from profiler import profile_dataset
 from recommendation_guardrails import filter_unsafe_text_normalization
 from approval_selection import labels_for_count, parse_selection
 from evaluator import evaluate_cleaning, format_evaluation_report
+from llm_providers import (
+    BaseLLMProvider,
+    GeminiProvider,
+    extract_json_from_response,
+    get_llm_provider,
+)
 from schemas import CleaningAction, CleaningPlan
 from session import CleaningSession
 
@@ -1266,50 +1272,69 @@ def build_cleaning_report(
 # ============================================================
 
 def generate_validated_plan(
-    client: genai.Client,
-    initial_prompt: str,
-    token_to_column: dict[str, str],
+    client: Optional[Any] = None,
+    initial_prompt: str = "",
+    token_to_column: Optional[dict[str, str]] = None,
     max_retries: int = 2,
+    provider: Optional[BaseLLMProvider] = None,
 ) -> tuple[CleaningPlan, str]:
-    """Request cleaning plan with bounded retries and validation feedback."""
+    """Request cleaning plan with bounded retries and validation feedback across any LLM provider."""
+    if token_to_column is None:
+        token_to_column = {}
     current_prompt = initial_prompt
     last_error = None
     response_text = ""
     raw_plan_data = None
 
+    # Resolve provider/client
+    if provider is None:
+        if isinstance(client, BaseLLMProvider):
+            provider = client
+        elif client is not None and hasattr(client, "models"):
+            # Direct google.genai Client or mock client
+            pass
+        else:
+            provider = get_llm_provider()
+
     for attempt in range(max_retries + 1):
         try:
-            try:
-                # First attempt with Gemini structured outputs
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=current_prompt,
-                    config=types.GenerateContentConfig(
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                            disable=True
+            if provider is not None:
+                response_text = provider.generate_plan_json(current_prompt, schema_cls=CleaningPlan)
+            elif client is not None and hasattr(client, "models"):
+                try:
+                    # First attempt with Gemini structured outputs
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=current_prompt,
+                        config=types.GenerateContentConfig(
+                            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                                disable=True
+                            ),
+                            response_mime_type="application/json",
+                            response_schema=CleaningPlan,
                         ),
-                        response_mime_type="application/json",
-                        response_schema=CleaningPlan,
-                    ),
-                )
-            except Exception:
-                # Fallback to standard request
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=current_prompt,
-                    config=types.GenerateContentConfig(
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                            disable=True
-                        )
-                    ),
-                )
+                    )
+                except Exception:
+                    # Fallback to standard request
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=current_prompt,
+                        config=types.GenerateContentConfig(
+                            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                                disable=True
+                            )
+                        ),
+                    )
+                response_text = response.text.strip() if response.text else ""
+            else:
+                raise ValueError("No valid LLM client or provider available.")
         except Exception as error:
             if attempt < max_retries and "503" in str(error):
                 time.sleep(2 * (attempt + 1))
                 continue
             raise error
 
-        response_text = response.text.strip() if response.text else ""
+        response_text = extract_json_from_response(response_text)
         if not response_text:
             if attempt < max_retries:
                 current_prompt = (
@@ -1318,7 +1343,7 @@ def generate_validated_plan(
                     "Return ONLY valid JSON matching the CleaningPlan schema."
                 )
                 continue
-            raise ValueError("Gemini returned an empty response")
+            raise ValueError("LLM returned an empty response")
 
         try:
             raw_plan_data = json.loads(response_text)
@@ -1394,6 +1419,41 @@ def main(argv=None):
         default=None,
         help="Optional path to known clean ground truth CSV for quality evaluation (Precision/Recall/F1)",
     )
+    parser.add_argument(
+        "--provider",
+        "-p",
+        default=None,
+        choices=["gemini", "openai", "anthropic", "ollama", "mock"],
+        help="LLM provider for cleaning plan (gemini, openai, anthropic, ollama, mock)",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Model name (e.g. gemini-2.5-flash, gpt-4o-mini, claude-3-5-haiku-20241022, llama3)",
+    )
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Custom base URL for OpenAI-compatible (vLLM, Groq) or Ollama endpoints",
+    )
+    parser.add_argument(
+        "--api-key",
+        default=None,
+        help="API key for LLM provider (overrides environment variable)",
+    )
+    parser.add_argument(
+        "--ui",
+        "--serve",
+        action="store_true",
+        help="Launch the interactive web UI and API server",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for the interactive web UI server (default: 8000)",
+    )
     args = parser.parse_args(argv)
     input_file = args.input_file
 
@@ -1403,22 +1463,41 @@ def main(argv=None):
     print(f"Run: {run_id}")
 
     # ============================================================
-    # CONNECT TO GEMINI
+    # LAUNCH WEB UI (IF REQUESTED)
     # ============================================================
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY is not configured.")
+    if getattr(args, "ui", False):
+        try:
+            import uvicorn
+            from server import app
+            print(f"Launching AI Data Cleaner Web UI at http://127.0.0.1:{args.port} ...")
+            uvicorn.run(app, host="127.0.0.1", port=args.port)
+            return
+        except ImportError as err:
+            print(f"Error launching UI: {err}. Ensure uvicorn and fastapi are installed.")
+            sys.exit(1)
+
+    # ============================================================
+    # INITIALIZE CONFIGURED LLM PROVIDER
+    # ============================================================
+    try:
+        provider = get_llm_provider(
+            provider_name=args.provider,
+            model_name=args.model,
+            api_key=args.api_key,
+            base_url=args.base_url,
+        )
+        print(f"Using LLM Provider: {provider.provider_name} (model: {provider.model_name})")
+    except Exception as error:
+        print(f"Configuration error: {error}")
         error_report = {
             "run_id": run_id,
             "status": "failed",
             "stage": "configuration",
-            "error": "GEMINI_API_KEY is not configured"
+            "error": str(error)
         }
         with open(os.path.join(run_dir, "error_report.json"), "w", encoding="utf-8") as file:
             json.dump(error_report, file, indent=2)
         sys.exit(1)
-
-    client = genai.Client(api_key=api_key)
 
     # ============================================================
     # PROFILE DATASET
@@ -1453,17 +1532,19 @@ def main(argv=None):
     # ============================================================
     try:
         plan, response_text = generate_validated_plan(
-            client=client,
+            provider=provider,
             initial_prompt=prompt,
             token_to_column=token_to_column,
             max_retries=2,
         )
     except Exception as error:
-        print(f"Gemini planning failed: {error}")
+        print(f"LLM planning failed ({provider.provider_name}): {error}")
         error_report = {
             "run_id": run_id,
             "status": "failed",
             "stage": "planning",
+            "provider": provider.provider_name,
+            "model": provider.model_name,
             "input_file": input_file,
             "error": str(error)
         }
