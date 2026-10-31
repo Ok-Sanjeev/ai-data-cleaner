@@ -5,10 +5,11 @@
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas" alt="Pandas">
-  <img src="https://img.shields.io/badge/FastAPI-Web%20UI%20%26%20REST%20API-009688?logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/FastAPI-Web%20Studio%20%26%20REST%20API-009688?logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Docker-Production%20Ready-2496ED?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-102%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Pytest-103%20Passed-0A9EDC?logo=pytest" alt="Pytest">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
 
@@ -387,15 +388,46 @@ python .\planner.py --ui
 
 Open your browser to: **`http://127.0.0.1:8000`**
 
-### Web Dashboard Features
+### Web Dashboard Studio Features
 
-1. **Dataset Explorer & Uploader**: Select from bundled sample CSVs (`indian_tech_jobs_2026.csv`, `Messy_Employee_dataset.csv`, `benchmark/dirty_sample.csv`, etc.) or drag-and-drop custom CSV files.
-2. **Column Quality & Distribution Viewer**: Inspect data types, semantic type badges (`email`, `phone_number`, `possible_date`), missing value percentage progress bars, and value distribution breakdowns.
-3. **One-Click Approval Gate**: Switch between Gemini, Claude, OpenAI, or Ollama in the UI, view evidence-based reasoning, and toggle recommendations individually or with "Approve All" / "Reject All".
-4. **Side-by-Side Visual Diff**: Compares original and cleaned tables with green/amber highlighted cells displaying verified modifications, plus summary deltas for rows and missing values.
-5. **Interactive Rollback Bar**: Visual checkpoint timeline with one-click **Undo Step**, **Redo Step**, and **Rollback All** buttons.
-6. **Benchmark Scorecard**: One-click quality evaluation displaying Precision, Recall, F1 score, and repair breakdowns ($TP, FP, FN, TN$).
-7. **One-Click Downloads**: Download the cleaned CSV dataset and audit report JSON directly.
+1. **Preset Showcase Cards & Drag-and-Drop Uploader**: 1-click loading for popular datasets (`Messy_Employee_dataset.csv`, `indian_tech_jobs_2026.csv`, `ott_viewer_dropoff_dataset.csv`, `dirty_sample.csv`), or drag-and-drop any custom CSV.
+2. **Executive Data Health Scorecard**: Computes a dynamic 0-100% health index based on completeness, uniqueness, and consistency with interactive SVG health gauge.
+3. **Interactive Visual Charts (Chart.js)**: Live missing value % horizontal bar charts and semantic column type distribution donuts.
+4. **Live Data Preview & Column Drawer**: Filterable preview table with column semantic badges and interactive deep-dive modal showing value frequencies and numeric min/max/mean/median.
+5. **AI Planning Studio & Custom Rule Builder**: Switch between Gemini, Claude, OpenAI, or local Ollama with individual action risk meters (Safe Fix vs Review), guardrail rationale, and custom action builder.
+6. **Side-by-Side Visual Diff & Time Travel**: Side-by-side table highlighting repaired cells in glowing emerald with before-and-after hover tooltips, filterable by changed rows only.
+7. **Time-Travel Scrubber Engine**: Interactive step checkpoints with one-click **Undo Step (⏮ / Ctrl+Z)**, **Redo Step (⏭ / Ctrl+Y)**, and **Rollback All (⏪)**.
+8. **Benchmark Scorecard**: Circular gauges and confusion matrix for Precision, Recall, F1 score, Accuracy, and repair classification ($TP, FP, FN, TN$).
+9. **Export & Integration Hub**: Download cleaned CSV, JSON audit reports, or export ready-to-run standalone Pandas Python scripts.
+
+---
+
+## 🚀 Production Cloud Deployment
+
+Deploy AI Data Cleaner in seconds using any major cloud platform or container orchestrator:
+
+### 🐳 1. Docker & Docker Compose
+```bash
+# Build and run with docker compose
+docker compose up -d --build
+
+# Open in browser: http://localhost:8000
+```
+
+### 🟣 2. Render.com (1-Click Blueprint)
+1. Fork or push to your GitHub repo.
+2. In Render, select **New + > Blueprint** and choose the repository.
+3. Render automatically reads `render.yaml` and deploys with free HTTPS.
+
+### 🚂 3. Railway.app
+1. In Railway, click **New Project > Deploy from GitHub repo**.
+2. Select `ai-data-cleaner` — Railway automatically detects `railway.json` and `Dockerfile`.
+3. Set your optional `GEMINI_API_KEY` under Variables and deploy!
+
+### 🤗 4. Hugging Face Spaces
+Create a new Space with the **Docker SDK** and push this repository.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed configuration, environment variables, and systemd service scripts.
 
 ---
 

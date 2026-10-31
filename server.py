@@ -52,6 +52,11 @@ app.add_middleware(
 
 # In-memory store for active cleaning sessions
 SESSIONS: Dict[str, Dict[str, Any]] = {}
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_DIR):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 UPLOAD_DIR = os.path.join("data", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -1532,8 +1537,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 @app.get("/ui", response_class=HTMLResponse)
 def index_page():
     """Serve the interactive single-page web dashboard with no-cache headers."""
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    else:
+        content = DASHBOARD_HTML
     return HTMLResponse(
-        content=DASHBOARD_HTML,
+        content=content,
         status_code=200,
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )

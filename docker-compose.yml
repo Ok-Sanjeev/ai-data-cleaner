@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  ai-data-cleaner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-data-cleaner:latest
+    container_name: ai_data_cleaner_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    volumes:
+      - ./data:/app/data
+      - ./runs:/app/runs
+      - ./uploads:/app/uploads
