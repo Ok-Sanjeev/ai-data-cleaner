@@ -152,3 +152,38 @@ def test_full_pipeline_via_api(client):
     rb_data = rb_res.json()
     assert rb_data["current_step"] == 0
     assert rb_data["diff_summary"]["rows_after"] == 11
+
+
+def test_diff_with_column_name_normalization(client):
+    """Test that when normalize_column_names runs, diff table cells are properly mapped and populated."""
+    dirty_path = "data/Messy_Employee_dataset.csv"
+    res = client.post("/api/profile", json={"filepath": dirty_path})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    session = SESSIONS[session_id]
+    from schemas import CleaningAction, CleaningPlan
+    session["plan"] = CleaningPlan(
+        summary="Test column normalization diff",
+        actions=[
+            CleaningAction(action="normalize_column_names", params={}, reasoning="snake_case headers"),
+            CleaningAction(action="impute_missing", column="Age", params={"method": "median"}, reasoning="Median age"),
+        ]
+    )
+
+    clean_res = client.post(
+        "/api/clean",
+        json={"session_id": session_id, "approved_action_ids": [0, 1]},
+    )
+    assert clean_res.status_code == 200
+    clean_data = clean_res.json()
+
+    # Columns after should be snake_case
+    assert "employee_id" in clean_data["columns"]
+    assert "age" in clean_data["columns"]
+
+    # Diff table should have non-empty mapped cells
+    row0 = clean_data["diff_table"][0]
+    assert "employee_id" in row0["cells"]
+    assert row0["cells"]["employee_id"]["original"] is not None
+    assert row0["cells"]["employee_id"]["cleaned"] is not None

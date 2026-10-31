@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,9 +62,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def sanitize_value_for_json(val: Any) -> Any:
     """Ensure numpy scalars, floating NaNs, and timestamps serialize cleanly to JSON."""
-    if pd.isna(val):
+    if pd.isna(val) or val is None:
         return None
-    import numpy as np
     if isinstance(val, (np.integer, int)):
         return int(val)
     if isinstance(val, (np.floating, float)):
@@ -120,7 +120,24 @@ def compute_side_by_side_diff(
     """Compute cell-level diff and alignment between original and current DataFrame."""
     rows_before = len(df_before)
     rows_after = len(df_after)
-    common_cols = [c for c in df_before.columns if c in df_after.columns]
+
+    # Build column mapping between df_after and df_before
+    # Handles column renaming (e.g. normalize_column_names to snake_case)
+    col_map = {}
+    cols_before_norm = {
+        str(c).lower().strip().replace(" ", "_").replace("-", "_"): c
+        for c in df_before.columns
+    }
+    for idx, col_after in enumerate(df_after.columns):
+        norm_key = str(col_after).lower().strip().replace(" ", "_").replace("-", "_")
+        if col_after in df_before.columns:
+            col_map[col_after] = col_after
+        elif norm_key in cols_before_norm:
+            col_map[col_after] = cols_before_norm[norm_key]
+        elif idx < len(df_before.columns):
+            col_map[col_after] = df_before.columns[idx]
+        else:
+            col_map[col_after] = None
 
     modified_cells_count = 0
     row_diffs = []
@@ -131,24 +148,30 @@ def compute_side_by_side_diff(
         cells = {}
 
         if idx < rows_after:
-            for col in common_cols:
-                v_orig = df_before.iloc[idx][col]
-                v_clean = df_after.iloc[idx][col]
-                orig_null = pd.isna(v_orig)
-                clean_null = pd.isna(v_clean)
+            for col_after in df_after.columns:
+                col_before = col_map.get(col_after)
+                v_orig = (
+                    df_before.iloc[idx][col_before]
+                    if (col_before is not None and col_before in df_before.columns)
+                    else None
+                )
+                v_clean = df_after.iloc[idx][col_after]
+
+                orig_null = pd.isna(v_orig) or v_orig is None
+                clean_null = pd.isna(v_clean) or v_clean is None
 
                 if orig_null and clean_null:
                     changed = False
                 elif orig_null != clean_null:
                     changed = True
                 else:
-                    changed = str(v_orig) != str(v_clean)
+                    changed = str(v_orig).strip() != str(v_clean).strip()
 
                 if changed:
                     row_has_changes = True
                     modified_cells_count += 1
 
-                cells[col] = {
+                cells[col_after] = {
                     "original": sanitize_value_for_json(v_orig),
                     "cleaned": sanitize_value_for_json(v_clean),
                     "changed": changed,
@@ -156,9 +179,15 @@ def compute_side_by_side_diff(
             status = "modified" if row_has_changes else "unchanged"
         else:
             status = "dropped"
-            for col in df_before.columns:
-                cells[col] = {
-                    "original": sanitize_value_for_json(df_before.iloc[idx][col]),
+            for col_after in df_after.columns:
+                col_before = col_map.get(col_after)
+                v_orig = (
+                    df_before.iloc[idx][col_before]
+                    if (col_before is not None and col_before in df_before.columns)
+                    else None
+                )
+                cells[col_after] = {
+                    "original": sanitize_value_for_json(v_orig),
                     "cleaned": None,
                     "changed": True,
                 }
@@ -175,7 +204,7 @@ def compute_side_by_side_diff(
         "rows_delta": rows_after - rows_before,
         "columns_before": list(df_before.columns),
         "columns_after": list(df_after.columns),
-        "total_cells_evaluated": preview_limit * len(common_cols),
+        "total_cells_evaluated": preview_limit * len(df_after.columns),
         "modified_cells_count": modified_cells_count,
         "row_diffs": row_diffs,
     }
@@ -321,9 +350,11 @@ def api_profile(req: ProfileRequest):
             "numeric_stats": d.get("numeric_stats", None),
         })
 
-    # Prepare preview rows
-    preview_df = df.head(15).fillna("")
-    preview_rows = preview_df.to_dict(orient="records")
+    # Prepare preview rows (clean serialization)
+    preview_df = df.head(10).fillna("")
+    preview_records = []
+    for _, row in preview_df.iterrows():
+        preview_records.append({col: sanitize_value_for_json(val) for col, val in row.items()})
 
     return {
         "session_id": session_id,
@@ -336,7 +367,7 @@ def api_profile(req: ProfileRequest):
             "total_missing_cells": sum(d.get("null_count", 0) for d in distributions.values()),
         },
         "columns": columns_summary,
-        "preview_rows": preview_rows,
+        "preview_rows": preview_records,
     }
 
 
@@ -505,9 +536,13 @@ def api_session_undo(req: Dict[str, str]):
         "diff_summary": {
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
             "modified_cells_count": diff_data["modified_cells_count"],
+            "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
+            "total_missing_after": int(df_current.isna().sum().sum()),
         },
         "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
     }
 
 
@@ -532,9 +567,13 @@ def api_session_redo(req: Dict[str, str]):
         "diff_summary": {
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
             "modified_cells_count": diff_data["modified_cells_count"],
+            "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
+            "total_missing_after": int(df_current.isna().sum().sum()),
         },
         "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
     }
 
 
@@ -559,9 +598,13 @@ def api_session_rollback(req: Dict[str, str]):
         "diff_summary": {
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
+            "rows_delta": 0,
             "modified_cells_count": 0,
+            "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
+            "total_missing_after": int(df_current.isna().sum().sum()),
         },
         "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
     }
 
 
@@ -636,21 +679,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0b0f19; color: #f3f4f6; margin: 0; }
     code, pre { font-family: 'JetBrains Mono', monospace; }
-    .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
     .glass-card { background: rgba(31, 41, 55, 0.5); border: 1px solid rgba(255, 255, 255, 0.06); }
-    .cell-modified { background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; font-weight: 600; }
-    .cell-dropped { background-color: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
+    .cell-modified { background-color: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #6ee7b7; font-weight: 600; }
+    .cell-dropped { background-color: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #0b0f19; }
     ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+    /* Fallback styles */
+    .hidden { display: none !important; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col bg-[#0b0f19] text-gray-100">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-[-100px] opacity-0 text-sm font-medium flex items-center space-x-2"></div>
 
   <!-- NAVBAR -->
-  <header class="glass sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-gray-800">
+  <header class="glass sticky top-0 z-40 px-6 py-4 flex items-center justify-between border-b border-gray-800">
     <div class="flex items-center space-x-3">
       <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-500 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/20">
         🤖
@@ -675,17 +723,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
 
     <!-- TAB NAVIGATION -->
-    <div class="flex border-b border-gray-800 space-x-2">
-      <button onclick="switchTab('profile')" id="tab-btn-profile" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-indigo-500 text-indigo-400 bg-gray-900/40">
+    <div class="flex border-b border-gray-800 space-x-2 overflow-x-auto pb-1">
+      <button onclick="switchTab('profile')" id="tab-btn-profile" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-indigo-500 text-indigo-400 bg-gray-900/40 whitespace-nowrap">
         1. Select & Profile
       </button>
-      <button onclick="switchTab('plan')" id="tab-btn-plan" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+      <button onclick="switchTab('plan')" id="tab-btn-plan" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200 whitespace-nowrap">
         2. AI Plan & One-Click Approval
       </button>
-      <button onclick="switchTab('diff')" id="tab-btn-diff" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+      <button onclick="switchTab('diff')" id="tab-btn-diff" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200 whitespace-nowrap">
         3. Visual Diff & Rollback
       </button>
-      <button onclick="switchTab('eval')" id="tab-btn-eval" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200">
+      <button onclick="switchTab('eval')" id="tab-btn-eval" class="px-5 py-2.5 font-medium text-sm rounded-t-lg transition border-b-2 border-transparent text-gray-400 hover:text-gray-200 whitespace-nowrap">
         4. Benchmark Evaluation
       </button>
     </div>
@@ -701,7 +749,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs text-gray-400 mb-1">Select Existing Dataset</label>
-              <select id="dataset-select" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+              <select id="dataset-select" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-gray-200">
                 <option value="">Loading datasets...</option>
               </select>
             </div>
@@ -744,7 +792,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div class="glass rounded-2xl p-5 space-y-4" id="columns-section" style="display:none;">
         <div class="flex items-center justify-between">
           <h3 class="text-base font-semibold text-white">Column Health & Distributions</h3>
-          <span class="text-xs text-gray-400">Click column for distribution details</span>
+          <span class="text-xs text-gray-400">Click any column row for detailed stats</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-gray-300">
@@ -758,8 +806,30 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <th class="px-4 py-3">Top Values / Range</th>
               </tr>
             </thead>
-            <tbody id="columns-table-body" class="divide-y divide-gray-800/60"></tbody>
+            <tbody id="columns-table-body" class="divide-y divide-gray-800/60 cursor-pointer"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Raw Data Preview (First 10 Rows) -->
+      <div class="glass rounded-2xl p-5 space-y-4" id="preview-section" style="display:none;">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-white">Original Data Preview (First 10 Rows)</h3>
+          <span class="text-xs text-indigo-400 font-mono" id="preview-row-count"></span>
+        </div>
+        <div class="overflow-x-auto max-h-[350px] overflow-y-auto">
+          <table class="w-full text-left text-xs text-gray-300 border-collapse">
+            <thead class="sticky top-0 bg-gray-950 text-gray-400 uppercase text-[11px] border-b border-gray-800">
+              <tr id="preview-table-header"></tr>
+            </thead>
+            <tbody id="preview-table-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+          </table>
+        </div>
+        <!-- Proceed Button -->
+        <div class="flex justify-end pt-2">
+          <button onclick="switchTab('plan')" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition shadow-lg shadow-purple-600/20">
+            ➡️ Proceed to Step 2: AI Planning & Approvals
+          </button>
         </div>
       </div>
     </section>
@@ -774,7 +844,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Provider</label>
-            <select id="llm-provider-select" onchange="updateModelDefaults()" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <select id="llm-provider-select" onchange="updateModelDefaults()" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 text-gray-200">
               <option value="gemini">Google Gemini (Default)</option>
               <option value="openai">OpenAI (GPT-4o / Groq / vLLM)</option>
               <option value="anthropic">Anthropic Claude</option>
@@ -784,15 +854,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Model Name</label>
-            <input type="text" id="llm-model-input" value="gemini-2.5-flash" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none">
+            <input type="text" id="llm-model-input" value="gemini-2.5-flash" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none text-gray-200">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Custom Base URL (vLLM / Ollama)</label>
-            <input type="text" id="llm-base-url" placeholder="http://localhost:11434" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none">
+            <input type="text" id="llm-base-url" placeholder="http://localhost:11434" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none text-gray-200">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">API Key Override (Optional)</label>
-            <input type="password" id="llm-api-key" placeholder="Uses .env if blank" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none">
+            <input type="password" id="llm-api-key" placeholder="Uses .env if blank" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none text-gray-200">
           </div>
         </div>
         <button onclick="generatePlan()" id="btn-generate-plan" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-purple-600/20">
@@ -802,7 +872,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       <!-- Plan Recommendations & Approval Gate -->
       <div id="plan-section" class="glass p-5 rounded-2xl space-y-5 hidden">
-        <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-3 flex-wrap gap-2">
           <div>
             <h3 class="text-base font-semibold text-white">Recommended Cleaning Actions</h3>
             <p id="plan-summary-text" class="text-xs text-gray-400 mt-1"></p>
@@ -837,8 +907,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <span class="text-xs text-gray-400">Missing Values Reduced</span>
           <p class="text-lg font-bold text-blue-400" id="diff-missing-delta">-</p>
         </div>
-        <div class="glass p-4 rounded-xl flex items-center justify-around">
-          <button onclick="downloadCleanedCsv()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-lg text-white">📥 Download Cleaned CSV</button>
+        <div class="glass p-4 rounded-xl flex items-center justify-around gap-2">
+          <button onclick="downloadCleanedCsv()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-lg text-white">📥 Cleaned CSV</button>
           <button onclick="downloadReportJson()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-semibold rounded-lg text-gray-300">📄 Report JSON</button>
         </div>
       </div>
@@ -864,10 +934,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       <!-- Side-by-Side Diff Table -->
       <div class="glass rounded-2xl p-5 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-semibold text-white">Side-by-Side Visual Diff (First 50 Rows)</h3>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h3 class="text-base font-semibold text-white">Side-by-Side Visual Diff (First 100 Rows)</h3>
           <span class="text-xs text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-800">
-            Green cells indicate validated fixes
+            Green cells indicate modified/repaired values
           </span>
         </div>
         <div class="overflow-x-auto max-h-[550px] overflow-y-auto">
@@ -893,7 +963,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="sm:col-span-2">
             <label class="block text-xs text-gray-400 mb-1">Ground Truth Dataset</label>
-            <input type="text" id="eval-gt-path" value="data/benchmark/ground_truth.csv" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none">
+            <input type="text" id="eval-gt-path" value="data/benchmark/ground_truth.csv" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-sm focus:outline-none text-gray-200">
           </div>
           <div class="flex items-end">
             <button onclick="runBenchmarkEvaluation()" id="btn-run-eval" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium rounded-xl text-sm transition shadow-lg shadow-emerald-600/20">
@@ -952,10 +1022,39 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   </main>
 
+  <!-- DISTRIBUTION MODAL -->
+  <div id="dist-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass max-w-lg w-full p-6 rounded-2xl space-y-4 border border-gray-700 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-base font-bold text-white" id="dist-modal-title">Column Distribution</h3>
+        <button onclick="closeDistModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div id="dist-modal-body" class="space-y-3 text-sm"></div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeDistModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs rounded-xl text-gray-200">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JAVASCRIPT APP LOGIC -->
   <script>
     let currentSessionId = null;
     let currentActions = [];
+    let currentColumns = [];
+
+    function showToast(message, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = message;
+      t.className = isError
+        ? 'fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform bg-rose-950 text-rose-200 border border-rose-800 text-sm font-medium flex items-center space-x-2'
+        : 'fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform bg-emerald-950 text-emerald-200 border border-emerald-800 text-sm font-medium flex items-center space-x-2';
+      t.style.transform = 'translateY(0)';
+      t.style.opacity = '1';
+      setTimeout(() => {
+        t.style.transform = 'translateY(-100px)';
+        t.style.opacity = '0';
+      }, 3500);
+    }
 
     // On Load: fetch datasets
     window.addEventListener('DOMContentLoaded', async () => {
@@ -977,15 +1076,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     function switchTab(tab) {
       ['profile', 'plan', 'diff', 'eval'].forEach(t => {
-        document.getElementById(`tab-${t}`).classList.add('hidden');
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.add('hidden');
         const btn = document.getElementById(`tab-btn-${t}`);
-        btn.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-gray-900/40');
-        btn.classList.add('border-transparent', 'text-gray-400');
+        if (btn) {
+          btn.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-gray-900/40');
+          btn.classList.add('border-transparent', 'text-gray-400');
+        }
       });
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      const activeEl = document.getElementById(`tab-${tab}`);
+      if (activeEl) activeEl.classList.remove('hidden');
       const activeBtn = document.getElementById(`tab-btn-${tab}`);
-      activeBtn.classList.remove('border-transparent', 'text-gray-400');
-      activeBtn.classList.add('border-indigo-500', 'text-indigo-400', 'bg-gray-900/40');
+      if (activeBtn) {
+        activeBtn.classList.remove('border-transparent', 'text-gray-400');
+        activeBtn.classList.add('border-indigo-500', 'text-indigo-400', 'bg-gray-900/40');
+      }
     }
 
     function updateModelDefaults() {
@@ -1008,11 +1113,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         formData.append('file', fileInput.files[0]);
         const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
         const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          showToast(uploadData.detail || 'Upload failed', true);
+          return;
+        }
         filepath = uploadData.filepath;
       }
 
       if (!filepath) {
-        alert('Please select or upload a CSV file.');
+        showToast('Please select or upload a CSV file.', true);
         return;
       }
 
@@ -1030,6 +1139,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (!res.ok) throw new Error(data.detail || 'Profiling failed');
 
         currentSessionId = data.session_id;
+        currentColumns = data.columns;
         document.getElementById('current-session-id').textContent = currentSessionId.slice(0, 8);
         document.getElementById('session-badge').classList.remove('hidden');
 
@@ -1042,9 +1152,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         // Columns table
         const tbody = document.getElementById('columns-table-body');
         tbody.innerHTML = '';
-        data.columns.forEach(col => {
+        data.columns.forEach((col, idx) => {
           const tr = document.createElement('tr');
-          tr.className = 'hover:bg-gray-900/40 transition';
+          tr.className = 'hover:bg-gray-900/60 transition';
+          tr.onclick = () => openDistModal(col);
           const badgeColor = col.semantic_type !== 'unspecified' ? 'bg-indigo-950 text-indigo-300 border-indigo-800' : 'bg-gray-800 text-gray-400 border-gray-700';
 
           tr.innerHTML = `
@@ -1068,17 +1179,87 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         });
         document.getElementById('columns-section').style.display = 'block';
 
+        // Render Data Preview Table
+        if (data.preview_rows && data.preview_rows.length > 0) {
+          const pCols = Object.keys(data.preview_rows[0]);
+          const pHeader = document.getElementById('preview-table-header');
+          pHeader.innerHTML = '<th class="px-3 py-2">#</th>' + pCols.map(c => `<th class="px-3 py-2 font-mono">${c}</th>`).join('');
+
+          const pBody = document.getElementById('preview-table-body');
+          pBody.innerHTML = '';
+          data.preview_rows.forEach((r, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="px-3 py-1.5 text-gray-500">${idx}</td>` + pCols.map(c => `<td class="px-3 py-1.5 text-gray-300">${r[c] !== null ? r[c] : '<span class="text-rose-400">NaN</span>'}</td>`).join('');
+            pBody.appendChild(tr);
+          });
+          document.getElementById('preview-row-count').textContent = `Showing 10 of ${data.summary.rows} rows`;
+          document.getElementById('preview-section').style.display = 'block';
+        }
+
+        showToast(`Dataset profiled: ${data.summary.rows} rows, ${data.summary.columns} cols`);
+
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       } finally {
         btn.textContent = '📊 Analyze & Profile Dataset';
         btn.disabled = false;
       }
     }
 
+    function openDistModal(col) {
+      document.getElementById('dist-modal-title').textContent = `Distribution: ${col.name} (${col.dtype})`;
+      const body = document.getElementById('dist-modal-body');
+      let html = `
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="glass-card p-2 rounded-lg"><span class="text-gray-400">Semantic Type:</span> <span class="text-indigo-300 font-semibold">${col.semantic_type}</span></div>
+          <div class="glass-card p-2 rounded-lg"><span class="text-gray-400">Missing Values:</span> <span class="text-rose-300 font-semibold">${col.missing_count} (${col.missing_pct}%)</span></div>
+          <div class="glass-card p-2 rounded-lg"><span class="text-gray-400">Unique Values:</span> <span class="text-gray-200 font-semibold">${col.unique_count}</span></div>
+          <div class="glass-card p-2 rounded-lg"><span class="text-gray-400">Empty / Constant:</span> <span class="text-gray-200">${col.is_empty ? 'Empty' : (col.is_constant ? 'Constant' : 'Normal')}</span></div>
+        </div>
+      `;
+
+      if (col.numeric_stats) {
+        html += `
+          <div class="mt-3">
+            <h4 class="text-xs font-semibold text-gray-400 uppercase mb-1">Numeric Summary</h4>
+            <div class="grid grid-cols-4 gap-2 text-center text-xs">
+              <div class="glass-card p-2 rounded-lg"><span class="text-gray-400 text-[10px]">Min</span><p class="font-bold text-gray-200">${col.numeric_stats.min}</p></div>
+              <div class="glass-card p-2 rounded-lg"><span class="text-gray-400 text-[10px]">Max</span><p class="font-bold text-gray-200">${col.numeric_stats.max}</p></div>
+              <div class="glass-card p-2 rounded-lg"><span class="text-gray-400 text-[10px]">Mean</span><p class="font-bold text-gray-200">${col.numeric_stats.mean}</p></div>
+              <div class="glass-card p-2 rounded-lg"><span class="text-gray-400 text-[10px]">Median</span><p class="font-bold text-gray-200">${col.numeric_stats.median}</p></div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (col.top_values && col.top_values.length > 0) {
+        html += `
+          <div class="mt-3">
+            <h4 class="text-xs font-semibold text-gray-400 uppercase mb-1">Top Frequent Values</h4>
+            <div class="space-y-1.5">
+              ${col.top_values.map(v => `
+                <div class="flex items-center justify-between text-xs glass-card px-3 py-1.5 rounded-lg">
+                  <span class="font-mono text-gray-300 truncate max-w-[200px]">${v.value}</span>
+                  <span class="text-indigo-400 font-medium">${v.count} (${v.percentage}%)</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      body.innerHTML = html;
+      document.getElementById('dist-modal').classList.remove('hidden');
+    }
+
+    function closeDistModal() {
+      document.getElementById('dist-modal').classList.add('hidden');
+    }
+
     async function generatePlan() {
       if (!currentSessionId) {
-        alert('Please profile a dataset first.');
+        showToast('Please profile a dataset first.', true);
+        switchTab('profile');
         return;
       }
       const provider = document.getElementById('llm-provider-select').value;
@@ -1120,7 +1301,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             card.innerHTML = `
               <input type="checkbox" id="action-chk-${act.id}" checked class="mt-1 w-4 h-4 text-indigo-600 rounded bg-gray-900 border-gray-700 focus:ring-0 cursor-pointer">
               <div class="flex-1 space-y-1">
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-2 flex-wrap gap-1">
                   <span class="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800">${act.action}</span>
                   ${act.column ? `<span class="px-2 py-0.5 rounded text-xs bg-gray-900 text-gray-300 font-mono">${act.column}</span>` : ''}
                   <span class="text-[11px] text-gray-500 font-mono">${JSON.stringify(act.params)}</span>
@@ -1132,8 +1313,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           });
         }
         document.getElementById('plan-section').classList.remove('hidden');
+        showToast(`Cleaning plan generated with ${currentActions.length} action(s)`);
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       } finally {
         btn.textContent = '🤖 Generate Cleaning Plan (Privacy-Preserved)';
         btn.disabled = false;
@@ -1173,8 +1355,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         renderDiffView(data);
         switchTab('diff');
+        showToast('Dataset cleaned successfully!');
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       } finally {
         btn.textContent = '🚀 Execute Approved Cleaning Plan';
         btn.disabled = false;
@@ -1182,6 +1365,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     function renderDiffView(data) {
+      if (!data || !data.diff_summary) return;
+
       document.getElementById('diff-rows-delta').textContent = `${data.diff_summary.rows_before} ➔ ${data.diff_summary.rows_after}`;
       document.getElementById('diff-modified-cells').textContent = data.diff_summary.modified_cells_count.toLocaleString();
       document.getElementById('diff-missing-delta').textContent = `${data.diff_summary.total_missing_before} ➔ ${data.diff_summary.total_missing_after}`;
@@ -1191,7 +1376,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       timeline.innerHTML = '';
       (data.checkpoints || []).forEach(cp => {
         const pill = document.createElement('span');
-        pill.className = 'px-2 py-0.5 rounded text-[11px] bg-gray-900 border border-gray-800 text-gray-300';
+        pill.className = 'px-2 py-0.5 rounded text-[11px] bg-gray-900 border border-gray-800 text-gray-300 whitespace-nowrap';
         pill.textContent = cp.step === 0 ? 'Step 0 (Original)' : `Step ${cp.step}: ${cp.action_name}`;
         timeline.appendChild(pill);
       });
@@ -1199,9 +1384,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       // Diff table header
       const thead = document.getElementById('diff-table-header');
       thead.innerHTML = '<th class="px-3 py-2">#</th>';
-      data.columns.forEach(col => {
+      const cols = data.columns || [];
+      cols.forEach(col => {
         const th = document.createElement('th');
-        th.className = 'px-3 py-2 font-mono';
+        th.className = 'px-3 py-2 font-mono whitespace-nowrap';
         th.textContent = col;
         thead.appendChild(th);
       });
@@ -1209,17 +1395,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       // Diff table body
       const tbody = document.getElementById('diff-table-body');
       tbody.innerHTML = '';
-      data.diff_table.forEach(r => {
+      const diffRows = data.diff_table || [];
+      diffRows.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = r.status === 'modified' ? 'bg-emerald-950/20' : (r.status === 'dropped' ? 'bg-rose-950/20' : '');
 
         let rowHtml = `<td class="px-3 py-1.5 text-gray-500">${r.row_index}</td>`;
-        data.columns.forEach(col => {
-          const cell = r.cells[col] || { original: '', cleaned: '', changed: false };
+        cols.forEach(col => {
+          const cell = (r.cells && r.cells[col]) ? r.cells[col] : { original: '', cleaned: '', changed: false };
           if (cell.changed) {
-            rowHtml += `<td class="px-3 py-1.5 cell-modified" title="Original: ${cell.original}">${cell.cleaned !== null ? cell.cleaned : 'NaN'}</td>`;
+            rowHtml += `<td class="px-3 py-1.5 cell-modified whitespace-nowrap" title="Original: ${cell.original !== null ? cell.original : 'NaN'}">${cell.cleaned !== null ? cell.cleaned : 'NaN'}</td>`;
           } else {
-            rowHtml += `<td class="px-3 py-1.5 text-gray-300">${cell.cleaned !== null ? cell.cleaned : ''}</td>`;
+            rowHtml += `<td class="px-3 py-1.5 text-gray-300 whitespace-nowrap">${cell.cleaned !== null ? cell.cleaned : ''}</td>`;
           }
         });
         tr.innerHTML = rowHtml;
@@ -1236,14 +1423,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           body: JSON.stringify({ session_id: currentSessionId })
         });
         const data = await res.json();
-        if (data.status === 'undone') {
-          alert(data.message);
+        if (data.status === 'success') {
+          showToast(data.message);
           renderDiffView(data);
         } else {
-          alert(data.message);
+          showToast(data.message, true);
         }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       }
     }
 
@@ -1256,14 +1443,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           body: JSON.stringify({ session_id: currentSessionId })
         });
         const data = await res.json();
-        if (data.status === 'redone') {
-          alert(data.message);
+        if (data.status === 'success') {
+          showToast(data.message);
           renderDiffView(data);
         } else {
-          alert(data.message);
+          showToast(data.message, true);
         }
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       }
     }
 
@@ -1276,16 +1463,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           body: JSON.stringify({ session_id: currentSessionId })
         });
         const data = await res.json();
-        alert(data.message);
+        showToast(data.message);
         renderDiffView(data);
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       }
     }
 
     async function runBenchmarkEvaluation() {
       if (!currentSessionId) {
-        alert('Please profile and clean a dataset first.');
+        showToast('Please profile and clean a dataset first.', true);
         return;
       }
       const gtPath = document.getElementById('eval-gt-path').value;
@@ -1317,8 +1504,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         document.getElementById('eval-tn').textContent = ov.true_negatives;
 
         document.getElementById('eval-results-card').classList.remove('hidden');
+        showToast('Quality benchmark evaluation complete!');
       } catch (err) {
-        alert(err.message);
+        showToast(err.message, true);
       } finally {
         btn.textContent = 'Evaluate Quality Scorecard';
         btn.disabled = false;
