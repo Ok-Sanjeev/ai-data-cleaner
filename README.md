@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Docker-Production%20Ready-2496ED?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-103%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Pytest-145%20Passed-0A9EDC?logo=pytest" alt="Pytest">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
 
@@ -154,27 +154,55 @@ Cleaning these datasets manually is tedious and non-reproducible. Conversely, bl
 
 ## 🧹 Supported Cleaning Operations
 
-The cleaning engine supports **15 validated operations**, each strictly checked against column profiles and parameter schemas:
+The cleaning engine features a comprehensive registry of **52 deterministic operations** classified into a strict 3-tier safety hierarchy:
+- 🟢 **Safe Repair (Green)**: Checked by default; non-destructive, reversible formatting and standards enforcement.
+- 🟡 **Needs Review (Yellow)**: Unchecked by default; involves statistical inference or imputation.
+- 🔴 **Potentially Destructive (Red)**: Unchecked by default; permanently discards columns or rows; requires explicit secondary user confirmation before execution.
 
-| Operation | Parameter Schema | Description & Safety Rules |
-|---|---|---|
-| `impute_missing` | `method: "median" \| "mean" \| "mode" \| "constant"`, optional `value` | Imputes missing values. Guardrails enforce mode for categoricals/booleans and forbid mean/median on IDs and contact fields. |
-| `drop_missing_rows` | `threshold: float` (optional) | Drops rows exceeding missing value thresholds. |
-| `remove_duplicates` | `{}` | Drops exact duplicate records while maintaining dataset integrity. |
-| `remove_column` | `{}` | Removes redundant empty or constant columns. Contextualizes metadata/audit columns (`data_source`, `scraped_at`) and prevents dropping the last remaining column. |
-| `rename_column` | `new_name: str` | Renames a specific column safely and updates internal column alias maps. |
-| `convert_to_date` | `{}` | Converts string dates to `datetime`. Guardrail blocks relative time strings (`"2 days ago"`) that cannot be parsed without a base timestamp. |
-| `convert_to_numeric` | `{}` | Strips currency symbols (`$`, `€`, `₹`), unit prefixes, and commas before converting to float/integer. |
-| `convert_to_boolean` | `{}` | Standardizes boolean equivalents (`true/false`, `yes/no`, `y/n`, `1/0`) into native boolean values. |
-| `normalize_text` | `case: "lower" \| "upper" \| "title"` | Normalizes casing. Guardrails protect acronyms (`SQL`, `AWS`, `AI`), skills, and domain proper nouns from destructive modification. |
-| `normalize_whitespace` | `{}` | Trims leading/trailing whitespace and collapses repeated internal spaces. |
-| `normalize_column_names` | `{}` | Formats all headers into consistent, clean `snake_case` names. Runs before any column-specific actions. |
-| `replace_empty_strings` | `{}` | Converts empty or whitespace-only strings into standard `NaN` missing values. |
-| `remove_invalid_values` | `invalid_values: list` (non-empty) | Replaces specific verified invalid placeholder tokens (e.g. `["N/A", "missing", "-999"]`) with `NaN`. |
-| `clean_phone_number` | `{}` | Extracts standard numeric sequences and formats telephone numbers. |
-| `standardize_categories` | `mapping: dict[str, str]` | Generated locally via fuzzy matching to unify misspelled category labels without leaking values to the AI. |
+### Deterministic Action Registry
 
-> **Note on Outliers (`clip_outliers`)**: Statistical outliers detected via IQR are intentionally flagged in the profile and cleaning report for domain review rather than automatically altered, preventing silent corruption of legitimate business figures.
+| Operation | Risk Tier | Category | Parameter Schema | Description & Safety Rules |
+|---|---|---|---|---|
+| `trim_whitespace` | 🟢 Green | Text Cleaning | `{}` | Removes leading and trailing whitespace characters. |
+| `remove_extra_spaces` | 🟢 Green | Text Cleaning | `{}` | Replaces multiple contiguous internal spaces with a single space. |
+| `standardize_case` | 🟢 Green | Text Cleaning | `case: "lower" \| "upper" \| "title"` | Normalizes casing while honoring protected domain acronyms. |
+| `normalize_whitespace` | 🟢 Green | Text Cleaning | `{}` | Cleans leading/trailing and repeated internal whitespace. |
+| `normalize_unicode` | 🟢 Green | Text Cleaning | `form: "NFKD" \| "NFC"` | Converts non-standard or accented Unicode into standardized forms. |
+| `remove_html_tags` | 🟢 Green | Text Cleaning | `{}` | Strips raw HTML tags from rich text and scraped columns. |
+| `remove_special_characters` | 🟢 Green | Text Cleaning | `characters: str` | Strips specified punctuation or unwanted symbols. |
+| `remove_non_printable` | 🟢 Green | Text Cleaning | `{}` | Removes ASCII control and non-printable binary characters. |
+| `normalize_column_names` | 🟢 Green | Structuring | `{}` | Formats all dataset headers into clean, lowercase `snake_case`. |
+| `clean_phone_number` | 🟢 Green | Data Types | `{}` | Extracts and standardizes international and domestic phone digits. |
+| `standardize_date_format` | 🟢 Green | Dates & Numbers | `target_format: str` | Uniformly re-formats valid dates into standard ISO-8601 strings (`YYYY-MM-DD`). |
+| `round_numeric` | 🟢 Green | Dates & Numbers | `decimals: int` | Rounds floating point values to the specified decimal precision. |
+| `standardize_currency` | 🟢 Green | Dates & Numbers | `{}` | Cleans currency codes, symbols, and standardizes numeric representation. |
+| `standardize_country_names` | 🟢 Green | Formatting | `{}` | Standardizes country identifiers to common English or ISO-3166 names. |
+| `impute_missing` | 🟡 Yellow | Imputation | `method: "median" \| "mean" \| "mode" \| "constant"` | Fills missing values. Guardrails enforce mode for categories and block IDs/URLs. |
+| `fill_with_constant` | 🟡 Yellow | Imputation | `value: Any` | Replaces null cells with a user-specified constant value. |
+| `fill_with_forward_value` | 🟡 Yellow | Imputation | `{}` | Propagates last valid observation forward (time-series safe). |
+| `fill_with_backward_value` | 🟡 Yellow | Imputation | `{}` | Propagates next valid observation backward (bfill). |
+| `fill_with_group_median` | 🟡 Yellow | Imputation | `group_by: str` | Fills missing values using the median of the row's cohort group. |
+| `fill_with_group_mode` | 🟡 Yellow | Imputation | `group_by: str` | Fills missing categories using the mode of the row's cohort group. |
+| `replace_empty_strings` | 🟡 Yellow | Missing Values | `{}` | Converts blank or whitespace-only strings into standard `NaN`. |
+| `convert_to_date` | 🟡 Yellow | Data Types | `{}` | Parses valid date strings to `datetime64`. Blocks relative text (`"3+ weeks ago"`). |
+| `convert_to_numeric` | 🟡 Yellow | Data Types | `{}` | Strips currency symbols and commas before converting to float/integer. |
+| `convert_to_boolean` | 🟡 Yellow | Data Types | `{}` | Standardizes `yes/no`, `true/false`, `1/0` into native boolean dtypes. |
+| `standardize_categories` | 🟡 Yellow | Categorical | `mapping: dict[str, str]` | Clusters misspellings locally using fuzzy matching without leaking raw values. |
+| `clip_outliers` | 🟡 Yellow | Outliers | `lower_percentile: float, upper_percentile: float` | Caps extreme statistical outliers at IQR bounds. |
+| `handle_infinite_values` | 🟡 Yellow | Numbers | `replacement: "nan" \| "max" \| "constant"` | Converts `inf` and `-inf` floating values into valid numeric representations. |
+| `validate_date_range` | 🟡 Yellow | Dates | `min_date: str, max_date: str` | Identifies and sets out-of-range dates to `NaN`. |
+| `reorder_columns` | 🟡 Yellow | Structuring | `order: "alphabetical" \| list[str]` | Rearranges column sequences logically or alphabetically. |
+| `extract_pattern` | 🟡 Yellow | Text Cleaning | `regex: str` | Extracts regex capture groups into clean target values. |
+| `remove_invalid_values` | 🟡 Yellow | Missing Values | `invalid_values: list` (non-empty) | Replaces known sentinel tokens (e.g., `["-999", "N/A", "null"]`) with `NaN`. |
+| `drop_missing_rows` | 🔴 Red | Structuring | `columns: list[str] \| threshold: float` | Drops rows with missing values. Requires explicit confirmation. |
+| `remove_duplicates` | 🟢 Green / 🔴 Red | Structuring | `columns: list[str]` (optional) | Drops exact duplicate records. |
+| `remove_column` | 🔴 Red | Structuring | `{}` | Permanently drops unwanted or zero-variance columns. Contextualizes provenance metadata. |
+| `drop_columns_by_missing_threshold` | 🔴 Red | Structuring | `threshold_pct: float` | Discards columns exceeding a maximum missingness percentage (e.g. >90%). |
+| `rename_column` | 🟡 Yellow | Structuring | `new_name: str` | Renames columns and maintains internal alias maps across execution steps. |
+
+> **Interactive Custom Operations**: Users can configure and add any action from this registry on-the-fly using the **`+ Add Operation`** modal in the studio interface, even if the AI model proposed zero recommendations.
+> 
+> **Zero-Action Clean Dataset Workflow**: If a dataset already meets data-quality standards, the studio presents a clean verification status and allows proceeding directly to **Step 3 (Results & Export)** without requiring synthetic transformations.
 
 ---
 
