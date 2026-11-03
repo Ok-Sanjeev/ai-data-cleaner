@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Data Cleaner — Autonomous, Privacy-Safe Data Engineering Studio</title>
-  
-  <!-- Tailwind CSS -->
+  <title>DataRefine — Professional AI Data Cleaner & Quality Studio</title>
+  <meta name="description" content="DataRefine: Production-ready data cleaning studio with deterministic Python execution, privacy-safe AI planning, side-by-side visual diffs, and audit reports.">
+
+  <!-- Favicon: Precision Grid Mark -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23090a0f'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h16M13 7v18M19 7v18' stroke='%233b82f6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -13,951 +17,476 @@
       theme: {
         extend: {
           colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            },
             surface: {
-              base: '#080c14',
-              card: '#0f172a',
-              subtle: '#1e293b',
-              border: 'rgba(255, 255, 255, 0.08)'
+              base: '#090a0f',
+              card: '#11141e',
+              elevated: '#171c28',
+              border: '#1f2536',
+              borderMuted: '#2b3247'
+            },
+            accent: {
+              DEFAULT: '#2563eb',
+              hover: '#1d4ed8',
+              subtle: 'rgba(37, 99, 235, 0.1)'
             }
           },
           fontFamily: {
             sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+            mono: ['JetBrains Mono', 'SFMono-Regular', 'Menlo', 'monospace']
           }
         }
       }
     }
   </script>
 
-  <!-- Google Fonts & FontAwesome -->
+  <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <style>
     body {
-      background-color: #080c14;
-      color: #f1f5f9;
+      background-color: #090a0f;
+      color: #e4e4e7;
       font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
-    
-    .glass {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    
-    .glass-card {
-      background: rgba(30, 41, 59, 0.45);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-    }
 
+    /* Subtle custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090a0f; }
+    ::-webkit-scrollbar-thumb { background: #272c3d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #373f55; }
+
+    /* Diff cell highlights - Clean & Restrained */
     .cell-modified {
-      background-color: rgba(16, 185, 129, 0.18) !important;
-      border-bottom: 2px solid #10b981 !important;
-      color: #6ee7b7 !important;
-      font-weight: 600;
+      background-color: rgba(16, 185, 129, 0.12) !important;
+      color: #34d399 !important;
+      font-weight: 500;
+      border-bottom: 2px solid #059669;
     }
     .cell-dropped {
-      background-color: rgba(244, 63, 94, 0.15) !important;
-      color: #fda4af !important;
+      background-color: rgba(239, 68, 68, 0.1) !important;
+      color: #f87171 !important;
       text-decoration: line-through;
     }
 
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #080c14; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-    .glow-indigo {
-      box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.35);
+    /* Slide-over drawer transition */
+    .drawer-backdrop {
+      transition: opacity 0.2s ease-out;
     }
-    .glow-emerald {
-      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
-    }
-
-    /* Modal animation */
-    .modal-enter {
-      animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.97) translateY(8px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
+    .drawer-panel {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-600/30 selection:text-blue-200">
 
-  <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast" class="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-[-100px] opacity-0 text-sm font-medium flex items-center space-x-3 pointer-events-none"></div>
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium transition-all duration-200 transform translate-y-[-50px] opacity-0 flex items-center space-x-2.5 pointer-events-none border"></div>
 
-  <!-- TOP NAVIGATION BAR -->
-  <header class="glass sticky top-0 z-40 px-6 py-3.5 border-b border-surface-border">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
+  <!-- TOP APP BAR -->
+  <header class="bg-surface-card border-b border-surface-border sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
       
-      <!-- Brand & Title -->
-      <div class="flex items-center space-x-3.5">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 p-[1px] shadow-lg shadow-indigo-500/20">
-          <div class="w-full h-full bg-surface-card rounded-[11px] flex items-center justify-center text-lg">
-            <i class="fa-solid fa-wand-magic-sparkles text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400"></i>
-          </div>
-        </div>
+      <!-- Brand & Product Title -->
+      <div class="flex items-center space-x-3">
+        <!-- Minimal Grid Mark Logo -->
+        <svg class="w-7 h-7 text-blue-500 shrink-0" viewBox="0 0 32 32" fill="none" stroke="currentColor">
+          <rect width="32" height="32" rx="6" fill="#171c28" stroke="#1f2536" stroke-width="1"/>
+          <path d="M8 11h16M8 16h16M8 21h16M13 8v16M19 8v16" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-base font-bold text-white tracking-tight">AI Data Cleaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">v2.0 Enterprise</span>
+            <span class="text-sm font-semibold tracking-tight text-white">DataRefine</span>
+            <span class="text-[11px] text-zinc-500 hidden sm:inline">|</span>
+            <span class="text-[11px] text-zinc-400 hidden sm:inline">AI Data Cleaner & Engineering Studio</span>
           </div>
-          <p class="text-[11px] text-gray-400">Autonomous, Privacy-Safe Data Engineering & Quality Pipeline</p>
         </div>
       </div>
 
-      <!-- Quick Badges & Actions -->
-      <div class="flex items-center space-x-3">
-        <!-- Zero Data Leakage Privacy Pill -->
-        <button onclick="openModal('modal-privacy')" class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition">
-          <span class="w-2 h-2 mr-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Zero Raw-Data Leakage</span>
-          <i class="fa-solid fa-shield-halved ml-2 text-[10px]"></i>
-        </button>
-
-        <!-- Active Session Pill -->
-        <div id="session-badge" class="hidden items-center px-3 py-1.5 rounded-lg text-xs font-mono bg-surface-subtle border border-surface-border text-gray-300">
-          <span class="text-gray-500 mr-1.5">Session:</span>
-          <span id="current-session-id" class="text-indigo-400 font-bold"></span>
-          <button onclick="copySessionId()" title="Copy Session ID" class="ml-2 text-gray-400 hover:text-white transition">
-            <i class="fa-regular fa-copy"></i>
-          </button>
+      <!-- Action & Meta Bar -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Active Session Badge -->
+        <div id="session-badge" class="hidden items-center text-[11px] font-mono bg-surface-elevated border border-surface-border px-2.5 py-1 rounded text-zinc-300">
+          <span class="text-zinc-500 mr-1.5">Session:</span>
+          <span id="current-session-id" class="text-blue-400 font-semibold"></span>
         </div>
 
-        <!-- Deploy Cloud Button -->
-        <button onclick="switchTab('deploy')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-600/20 flex items-center space-x-1.5 transition">
-          <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
-          <span>Deploy</span>
+        <!-- Privacy Architecture Modal Trigger -->
+        <button onclick="openModal('modal-privacy')" class="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded hover:bg-surface-elevated transition flex items-center space-x-1.5" title="Privacy: Zero raw data leakage architecture">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span class="hidden md:inline">Privacy Model</span>
         </button>
 
-        <!-- API Docs link -->
-        <a href="/docs" target="_blank" class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-surface-subtle transition" title="Swagger REST API Docs">
-          <i class="fa-solid fa-book-bookmark text-sm"></i>
+        <!-- Benchmark Evaluation Trigger -->
+        <button onclick="openModal('modal-benchmark')" class="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded hover:bg-surface-elevated transition flex items-center space-x-1.5" title="Run precision & recall quality evaluation">
+          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span class="hidden sm:inline">Benchmark</span>
+        </button>
+
+        <!-- Settings Drawer Trigger -->
+        <button onclick="toggleSettingsDrawer(true)" class="text-xs text-zinc-300 hover:text-white px-2.5 py-1.5 rounded bg-surface-elevated border border-surface-border hover:border-surface-borderMuted transition flex items-center space-x-1.5" title="Configure LLM Provider & Parameters">
+          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span id="nav-active-provider" class="font-mono text-[11px] text-zinc-300">gemini</span>
+        </button>
+
+        <!-- API Documentation -->
+        <a href="/docs" target="_blank" class="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded hover:bg-surface-elevated transition" title="Swagger REST API Specification">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
         </a>
       </div>
     </div>
   </header>
 
-  <!-- MAIN VIEWPORT -->
+  <!-- WORKFLOW STEP BAR (3-STEP CORE WORKFLOW) -->
+  <div class="border-b border-surface-border bg-surface-base">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <nav class="flex space-x-1 sm:space-x-4 py-2.5" aria-label="Workflow Steps">
+        
+        <!-- Step 1 Button -->
+        <button onclick="goToStep(1)" id="step-btn-1" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-white bg-surface-elevated border border-surface-border">
+          <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+          <span>Upload & Profile</span>
+        </button>
+
+        <span class="text-zinc-600 flex items-center">/</span>
+
+        <!-- Step 2 Button -->
+        <button onclick="goToStep(2)" id="step-btn-2" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card">
+          <span class="w-4 h-4 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center text-[10px] font-bold" id="step-num-2">2</span>
+          <span>Review & Clean</span>
+        </button>
+
+        <span class="text-zinc-600 flex items-center">/</span>
+
+        <!-- Step 3 Button -->
+        <button onclick="goToStep(3)" id="step-btn-3" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card">
+          <span class="w-4 h-4 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center text-[10px] font-bold" id="step-num-3">3</span>
+          <span>Results & Export</span>
+        </button>
+
+      </nav>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
 
-    <!-- STEP WORKFLOW NAVIGATION -->
-    <div class="glass p-1.5 rounded-2xl flex items-center justify-between overflow-x-auto gap-1 border border-surface-border">
-      <button onclick="switchTab('profile')" id="tab-btn-profile" class="flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
-        <i class="fa-solid fa-magnifying-glass-chart"></i>
-        <span>1. Ingest & Profile</span>
-      </button>
-      <button onclick="switchTab('plan')" id="tab-btn-plan" class="flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 text-gray-400 hover:text-white hover:bg-surface-subtle">
-        <i class="fa-solid fa-brain"></i>
-        <span>2. AI Plan & Studio</span>
-      </button>
-      <button onclick="switchTab('diff')" id="tab-btn-diff" class="flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 text-gray-400 hover:text-white hover:bg-surface-subtle">
-        <i class="fa-solid fa-code-compare"></i>
-        <span>3. Visual Diff & Rollback</span>
-      </button>
-      <button onclick="switchTab('eval')" id="tab-btn-eval" class="flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 text-gray-400 hover:text-white hover:bg-surface-subtle">
-        <i class="fa-solid fa-bullseye"></i>
-        <span>4. Benchmark Evaluation</span>
-      </button>
-      <button onclick="switchTab('deploy')" id="tab-btn-deploy" class="flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 text-gray-400 hover:text-white hover:bg-surface-subtle">
-        <i class="fa-solid fa-server"></i>
-        <span>5. Cloud Deployment</span>
-      </button>
-    </div>
-
     <!-- ============================================================ -->
-    <!-- TAB 1: INGESTION, DATA HEALTH & PROFILING                      -->
+    <!-- STEP 1: UPLOAD & PROFILE                                     -->
     <!-- ============================================================ -->
-    <section id="tab-profile" class="space-y-6">
+    <section id="step-1" class="space-y-6">
       
-      <!-- Preset Showcase Cards (1-Click Sample Loading) -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center space-x-2">
-            <i class="fa-solid fa-layer-group text-indigo-400"></i>
-            <span>Quick Start with Sample Datasets</span>
-          </h2>
-          <span class="text-xs text-gray-500">Click any card to instantly profile and test</span>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5" id="preset-cards-grid">
-          <!-- Card 1: Messy Employee -->
-          <div onclick="selectPresetDataset('data/Messy_Employee_dataset.csv')" class="glass-card p-4 rounded-xl cursor-pointer group hover:border-indigo-500/40 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-              <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-sm mb-3">
-                <i class="fa-solid fa-users"></i>
-              </div>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-subtle text-gray-400">1,020 Rows</span>
-            </div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-indigo-300 transition">Messy Employees</h3>
-            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2">Missing ages & salaries, inverted phone numbers, messy headers.</p>
-            <div class="mt-3 flex items-center space-x-1.5 text-[10px] text-indigo-400 font-medium">
-              <span>Load Dataset</span>
-              <i class="fa-solid fa-arrow-right text-[8px] transform group-hover:translate-x-1 transition"></i>
-            </div>
-          </div>
-
-          <!-- Card 2: Indian Tech Jobs 2026 -->
-          <div onclick="selectPresetDataset('data/indian_tech_jobs_2026.csv')" class="glass-card p-4 rounded-xl cursor-pointer group hover:border-indigo-500/40 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm mb-3">
-                <i class="fa-solid fa-briefcase"></i>
-              </div>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-subtle text-gray-400">7,500 Rows</span>
-            </div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-emerald-300 transition">Indian Tech Jobs</h3>
-            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2">Unstructured job descriptions, relative date stamps, missing URLs.</p>
-            <div class="mt-3 flex items-center space-x-1.5 text-[10px] text-emerald-400 font-medium">
-              <span>Load Dataset</span>
-              <i class="fa-solid fa-arrow-right text-[8px] transform group-hover:translate-x-1 transition"></i>
-            </div>
-          </div>
-
-          <!-- Card 3: Dirty Sample (Benchmark) -->
-          <div onclick="selectPresetDataset('data/benchmark/dirty_sample.csv')" class="glass-card p-4 rounded-xl cursor-pointer group hover:border-indigo-500/40 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-              <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm mb-3">
-                <i class="fa-solid fa-vial"></i>
-              </div>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-subtle text-gray-400">Benchmark</span>
-            </div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-purple-300 transition">Ground Truth Benchmark</h3>
-            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2">Precision/recall calibrated dirty data paired with clean truth.</p>
-            <div class="mt-3 flex items-center space-x-1.5 text-[10px] text-purple-400 font-medium">
-              <span>Load Dataset</span>
-              <i class="fa-solid fa-arrow-right text-[8px] transform group-hover:translate-x-1 transition"></i>
-            </div>
-          </div>
-
-          <!-- Card 4: OTT Viewer Dropoff -->
-          <div onclick="selectPresetDataset('data/ott_viewer_dropoff_dataset.csv')" class="glass-card p-4 rounded-xl cursor-pointer group hover:border-indigo-500/40 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-              <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm mb-3">
-                <i class="fa-solid fa-tv"></i>
-              </div>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-subtle text-gray-400">Dropoff Stats</span>
-            </div>
-            <h3 class="text-sm font-semibold text-white group-hover:text-amber-300 transition">OTT Viewer Dropoff</h3>
-            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2">Streaming session metrics, categorical ratings, null viewing durations.</p>
-            <div class="mt-3 flex items-center space-x-1.5 text-[10px] text-amber-400 font-medium">
-              <span>Load Dataset</span>
-              <i class="fa-solid fa-arrow-right text-[8px] transform group-hover:translate-x-1 transition"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ingestion & Upload Section -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Dataset Picker & File Upload -->
-        <div class="glass p-5 rounded-2xl lg:col-span-2 space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-bold text-white flex items-center space-x-2">
-              <i class="fa-solid fa-folder-open text-indigo-400"></i>
-              <span>Select or Upload CSV</span>
-            </h2>
-            <span class="text-xs text-gray-400">All local CSVs auto-discovered</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <!-- Top Ingestion Bar -->
+      <div class="bg-surface-card rounded-xl border border-surface-border p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          
+          <!-- File Ingestion Dropzone & Selector -->
+          <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            
+            <!-- Quick Preset Dropdown -->
             <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1.5">Discovered Datasets</label>
-              <select id="dataset-select" class="w-full px-3 py-2.5 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500 transition">
+              <label class="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-1.5">Load Dataset</label>
+              <select id="dataset-select" onchange="onDatasetDropdownChange(this.value)" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
                 <option value="">Select a dataset...</option>
               </select>
             </div>
 
+            <!-- Upload Custom File -->
             <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1.5">Or Upload Custom CSV</label>
+              <label class="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-1.5">Or Upload CSV File</label>
               <div class="relative">
-                <input type="file" id="file-upload" accept=".csv" class="hidden" onchange="handleFileSelected(this)">
-                <label for="file-upload" id="file-upload-label" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-dashed border-gray-600 hover:border-indigo-500 cursor-pointer flex items-center justify-center space-x-2 text-xs text-gray-300 transition">
-                  <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i>
-                  <span id="file-upload-text">Drag & drop or choose CSV</span>
+                <input type="file" id="file-upload" accept=".csv" class="hidden" onchange="handleFileUpload(this)">
+                <label for="file-upload" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-dashed border-zinc-700 hover:border-zinc-500 cursor-pointer flex items-center justify-between text-xs text-zinc-300 transition">
+                  <span id="file-upload-name" class="truncate">Choose local CSV file...</span>
+                  <span class="text-[11px] text-blue-400 font-medium shrink-0 ml-2">Browse</span>
                 </label>
               </div>
             </div>
+
           </div>
 
-          <div class="flex items-center justify-between pt-2">
-            <span class="text-[11px] text-gray-400">
-              <i class="fa-solid fa-circle-info mr-1 text-indigo-400"></i>
-              Local files remain in your workspace. Only zero-leakage tokenized stats are analyzed.
-            </span>
-            <button onclick="profileSelectedDataset()" id="btn-profile" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
-              <span>Profile Dataset</span>
-              <i class="fa-solid fa-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Executive Data Health Scorecard -->
-        <div class="glass p-5 rounded-2xl flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Data Health Score</span>
-            <span id="health-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400">Awaiting Profile</span>
-          </div>
-
-          <div class="py-3 flex items-center justify-center">
-            <div class="relative flex items-center justify-center">
-              <svg class="w-28 h-28 transform -rotate-90">
-                <circle cx="56" cy="56" r="48" stroke="currentColor" stroke-width="8" class="text-gray-800" fill="transparent" />
-                <circle id="health-ring" cx="56" cy="56" r="48" stroke="currentColor" stroke-width="8" class="text-indigo-500 transition-all duration-1000" fill="transparent" stroke-dasharray="301.59" stroke-dashoffset="301.59" stroke-linecap="round" />
+          <!-- Profile Action Button -->
+          <div class="flex items-end">
+            <button onclick="profileCurrentDataset()" id="btn-profile" class="w-full md:w-auto px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center space-x-2 transition shadow-sm">
+              <span id="btn-profile-text">Profile Dataset</span>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
-              <div class="absolute flex flex-col items-center">
-                <span id="health-score-val" class="text-2xl font-extrabold text-white font-mono">-</span>
-                <span class="text-[9px] uppercase tracking-wider text-gray-400">Health Index</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 text-center pt-2 border-t border-surface-border text-xs">
-            <div>
-              <span class="text-[10px] text-gray-400">Completeness</span>
-              <p id="health-completeness" class="font-bold text-gray-200 font-mono">-</p>
-            </div>
-            <div>
-              <span class="text-[10px] text-gray-400">Uniqueness</span>
-              <p id="health-uniqueness" class="font-bold text-gray-200 font-mono">-</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Profile Overview KPI Stats -->
-      <div id="profile-stats-card" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-gray-400 text-xs">
-            <span>Total Rows</span>
-            <i class="fa-solid fa-table-rows text-indigo-400"></i>
-          </div>
-          <p class="text-xl font-extrabold text-white font-mono mt-1" id="stat-rows">-</p>
-        </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-gray-400 text-xs">
-            <span>Columns</span>
-            <i class="fa-solid fa-table-columns text-cyan-400"></i>
-          </div>
-          <p class="text-xl font-extrabold text-white font-mono mt-1" id="stat-cols">-</p>
-        </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-gray-400 text-xs">
-            <span>Duplicate Rows</span>
-            <i class="fa-solid fa-clone text-amber-400"></i>
-          </div>
-          <p class="text-xl font-extrabold text-amber-400 font-mono mt-1" id="stat-dups">-</p>
-        </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-gray-400 text-xs">
-            <span>Missing Cells</span>
-            <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
-          </div>
-          <p class="text-xl font-extrabold text-rose-400 font-mono mt-1" id="stat-missing">-</p>
-        </div>
-      </div>
-
-      <!-- Charts Row: Missing Values Breakdown & Semantic Types -->
-      <div id="profile-charts-card" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="glass p-5 rounded-2xl lg:col-span-2 space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-300 flex items-center space-x-2">
-              <i class="fa-solid fa-chart-column text-indigo-400"></i>
-              <span>Missing Values by Column</span>
-            </h3>
-            <span class="text-[11px] text-gray-400">Null Rate %</span>
-          </div>
-          <div class="h-56">
-            <canvas id="chart-missing-cols"></canvas>
-          </div>
-        </div>
-
-        <div class="glass p-5 rounded-2xl space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-300 flex items-center space-x-2">
-              <i class="fa-solid fa-chart-pie text-cyan-400"></i>
-              <span>Data Types Composition</span>
-            </h3>
-          </div>
-          <div class="h-56 flex items-center justify-center">
-            <canvas id="chart-dtypes"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Data Preview Grid (Sticky Header + Search) -->
-      <div id="data-preview-card" class="hidden glass p-5 rounded-2xl space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-              <i class="fa-solid fa-table text-indigo-400"></i>
-              <span>Dataset Preview (First 15 Rows)</span>
-            </h3>
-            <p class="text-xs text-gray-400 mt-0.5">Click any column header to view detailed distributions and statistics.</p>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <div class="relative">
-              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-gray-400"></i>
-              <input type="text" id="preview-search" placeholder="Filter rows..." onkeyup="filterPreviewTable()" class="pl-8 pr-3 py-1.5 rounded-lg bg-surface-subtle border border-surface-border text-xs text-white focus:outline-none focus:border-indigo-500 w-48">
-            </div>
-            <button onclick="switchTab('plan')" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition">
-              <span>Proceed to AI Plan</span>
-              <i class="fa-solid fa-arrow-right text-[10px]"></i>
             </button>
           </div>
-        </div>
 
-        <div class="overflow-x-auto max-h-[420px] overflow-y-auto rounded-xl border border-surface-border">
-          <table class="w-full text-left text-xs text-gray-300 border-collapse" id="preview-table">
-            <thead class="sticky top-0 bg-surface-card text-gray-300 text-[11px] border-b border-surface-border select-none" id="preview-table-header"></thead>
-            <tbody id="preview-table-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
-          </table>
         </div>
       </div>
 
-      <!-- Column Deep-Dive Cards Grid -->
-      <div id="columns-deepdive-card" class="hidden space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-300 flex items-center space-x-2">
-            <i class="fa-solid fa-sliders text-indigo-400"></i>
-            <span>Column Schema & Semantic Classification</span>
-          </h3>
-          <span class="text-[11px] text-gray-400">Click any card for top value frequencies</span>
+      <!-- Initial Empty State (Visible before any dataset is loaded) -->
+      <div id="step-1-empty-state" class="border border-dashed border-zinc-800 rounded-xl p-12 text-center space-y-3">
+        <svg class="w-10 h-10 mx-auto text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <div class="space-y-1">
+          <h3 class="text-sm font-medium text-zinc-300">No Dataset Selected</h3>
+          <p class="text-xs text-zinc-500 max-w-sm mx-auto">Select a sample dataset from the dropdown above or upload a CSV file to inspect data distributions, missing values, and anomalies.</p>
         </div>
-        <div id="columns-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5"></div>
+      </div>
+
+      <!-- Profile View Container (Appears after profiling) -->
+      <div id="step-1-results" class="hidden space-y-6">
+        
+        <!-- Dataset Overview Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+            <span class="text-[11px] font-medium text-zinc-400">Total Rows</span>
+            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-rows">-</p>
+          </div>
+          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+            <span class="text-[11px] font-medium text-zinc-400">Columns</span>
+            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-cols">-</p>
+          </div>
+          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+            <span class="text-[11px] font-medium text-zinc-400">Duplicate Rows</span>
+            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-dups">-</p>
+          </div>
+          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+            <span class="text-[11px] font-medium text-zinc-400">Missing Values</span>
+            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-missing">-</p>
+          </div>
+        </div>
+
+        <!-- Data Quality Findings Panel -->
+        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Data Quality Summary</h3>
+            <span id="issues-detected-badge" class="text-[11px] px-2 py-0.5 rounded font-mono"></span>
+          </div>
+          <div id="quality-findings-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
+        </div>
+
+        <!-- Dataset Preview Table with Row Filter -->
+        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Dataset Preview (First 15 Rows)</h3>
+              <p class="text-[11px] text-zinc-500 mt-0.5">Click any column header to view distribution stats, top values, and numeric bounds.</p>
+            </div>
+
+            <!-- Instant Search Input -->
+            <div class="relative w-full sm:w-64">
+              <input type="text" id="preview-search" placeholder="Filter rows in preview..." onkeyup="filterPreviewTable()" class="w-full pl-3 pr-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto max-h-[440px] overflow-y-auto rounded-lg border border-surface-border">
+            <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="preview-table">
+              <thead class="sticky top-0 bg-surface-elevated text-zinc-300 text-[11px] border-b border-surface-border select-none" id="preview-table-header"></thead>
+              <tbody id="preview-table-body" class="divide-y divide-surface-border font-mono"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bottom CTA to Step 2 -->
+        <div class="flex justify-end pt-2">
+          <button onclick="goToStep(2); generatePlanIfNeeded();" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+            <span>Continue to Review & Clean</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
       </div>
 
     </section>
 
     <!-- ============================================================ -->
-    <!-- TAB 2: AI CLEANING STUDIO & GUARDRAIL APPROVALS              -->
+    <!-- STEP 2: REVIEW & CLEAN                                       -->
     <!-- ============================================================ -->
-    <section id="tab-plan" class="hidden space-y-6">
+    <section id="step-2" class="hidden space-y-6">
       
-      <!-- LLM Provider & Execution Toolbar -->
-      <div class="glass p-5 rounded-2xl space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <!-- Top Status Banner -->
+      <div class="bg-surface-card rounded-xl border border-surface-border p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 class="text-sm font-bold text-white flex items-center space-x-2">
-              <i class="fa-solid fa-brain text-purple-400"></i>
-              <span>AI Provider Configuration</span>
-            </h2>
-            <p class="text-xs text-gray-400">Choose between cloud LLMs or local air-gapped models. No raw row values leave your machine.</p>
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <button onclick="openModal('modal-custom-action')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-subtle border border-surface-border text-gray-200 hover:bg-gray-700 transition flex items-center space-x-1.5">
-              <i class="fa-solid fa-plus text-indigo-400"></i>
-              <span>Add Custom Rule</span>
-            </button>
-            <button onclick="generatePlan()" id="btn-generate-plan" class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30">
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-              <span>Generate AI Cleaning Plan</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Provider Engine</label>
-            <select id="provider-select" onchange="updateProviderDefaults()" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-              <option value="gemini" selected>Google Gemini (Free-tier Flash)</option>
-              <option value="openai">OpenAI / Groq / vLLM</option>
-              <option value="anthropic">Anthropic Claude</option>
-              <option value="ollama">Ollama (Offline Local)</option>
-              <option value="mock">Deterministic Mock (Rule-based)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Model Name</label>
-            <input type="text" id="model-input" value="gemini-2.5-flash" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">API Key (Optional override)</label>
-            <input type="password" id="api-key-input" placeholder="Inherited from .env" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Base URL (Local/Custom)</label>
-            <input type="text" id="base-url-input" placeholder="e.g. http://localhost:11434" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-          </div>
-        </div>
-      </div>
-
-      <!-- Plan Loading Skeleton -->
-      <div id="plan-loading" class="hidden glass p-8 rounded-2xl text-center space-y-4">
-        <div class="inline-block animate-spin text-3xl text-indigo-400">
-          <i class="fa-solid fa-circle-notch"></i>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-white">Synthesizing AI Cleaning Recipe...</h3>
-          <p class="text-xs text-gray-400 mt-1">Analyzing tokenized schema distributions & verifying safety guardrails.</p>
-        </div>
-      </div>
-
-      <!-- Plan Review & One-Click Studio -->
-      <div id="plan-results" class="hidden space-y-5">
-        
-        <!-- Summary & Actions Toolbar -->
-        <div class="glass p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-l-indigo-500">
-          <div class="space-y-1">
-            <div class="flex items-center space-x-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Synthesized Cleaning Plan</span>
-              <span id="plan-provider-badge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"></span>
-            </div>
-            <p id="plan-summary-text" class="text-xs text-gray-300 leading-relaxed max-w-3xl"></p>
+            <h2 class="text-sm font-semibold text-white">Review Cleaning Recommendations</h2>
+            <p class="text-xs text-zinc-400 mt-0.5">The AI planning engine proposed the operations below based on dataset metadata. Select which operations to apply.</p>
           </div>
 
           <div class="flex items-center space-x-2 shrink-0">
-            <button onclick="toggleAllActions(true)" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-subtle text-gray-300 hover:text-white transition">
+            <button onclick="toggleAllActions(true)" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition">
               Select All
             </button>
-            <button onclick="toggleAllActions(false)" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-subtle text-gray-300 hover:text-white transition">
+            <button onclick="toggleAllActions(false)" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition">
               Deselect All
             </button>
-            <button onclick="executeApprovedPlan()" id="btn-execute-plan" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-emerald-600/30">
-              <i class="fa-solid fa-bolt"></i>
-              <span>Execute Approved Plan</span>
+            <button onclick="generateCleaningPlan()" id="btn-replan" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition flex items-center space-x-1">
+              <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Regenerate</span>
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Action Cards Grid -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center space-x-2">
-              <i class="fa-solid fa-list-check text-indigo-400"></i>
-              <span>Proposed Cleaning Actions (<span id="actions-count">0</span>)</span>
-            </h3>
-            <span class="text-xs text-gray-500">Toggle individual actions before applying</span>
+      <!-- Plan Loading Indicator -->
+      <div id="plan-loading" class="hidden bg-surface-card rounded-xl border border-surface-border p-12 text-center space-y-3">
+        <div class="inline-block animate-spin text-blue-500">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <p class="text-xs text-zinc-400">Analyzing statistical distributions and synthesizing verified cleaning plan...</p>
+      </div>
+
+      <!-- Plan Summary & Actions List -->
+      <div id="plan-content" class="space-y-4">
+        
+        <!-- Summary Box -->
+        <div id="plan-summary-card" class="bg-surface-elevated rounded-lg border border-surface-border p-4 text-xs text-zinc-300 leading-relaxed">
+          <span class="font-medium text-zinc-400 block mb-1 uppercase tracking-wider text-[10px]">Plan Summary</span>
+          <p id="plan-summary-text">-</p>
+        </div>
+
+        <!-- Action Items Table / List -->
+        <div class="bg-surface-card rounded-xl border border-surface-border overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-surface-border flex items-center justify-between text-xs">
+            <span class="font-semibold text-zinc-300 uppercase tracking-wider text-[11px]">Proposed Actions (<span id="actions-count">0</span>)</span>
+            <span class="text-zinc-500 text-[11px]">Validated against local guardrails</span>
           </div>
 
-          <div id="actions-list" class="space-y-3"></div>
+          <div id="actions-list" class="divide-y divide-surface-border"></div>
         </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="flex items-center justify-between pt-2">
+          <button onclick="goToStep(1)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
+            ← Back to Profile
+          </button>
+
+          <button onclick="executeApprovedPlan()" id="btn-execute-clean" class="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+            <span id="btn-execute-clean-text">Execute Approved Actions</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </div>
+
       </div>
 
     </section>
 
     <!-- ============================================================ -->
-    <!-- TAB 3: SIDE-BY-SIDE VISUAL DIFF & TIME-TRAVEL SCRUBBER        -->
+    <!-- STEP 3: RESULTS & EXPORT                                     -->
     <!-- ============================================================ -->
-    <section id="tab-diff" class="hidden space-y-6">
+    <section id="step-3" class="hidden space-y-6">
       
-      <!-- Delta Metrics Overview -->
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-xs text-gray-400">
-            <span>Rows Before ➔ After</span>
-            <i class="fa-solid fa-arrows-split-up-and-left text-indigo-400"></i>
-          </div>
-          <p class="text-lg font-bold text-white font-mono mt-1" id="diff-rows-delta">-</p>
+      <!-- Top Delta Metrics Summary -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+          <span class="text-[11px] font-medium text-zinc-400">Rows Retained</span>
+          <p class="text-lg font-semibold text-white font-mono mt-0.5" id="diff-rows-delta">-</p>
         </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-xs text-gray-400">
-            <span>Modified Cells</span>
-            <i class="fa-solid fa-pen-to-square text-emerald-400"></i>
-          </div>
-          <p class="text-lg font-bold text-emerald-400 font-mono mt-1" id="diff-modified-cells">-</p>
+        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+          <span class="text-[11px] font-medium text-zinc-400">Cells Repaired</span>
+          <p class="text-lg font-semibold text-emerald-400 font-mono mt-0.5" id="diff-modified-cells">-</p>
         </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border">
-          <div class="flex items-center justify-between text-xs text-gray-400">
-            <span>Missing Reduction</span>
-            <i class="fa-solid fa-circle-check text-cyan-400"></i>
-          </div>
-          <p class="text-lg font-bold text-cyan-400 font-mono mt-1" id="diff-missing-delta">-</p>
+        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+          <span class="text-[11px] font-medium text-zinc-400">Missing Values Resolved</span>
+          <p class="text-lg font-semibold text-blue-400 font-mono mt-0.5" id="diff-missing-delta">-</p>
         </div>
-
-        <div class="glass p-4 rounded-xl border border-surface-border flex items-center justify-around gap-2">
-          <button onclick="downloadCleanedCsv()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded-lg text-white transition flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-600/20">
-            <i class="fa-solid fa-download"></i>
-            <span>Cleaned CSV</span>
+        <div class="bg-surface-card p-4 rounded-xl border border-surface-border flex items-center justify-around gap-2">
+          <button onclick="downloadCleanedCsv()" class="flex-1 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition text-center">
+            Cleaned CSV
           </button>
-          <button onclick="downloadReportJson()" class="flex-1 py-2 bg-surface-subtle hover:bg-gray-700 text-xs font-semibold rounded-lg text-gray-200 transition flex items-center justify-center space-x-1.5">
-            <i class="fa-solid fa-file-lines"></i>
-            <span>Audit Log</span>
+          <button onclick="downloadReportJson()" class="flex-1 py-2 rounded bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-zinc-200 text-xs font-medium transition text-center">
+            Audit JSON
           </button>
         </div>
       </div>
 
-      <!-- Time-Travel Checkpoint Scrubber -->
-      <div class="glass p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center space-x-2 overflow-x-auto py-1">
-          <span class="text-xs font-semibold uppercase text-gray-400 shrink-0 mr-1">Checkpoints:</span>
+      <!-- Rollback & Stepwise Undo Engine Controls -->
+      <div class="bg-surface-card rounded-xl border border-surface-border p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center space-x-2 overflow-x-auto py-0.5">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 shrink-0">Checkpoints:</span>
           <div id="checkpoints-timeline" class="flex items-center space-x-1.5 overflow-x-auto"></div>
         </div>
 
         <div class="flex items-center space-x-2 shrink-0">
-          <button onclick="undoStep()" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold rounded-lg border border-amber-500/30 transition flex items-center space-x-1.5">
-            <i class="fa-solid fa-rotate-left"></i>
+          <button onclick="undoStep()" class="px-2.5 py-1.5 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-200 text-xs font-medium border border-surface-border transition flex items-center space-x-1.5" title="Undo previous step (Ctrl+Z)">
             <span>Undo Step</span>
           </button>
-          <button onclick="redoStep()" class="px-3.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-semibold rounded-lg border border-indigo-500/30 transition flex items-center space-x-1.5">
-            <i class="fa-solid fa-rotate-right"></i>
+          <button onclick="redoStep()" class="px-2.5 py-1.5 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-200 text-xs font-medium border border-surface-border transition flex items-center space-x-1.5" title="Redo undone step (Ctrl+Y)">
             <span>Redo Step</span>
           </button>
-          <button onclick="rollbackAll()" class="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold rounded-lg border border-rose-500/30 transition flex items-center space-x-1.5">
-            <i class="fa-solid fa-backward-fast"></i>
+          <button onclick="rollbackAll()" class="px-2.5 py-1.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium border border-rose-500/30 transition flex items-center space-x-1.5" title="Rollback all changes to original state">
             <span>Rollback All</span>
           </button>
         </div>
       </div>
 
-      <!-- Side-by-Side Diff Table with Live Filter -->
-      <div class="glass rounded-2xl p-5 space-y-4">
+      <!-- Side-by-Side Visual Diff Table -->
+      <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-              <i class="fa-solid fa-table-cells text-emerald-400"></i>
-              <span>Side-by-Side Visual Diff (First 100 Rows)</span>
-            </h3>
-            <p class="text-xs text-gray-400 mt-0.5">Green highlighted cells indicate repaired values. Hover cell to view original raw value.</p>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Side-by-Side Visual Diff (First 100 Rows)</h3>
+            <p class="text-[11px] text-zinc-500 mt-0.5">Modified values highlighted in green. Hover over any cell to see original pre-cleaned value.</p>
           </div>
 
-          <div class="flex items-center space-x-2">
-            <button onclick="toggleDiffFilter()" id="btn-diff-filter" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-subtle text-gray-300 border border-surface-border hover:text-white transition flex items-center space-x-1.5">
-              <i class="fa-solid fa-filter"></i>
+          <div class="flex items-center space-x-2.5">
+            <!-- Filter Changed Only Toggle -->
+            <button onclick="toggleDiffFilter()" id="btn-diff-filter" class="px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition">
               <span id="diff-filter-label">Show Changed Only</span>
             </button>
-            <button onclick="openPythonExportModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition flex items-center space-x-1.5">
-              <i class="fa-brands fa-python"></i>
-              <span>Export Script</span>
+
+            <!-- Export Pandas Script -->
+            <button onclick="openPythonExportModal()" class="px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition">
+              Export Script
             </button>
           </div>
         </div>
 
-        <div class="overflow-x-auto max-h-[520px] overflow-y-auto rounded-xl border border-surface-border">
-          <table class="w-full text-left text-xs text-gray-300 border-collapse" id="diff-table">
-            <thead class="sticky top-0 bg-surface-card text-gray-400 uppercase text-[11px] border-b border-surface-border select-none">
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto rounded-lg border border-surface-border">
+          <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="diff-table">
+            <thead class="sticky top-0 bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border select-none">
               <tr id="diff-table-header"></tr>
             </thead>
-            <tbody id="diff-table-body" class="divide-y divide-gray-800/60 font-mono"></tbody>
+            <tbody id="diff-table-body" class="divide-y divide-surface-border font-mono"></tbody>
           </table>
         </div>
       </div>
 
       <!-- Unresolved Quality Issues Alert (if any remain) -->
-      <div id="unresolved-issues-card" class="hidden glass p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
-        <div class="flex items-center space-x-2 text-amber-300 text-xs font-bold">
-          <i class="fa-solid fa-circle-exclamation"></i>
-          <span>Recorded Unresolved Issues</span>
+      <div id="unresolved-issues-card" class="hidden bg-surface-card rounded-xl border border-amber-500/30 p-4 space-y-2">
+        <div class="flex items-center space-x-2 text-amber-300 text-xs font-semibold">
+          <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Unresolved Quality Observations</span>
         </div>
-        <p class="text-[11px] text-gray-300">The following columns have missing values that could not be safely imputed without inventing synthetic data:</p>
-        <ul id="unresolved-issues-list" class="list-disc list-inside text-xs text-amber-200/90 font-mono"></ul>
+        <p class="text-[11px] text-zinc-400">Certain missing values were preserved rather than guessed, preventing synthetic hallucinations:</p>
+        <ul id="unresolved-issues-list" class="list-disc list-inside text-xs text-amber-200/90 font-mono space-y-0.5"></ul>
       </div>
 
-    </section>
+      <!-- Action Navigation -->
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="goToStep(2)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
+          ← Back to Actions
+        </button>
 
-    <!-- ============================================================ -->
-    <!-- TAB 4: QUALITY BENCHMARK & EVALUATION SCORECARD              -->
-    <!-- ============================================================ -->
-    <section id="tab-eval" class="hidden space-y-6">
-      
-      <div class="glass p-5 rounded-2xl space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 class="text-sm font-bold text-white flex items-center space-x-2">
-              <i class="fa-solid fa-bullseye text-indigo-400"></i>
-              <span>Cleaning Quality Benchmark Scorecard</span>
-            </h2>
-            <p class="text-xs text-gray-400">Score cleaning accuracy, precision, and recall against a known ground-truth dataset.</p>
-          </div>
-
-          <button onclick="runBenchmarkEvaluation()" id="btn-eval" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-purple-600/30">
-            <i class="fa-solid fa-chart-line"></i>
-            <span>Evaluate Quality Scorecard</span>
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Ground Truth Dataset Path</label>
-            <input type="text" id="eval-gt-path" value="data/benchmark/clean_ground_truth.csv" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs font-mono focus:outline-none focus:border-indigo-500">
-          </div>
-          <div class="flex items-end">
-            <button onclick="loadDefaultBenchmarkPair()" class="px-3.5 py-2 rounded-xl bg-surface-subtle hover:bg-gray-700 text-xs font-medium text-gray-300 transition flex items-center space-x-1.5 border border-surface-border">
-              <i class="fa-solid fa-arrows-rotate text-indigo-400"></i>
-              <span>Load Default Benchmark Pair</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Evaluation Scorecard Rings -->
-      <div id="eval-results-card" class="hidden space-y-6">
-        
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <!-- Precision -->
-          <div class="glass p-5 rounded-2xl text-center space-y-2 border border-surface-border">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Precision</span>
-            <p class="text-3xl font-extrabold text-emerald-400 font-mono" id="eval-precision">-</p>
-            <p class="text-[11px] text-gray-400">Cleaned cells that were actual fixes</p>
-          </div>
-
-          <!-- Recall -->
-          <div class="glass p-5 rounded-2xl text-center space-y-2 border border-surface-border">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recall</span>
-            <p class="text-3xl font-extrabold text-indigo-400 font-mono" id="eval-recall">-</p>
-            <p class="text-[11px] text-gray-400">Total errors detected & repaired</p>
-          </div>
-
-          <!-- F1 Score -->
-          <div class="glass p-5 rounded-2xl text-center space-y-2 border border-surface-border">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">F1 Score</span>
-            <p class="text-3xl font-extrabold text-cyan-400 font-mono" id="eval-f1">-</p>
-            <p class="text-[11px] text-gray-400">Harmonic balance of precision & recall</p>
-          </div>
-
-          <!-- Accuracy -->
-          <div class="glass p-5 rounded-2xl text-center space-y-2 border border-surface-border">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cell Accuracy</span>
-            <p class="text-3xl font-extrabold text-purple-400 font-mono" id="eval-accuracy">-</p>
-            <p class="text-[11px] text-gray-400">Overall cell-level match with truth</p>
-          </div>
-        </div>
-
-        <!-- Confusion Matrix Visual -->
-        <div class="glass p-5 rounded-2xl space-y-4">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-300 flex items-center space-x-2">
-            <i class="fa-solid fa-table-cells-large text-indigo-400"></i>
-            <span>Repair Classification Matrix</span>
-          </h3>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-center">
-            <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-              <span class="text-[10px] text-emerald-300 uppercase block">True Positives (TP)</span>
-              <p class="text-2xl font-bold text-emerald-400 mt-1" id="eval-tp">-</p>
-              <span class="text-[10px] text-gray-400">Valid errors fixed</span>
-            </div>
-
-            <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-              <span class="text-[10px] text-blue-300 uppercase block">True Negatives (TN)</span>
-              <p class="text-2xl font-bold text-blue-400 mt-1" id="eval-tn">-</p>
-              <span class="text-[10px] text-gray-400">Clean cells preserved</span>
-            </div>
-
-            <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <span class="text-[10px] text-amber-300 uppercase block">False Positives (FP)</span>
-              <p class="text-2xl font-bold text-amber-400 mt-1" id="eval-fp">-</p>
-              <span class="text-[10px] text-gray-400">Over-cleaned clean cells</span>
-            </div>
-
-            <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
-              <span class="text-[10px] text-rose-300 uppercase block">False Negatives (FN)</span>
-              <p class="text-2xl font-bold text-rose-400 mt-1" id="eval-fn">-</p>
-              <span class="text-[10px] text-gray-400">Unresolved dirty cells</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- TAB 5: DEPLOYMENT & INTEGRATION HUB                          -->
-    <!-- ============================================================ -->
-    <section id="tab-deploy" class="hidden space-y-6">
-      
-      <!-- Deployment Hero -->
-      <div class="glass p-6 rounded-2xl space-y-3 bg-gradient-to-r from-surface-card via-indigo-950/20 to-surface-card border border-indigo-500/20">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-lg">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-white">Production Deployment & Integration Hub</h2>
-            <p class="text-xs text-gray-400">Deploy AI Data Cleaner in 1-click to your cloud provider or run it as a containerized microservice.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cloud Options Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Docker / Docker Compose -->
-        <div class="glass p-5 rounded-2xl space-y-3 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center space-x-3 mb-2">
-              <i class="fa-brands fa-docker text-2xl text-blue-400"></i>
-              <div>
-                <h3 class="text-sm font-bold text-white">Docker & Docker Compose</h3>
-                <span class="text-[11px] text-gray-400">Self-hosted container on any VPS or Kubernetes cluster</span>
-              </div>
-            </div>
-            <p class="text-xs text-gray-300 mt-2">Run the pre-configured production container with persistent volumes for datasets and audit runs.</p>
-            
-            <div class="mt-3 bg-surface-base p-3 rounded-xl border border-surface-border text-xs font-mono text-gray-300 relative group">
-              <pre><code>docker compose up -d --build</code></pre>
-              <button onclick="copySnippet('docker compose up -d --build')" class="absolute top-2.5 right-2.5 text-gray-400 hover:text-white text-xs">
-                <i class="fa-regular fa-copy"></i>
-              </button>
-            </div>
-          </div>
-          
-          <div class="pt-3 border-t border-surface-border flex items-center justify-between text-xs">
-            <span class="text-gray-400">Includes `Dockerfile` & healthcheck</span>
-            <a href="https://docs.docker.com/" target="_blank" class="text-indigo-400 hover:underline">Docker Docs ↗</a>
-          </div>
-        </div>
-
-        <!-- Render.com Blueprint -->
-        <div class="glass p-5 rounded-2xl space-y-3 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center space-x-3 mb-2">
-              <i class="fa-solid fa-layer-group text-2xl text-purple-400"></i>
-              <div>
-                <h3 class="text-sm font-bold text-white">Render.com Blueprint</h3>
-                <span class="text-[11px] text-gray-400">Automated 1-click git deployment with free HTTPS</span>
-              </div>
-            </div>
-            <p class="text-xs text-gray-300 mt-2">Connect your GitHub repository to Render and deploy automatically via the included <code class="text-indigo-300">render.yaml</code>.</p>
-            
-            <div class="mt-3 bg-surface-base p-3 rounded-xl border border-surface-border text-xs font-mono text-gray-300 relative">
-              <pre><code># Connected automatically via render.yaml
-runtime: python
-startCommand: python server.py --host 0.0.0.0 --port $PORT</code></pre>
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-surface-border flex items-center justify-between text-xs">
-            <span class="text-gray-400">Zero-downtime rolling deploys</span>
-            <a href="https://render.com" target="_blank" class="text-purple-400 hover:underline">Open Render ↗</a>
-          </div>
-        </div>
-
-        <!-- Railway.app -->
-        <div class="glass p-5 rounded-2xl space-y-3 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center space-x-3 mb-2">
-              <i class="fa-solid fa-train text-2xl text-rose-400"></i>
-              <div>
-                <h3 class="text-sm font-bold text-white">Railway.app</h3>
-                <span class="text-[11px] text-gray-400">Instant cloud provisioning with custom domain support</span>
-              </div>
-            </div>
-            <p class="text-xs text-gray-300 mt-2">Deploy directly from GitHub with automatic detection of the included <code class="text-rose-300">railway.json</code> configuration.</p>
-            
-            <div class="mt-3 bg-surface-base p-3 rounded-xl border border-surface-border text-xs font-mono text-gray-300 relative">
-              <pre><code>railway up</code></pre>
-              <button onclick="copySnippet('railway up')" class="absolute top-2.5 right-2.5 text-gray-400 hover:text-white text-xs">
-                <i class="fa-regular fa-copy"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-surface-border flex items-center justify-between text-xs">
-            <span class="text-gray-400">Built-in metrics & logging</span>
-            <a href="https://railway.app" target="_blank" class="text-rose-400 hover:underline">Open Railway ↗</a>
-          </div>
-        </div>
-
-        <!-- Hugging Face Spaces -->
-        <div class="glass p-5 rounded-2xl space-y-3 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center space-x-3 mb-2">
-              <i class="fa-solid fa-face-smile text-2xl text-amber-400"></i>
-              <div>
-                <h3 class="text-sm font-bold text-white">Hugging Face Spaces</h3>
-                <span class="text-[11px] text-gray-400">Host for free as a community Docker Space</span>
-              </div>
-            </div>
-            <p class="text-xs text-gray-300 mt-2">Push this repo to a new Hugging Face Docker Space to instantly share the interactive UI with data science teams.</p>
-            
-            <div class="mt-3 bg-surface-base p-3 rounded-xl border border-surface-border text-xs font-mono text-gray-300 relative">
-              <pre><code>git remote add space https://huggingface.co/spaces/YOUR_USER/ai-cleaner
-git push space main</code></pre>
-            </div>
-          </div>
-
-          <div class="pt-3 border-t border-surface-border flex items-center justify-between text-xs">
-            <span class="text-gray-400">Free CPU tier available</span>
-            <a href="https://huggingface.co/spaces" target="_blank" class="text-amber-400 hover:underline">Hugging Face ↗</a>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- REST API Quickstart Guide -->
-      <div class="glass p-5 rounded-2xl space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-            <i class="fa-solid fa-code text-indigo-400"></i>
-            <span>REST API Integration Snippets</span>
-          </h3>
-          <a href="/docs" target="_blank" class="text-xs text-indigo-400 hover:underline flex items-center space-x-1">
-            <span>Explore Swagger Interactive Docs</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-          </a>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Python Integration -->
-          <div class="bg-surface-base p-4 rounded-xl border border-surface-border space-y-2">
-            <span class="text-xs font-bold text-indigo-300 font-mono">Python ETL Integration</span>
-            <pre class="text-[11px] font-mono text-gray-300 overflow-x-auto"><code>import requests
-
-BASE = "http://localhost:8000"
-# 1. Profile
-res = requests.post(f"{BASE}/api/profile", json={"filepath": "data/dirty.csv"}).json()
-session_id = res["session_id"]
-
-# 2. Plan
-plan = requests.post(f"{BASE}/api/plan", json={"session_id": session_id, "provider": "gemini"}).json()
-
-# 3. Clean
-clean = requests.post(f"{BASE}/api/clean", json={
-    "session_id": session_id,
-    "approved_action_ids": list(range(len(plan["actions"])))
-}).json()
-print("Cleaned cells:", clean["diff_summary"]["modified_cells_count"])</code></pre>
-          </div>
-
-          <!-- cURL Integration -->
-          <div class="bg-surface-base p-4 rounded-xl border border-surface-border space-y-2">
-            <span class="text-xs font-bold text-cyan-300 font-mono">cURL Automation</span>
-            <pre class="text-[11px] font-mono text-gray-300 overflow-x-auto"><code># Health check
-curl -X GET http://localhost:8000/api/health
-
-# Trigger profiling
-curl -X POST http://localhost:8000/api/profile \
-  -H "Content-Type: application/json" \
-  -d '{"filepath": "data/Messy_Employee_dataset.csv"}'
-
-# Download cleaned CSV
-curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</code></pre>
-          </div>
-        </div>
+        <button onclick="goToStep(1)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
+          Clean Another Dataset
+        </button>
       </div>
 
     </section>
@@ -965,289 +494,302 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
   </main>
 
   <!-- ============================================================ -->
-  <!-- MODALS                                                       -->
+  <!-- SECONDARY DRAWERS & MODALS (Clean & Non-Intrusive)           -->
   <!-- ============================================================ -->
 
-  <!-- Modal: Zero Data Leakage Architecture -->
-  <div id="modal-privacy" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass max-w-xl w-full p-6 rounded-2xl border border-emerald-500/30 space-y-4 modal-enter">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2.5 text-emerald-400">
-          <i class="fa-solid fa-shield-halved text-xl"></i>
-          <h3 class="text-base font-bold text-white">Zero Raw-Data Leakage Architecture</h3>
+  <!-- DRAWER: Settings & LLM Provider Configuration -->
+  <div id="drawer-settings" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/60 drawer-backdrop" onclick="toggleSettingsDrawer(false)"></div>
+    <!-- Slide-over Panel -->
+    <div class="fixed inset-y-0 right-0 max-w-sm w-full bg-surface-card border-l border-surface-border p-6 shadow-2xl drawer-panel flex flex-col justify-between">
+      <div class="space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+          <h3 class="text-sm font-semibold text-white">Engine Configuration</h3>
+          <button onclick="toggleSettingsDrawer(false)" class="text-zinc-400 hover:text-white text-xs">
+            ✕
+          </button>
         </div>
-        <button onclick="closeModal('modal-privacy')" class="text-gray-400 hover:text-white">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+
+        <div class="space-y-4 text-xs">
+          <div>
+            <label class="block text-zinc-300 font-medium mb-1">Planning Provider</label>
+            <select id="settings-provider" onchange="onProviderChange(this.value)" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
+              <option value="gemini" selected>Google Gemini (Free-tier Flash)</option>
+              <option value="openai">OpenAI / Groq / vLLM</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="ollama">Ollama (Offline Local)</option>
+              <option value="mock">Deterministic Mock (Test Mode)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-zinc-300 font-medium mb-1">Model Name</label>
+            <input type="text" id="settings-model" value="gemini-2.5-flash" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+
+          <div>
+            <label class="block text-zinc-300 font-medium mb-1">API Key (Optional override)</label>
+            <input type="password" id="settings-api-key" placeholder="Defaults to .env variable" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+
+          <div>
+            <label class="block text-zinc-300 font-medium mb-1">Base URL (Local / Custom endpoints)</label>
+            <input type="text" id="settings-base-url" placeholder="e.g. http://localhost:11434" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
+          </div>
+        </div>
       </div>
 
-      <div class="text-xs text-gray-300 space-y-3 leading-relaxed">
-        <p>Enterprise data cleanliness shouldn't require surrendering privacy. AI Data Cleaner isolates raw records from all external LLM network calls:</p>
-        
-        <div class="p-3 rounded-xl bg-surface-card border border-surface-border space-y-2">
-          <div class="flex items-center space-x-2 text-indigo-300 font-semibold">
-            <i class="fa-solid fa-check text-emerald-400"></i>
-            <span>What LLM Providers Receive:</span>
-          </div>
-          <p class="text-gray-400 pl-5">Abstract statistical metadata: Column names, inferred semantic types, missing value percentages, and heuristic error flags.</p>
-        </div>
-
-        <div class="p-3 rounded-xl bg-surface-card border border-surface-border space-y-2">
-          <div class="flex items-center space-x-2 text-rose-300 font-semibold">
-            <i class="fa-solid fa-ban text-rose-400"></i>
-            <span>What Is NEVER Transmitted:</span>
-          </div>
-          <p class="text-gray-400 pl-5">No actual row cell values, no PII (emails, names, phone numbers), no proprietary financial metrics, and no customer identifiers.</p>
-        </div>
-
-        <p class="text-[11px] text-gray-400">
-          Transformations are synthesized as abstract deterministic recipes, which are locally validated through guardrails and executed on your local machine using Pandas.
-        </p>
-      </div>
-
-      <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-privacy')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition">
-          Understood
+      <div class="pt-4 border-t border-surface-border flex justify-end">
+        <button onclick="toggleSettingsDrawer(false)" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition">
+          Save & Close
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Column Detail Drawer -->
-  <div id="modal-col-detail" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass max-w-lg w-full p-6 rounded-2xl border border-indigo-500/30 space-y-4 modal-enter">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2.5">
-          <i class="fa-solid fa-chart-simple text-indigo-400"></i>
-          <h3 class="text-base font-bold text-white font-mono" id="modal-col-name">Column Details</h3>
-        </div>
-        <button onclick="closeModal('modal-col-detail')" class="text-gray-400 hover:text-white">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+  <!-- MODAL: Benchmark Evaluation -->
+  <div id="modal-benchmark" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-surface-card max-w-xl w-full p-6 rounded-xl border border-surface-border space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-semibold text-white">Benchmark Evaluation</h3>
+        <button onclick="closeModal('modal-benchmark')" class="text-zinc-400 hover:text-white text-xs">✕</button>
       </div>
 
       <div class="space-y-4 text-xs">
-        <div class="grid grid-cols-2 gap-3 text-center">
-          <div class="p-3 rounded-xl bg-surface-card border border-surface-border">
-            <span class="text-[10px] text-gray-400">Semantic Classification</span>
-            <p id="modal-col-type" class="font-bold text-indigo-300 mt-0.5 font-mono">-</p>
-          </div>
-          <div class="p-3 rounded-xl bg-surface-card border border-surface-border">
-            <span class="text-[10px] text-gray-400">Missing Rate</span>
-            <p id="modal-col-missing" class="font-bold text-rose-400 mt-0.5 font-mono">-</p>
+        <p class="text-zinc-400 leading-relaxed">Score cleaning accuracy, precision, and recall against a known gold-standard ground truth CSV.</p>
+
+        <div>
+          <label class="block text-zinc-300 font-medium mb-1">Ground Truth Reference Path</label>
+          <div class="flex space-x-2">
+            <input type="text" id="eval-gt-path" value="data/benchmark/clean_ground_truth.csv" class="flex-1 px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 font-mono text-xs focus:outline-none focus:border-blue-500">
+            <button onclick="runBenchmarkEvaluation()" id="btn-eval" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition shrink-0">
+              Run Scorecard
+            </button>
           </div>
         </div>
 
-        <!-- Numeric Stats (if available) -->
-        <div id="modal-col-numeric-stats" class="hidden p-3 rounded-xl bg-surface-card border border-surface-border space-y-2">
-          <span class="text-[11px] font-semibold text-gray-300">Numeric Distribution:</span>
-          <div class="grid grid-cols-4 gap-2 text-center font-mono">
-            <div><span class="text-[9px] text-gray-400 block">Min</span><span id="num-min" class="text-gray-200"></span></div>
-            <div><span class="text-[9px] text-gray-400 block">Max</span><span id="num-max" class="text-gray-200"></span></div>
-            <div><span class="text-[9px] text-gray-400 block">Mean</span><span id="num-mean" class="text-gray-200"></span></div>
-            <div><span class="text-[9px] text-gray-400 block">Median</span><span id="num-median" class="text-indigo-400 font-bold"></span></div>
+        <div id="eval-results-card" class="hidden space-y-3 pt-2">
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+              <span class="text-[10px] text-zinc-400 block uppercase">Precision</span>
+              <span id="eval-precision" class="text-base font-bold text-emerald-400 font-mono mt-0.5 block">-</span>
+            </div>
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+              <span class="text-[10px] text-zinc-400 block uppercase">Recall</span>
+              <span id="eval-recall" class="text-base font-bold text-blue-400 font-mono mt-0.5 block">-</span>
+            </div>
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+              <span class="text-[10px] text-zinc-400 block uppercase">F1 Score</span>
+              <span id="eval-f1" class="text-base font-bold text-zinc-200 font-mono mt-0.5 block">-</span>
+            </div>
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+              <span class="text-[10px] text-zinc-400 block uppercase">Accuracy</span>
+              <span id="eval-accuracy" class="text-base font-bold text-zinc-200 font-mono mt-0.5 block">-</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Top Frequent Values Histogram -->
-        <div class="space-y-2">
-          <span class="text-[11px] font-semibold text-gray-300">Top Value Frequencies:</span>
-          <div id="modal-col-top-values" class="space-y-2 font-mono"></div>
+          <div class="grid grid-cols-4 gap-2 text-center font-mono text-[11px] pt-1">
+            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">TP</span><span id="eval-tp" class="text-emerald-400 font-semibold">-</span></div>
+            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">TN</span><span id="eval-tn" class="text-zinc-300 font-semibold">-</span></div>
+            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">FP</span><span id="eval-fp" class="text-amber-400 font-semibold">-</span></div>
+            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">FN</span><span id="eval-fn" class="text-rose-400 font-semibold">-</span></div>
+          </div>
         </div>
       </div>
 
       <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-col-detail')" class="px-4 py-2 bg-surface-subtle hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold transition">
+        <button onclick="closeModal('modal-benchmark')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
           Close
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Add Custom Action -->
-  <div id="modal-custom-action" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full p-6 rounded-2xl border border-surface-border space-y-4 modal-enter">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-          <i class="fa-solid fa-plus text-indigo-400"></i>
-          <span>Add Custom Cleaning Action</span>
-        </h3>
-        <button onclick="closeModal('modal-custom-action')" class="text-gray-400 hover:text-white">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+  <!-- MODAL: Privacy Architecture -->
+  <div id="modal-privacy" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-surface-card max-w-lg w-full p-6 rounded-xl border border-surface-border space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-semibold text-white">Privacy Architecture</h3>
+        <button onclick="closeModal('modal-privacy')" class="text-zinc-400 hover:text-white text-xs">✕</button>
       </div>
 
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="block text-gray-300 font-semibold mb-1">Target Column</label>
-          <select id="custom-action-column" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500"></select>
+      <div class="space-y-3 text-xs text-zinc-300 leading-relaxed">
+        <p>DataRefine uses a strict separation of concerns between statistical reasoning and data execution:</p>
+        
+        <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-1.5">
+          <span class="font-medium text-emerald-400 block">Transmitted to AI Reasoner:</span>
+          <p class="text-zinc-400 text-[11px]">Only statistical schema metadata: Column names, inferred data types, null counts, and format anomaly flags. <strong>Zero cell values, customer records, or raw rows are ever transmitted.</strong></p>
         </div>
 
-        <div>
-          <label class="block text-gray-300 font-semibold mb-1">Action Type</label>
-          <select id="custom-action-type" onchange="updateCustomActionForm()" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-            <option value="impute_missing">Impute Missing Values</option>
-            <option value="normalize_whitespace">Normalize Whitespace</option>
-            <option value="clean_phone_number">Clean & Standardize Phone Number</option>
-            <option value="convert_to_numeric">Convert to Numeric</option>
-            <option value="remove_duplicates">Remove Duplicate Rows</option>
-            <option value="normalize_column_names">Normalize Column Names (snake_case)</option>
-          </select>
+        <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-1.5">
+          <span class="font-medium text-blue-400 block">Executed Locally:</span>
+          <p class="text-zinc-400 text-[11px]">The AI returns a structured recipe. All actual transformations execute deterministically on your machine using verified Python/Pandas operations.</p>
         </div>
-
-        <div id="custom-param-method-wrap">
-          <label class="block text-gray-300 font-semibold mb-1">Imputation Method</label>
-          <select id="custom-param-method" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-            <option value="median">Median (Numeric columns)</option>
-            <option value="mean">Mean (Numeric columns)</option>
-            <option value="mode">Mode (Most frequent value)</option>
-            <option value="constant">Constant literal</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-gray-300 font-semibold mb-1">Reasoning / Notes</label>
-          <input type="text" id="custom-action-reason" placeholder="e.g. Standardize user contacts" class="w-full px-3 py-2 rounded-xl bg-surface-card border border-surface-border text-gray-200 text-xs focus:outline-none focus:border-indigo-500">
-        </div>
-      </div>
-
-      <div class="pt-3 border-t border-surface-border flex justify-end space-x-2">
-        <button onclick="closeModal('modal-custom-action')" class="px-3.5 py-2 bg-surface-subtle hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold transition">
-          Cancel
-        </button>
-        <button onclick="submitCustomAction()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">
-          Add Action
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Python Script Export -->
-  <div id="modal-python-export" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass max-w-2xl w-full p-6 rounded-2xl border border-indigo-500/30 space-y-4 modal-enter">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 text-indigo-400">
-          <i class="fa-brands fa-python text-xl"></i>
-          <h3 class="text-base font-bold text-white">Standalone Pandas Pipeline Script</h3>
-        </div>
-        <button onclick="closeModal('modal-python-export')" class="text-gray-400 hover:text-white">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <p class="text-xs text-gray-300">Run the exact approved transformations in any Python ETL pipeline without dependencies on FastAPI or LLM APIs:</p>
-
-      <div class="bg-surface-base p-4 rounded-xl border border-surface-border relative">
-        <pre class="text-xs font-mono text-emerald-400 overflow-x-auto max-h-72"><code id="python-script-code"></code></pre>
-        <button onclick="copyPythonScript()" class="absolute top-3 right-3 px-3 py-1 bg-surface-card hover:bg-surface-subtle text-xs text-gray-200 rounded-lg border border-surface-border flex items-center space-x-1.5 transition">
-          <i class="fa-regular fa-copy"></i>
-          <span>Copy Script</span>
-        </button>
       </div>
 
       <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-python-export')" class="px-4 py-2 bg-surface-subtle hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold transition">
+        <button onclick="closeModal('modal-privacy')" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition">
           Done
         </button>
       </div>
     </div>
   </div>
 
-  <!-- APPLICATION LOGIC (Clean, Modern, Robust) -->
+  <!-- MODAL: Column Detail Drawer -->
+  <div id="modal-col-detail" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-surface-card max-w-md w-full p-6 rounded-xl border border-surface-border space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-semibold text-white font-mono" id="modal-col-name">Column Details</h3>
+        <button onclick="closeModal('modal-col-detail')" class="text-zinc-400 hover:text-white text-xs">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="grid grid-cols-2 gap-2 text-center font-mono">
+          <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+            <span class="text-[10px] text-zinc-400 block uppercase">Inferred Type</span>
+            <span id="modal-col-type" class="font-semibold text-zinc-200 mt-0.5 block">-</span>
+          </div>
+          <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
+            <span class="text-[10px] text-zinc-400 block uppercase">Missing Rate</span>
+            <span id="modal-col-missing" class="font-semibold text-rose-400 mt-0.5 block">-</span>
+          </div>
+        </div>
+
+        <!-- Numeric stats if available -->
+        <div id="modal-col-numeric-stats" class="hidden p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-2">
+          <span class="text-[10px] font-medium uppercase tracking-wider text-zinc-400 block">Numeric Bounds</span>
+          <div class="grid grid-cols-4 gap-1 text-center font-mono text-xs">
+            <div><span class="text-[9px] text-zinc-500 block">Min</span><span id="num-min" class="text-zinc-200"></span></div>
+            <div><span class="text-[9px] text-zinc-500 block">Max</span><span id="num-max" class="text-zinc-200"></span></div>
+            <div><span class="text-[9px] text-zinc-500 block">Mean</span><span id="num-mean" class="text-zinc-200"></span></div>
+            <div><span class="text-[9px] text-zinc-500 block">Median</span><span id="num-median" class="text-blue-400 font-semibold"></span></div>
+          </div>
+        </div>
+
+        <!-- Top Frequent Values -->
+        <div class="space-y-2">
+          <span class="text-[10px] font-medium uppercase tracking-wider text-zinc-400 block">Top Values</span>
+          <div id="modal-col-top-values" class="space-y-1.5 font-mono text-[11px]"></div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-surface-border flex justify-end">
+        <button onclick="closeModal('modal-col-detail')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Export Python Script -->
+  <div id="modal-python-export" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
+    <div class="bg-surface-card max-w-2xl w-full p-6 rounded-xl border border-surface-border space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-semibold text-white">Standalone Pandas Pipeline Script</h3>
+        <button onclick="closeModal('modal-python-export')" class="text-zinc-400 hover:text-white text-xs">✕</button>
+      </div>
+
+      <p class="text-xs text-zinc-400">Run this script in automated ETL pipelines without dependencies on the web server or LLMs:</p>
+
+      <div class="bg-surface-base p-4 rounded-lg border border-surface-border relative">
+        <pre class="text-xs font-mono text-zinc-300 overflow-x-auto max-h-72"><code id="python-script-code"></code></pre>
+        <button onclick="copyPythonScript()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-xs text-zinc-200 transition">
+          Copy
+        </button>
+      </div>
+
+      <div class="pt-2 border-t border-surface-border flex justify-end">
+        <button onclick="closeModal('modal-python-export')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION CORE -->
   <script>
     // State
+    let currentStep = 1;
     let currentSessionId = null;
     let currentFilePath = null;
     let currentColumns = [];
     let currentPlan = null;
     let currentDiffData = null;
     let showChangedDiffOnly = false;
-    let chartMissingInstance = null;
-    let chartDtypesInstance = null;
 
-    // Toast
+    // Toast Notification
     function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
-      toast.className = `fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 text-xs font-semibold flex items-center space-x-3 pointer-events-auto border ${
+      toast.className = `fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium transition-all duration-200 flex items-center space-x-2 border ${
         isError 
           ? 'bg-rose-950 text-rose-200 border-rose-800' 
-          : 'bg-emerald-950 text-emerald-200 border-emerald-800'
+          : 'bg-zinc-900 text-zinc-100 border-zinc-700'
       }`;
-      toast.innerHTML = `
-        <i class="fa-solid ${isError ? 'fa-circle-xmark text-rose-400' : 'fa-circle-check text-emerald-400'} text-base"></i>
-        <span>${message}</span>
-      `;
+      toast.textContent = message;
       toast.style.transform = 'translateY(0)';
       toast.style.opacity = '1';
 
       setTimeout(() => {
-        toast.style.transform = 'translateY(-100px)';
+        toast.style.transform = 'translateY(-50px)';
         toast.style.opacity = '0';
-      }, 4000);
+      }, 3500);
     }
 
     // Modal Helpers
     function openModal(id) {
-      const m = document.getElementById(id);
-      if (m) m.classList.remove('hidden');
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden');
     }
     function closeModal(id) {
-      const m = document.getElementById(id);
-      if (m) m.classList.add('hidden');
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
     }
 
-    // Tab Navigation
-    function switchTab(tabId) {
-      const tabs = ['profile', 'plan', 'diff', 'eval', 'deploy'];
-      tabs.forEach(t => {
-        const sec = document.getElementById(`tab-${t}`);
-        const btn = document.getElementById(`tab-btn-${t}`);
-        if (sec) sec.classList.toggle('hidden', t !== tabId);
+    // Drawer Helpers
+    function toggleSettingsDrawer(show) {
+      const drawer = document.getElementById('drawer-settings');
+      if (show) drawer.classList.remove('hidden');
+      else drawer.classList.add('hidden');
+    }
+
+    // Workflow Step Navigation
+    function goToStep(step) {
+      if (step === 2 && !currentSessionId) {
+        showToast('Please select and profile a dataset first.', true);
+        return;
+      }
+      if (step === 3 && !currentDiffData) {
+        showToast('Please execute cleaning actions first.', true);
+        return;
+      }
+
+      currentStep = step;
+      [1, 2, 3].forEach(s => {
+        const sec = document.getElementById(`step-${s}`);
+        const btn = document.getElementById(`step-btn-${s}`);
+        if (sec) sec.classList.toggle('hidden', s !== step);
         if (btn) {
-          if (t === tabId) {
-            btn.className = 'flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
+          if (s === step) {
+            btn.className = 'flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-white bg-surface-elevated border border-surface-border';
           } else {
-            btn.className = 'flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2 text-gray-400 hover:text-white hover:bg-surface-subtle';
+            btn.className = 'flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card';
           }
         }
       });
     }
 
-    // Copy snippet helper
-    function copySnippet(text) {
-      navigator.clipboard.writeText(text);
-      showToast('Copied to clipboard!');
-    }
-    function copySessionId() {
-      if (currentSessionId) {
-        navigator.clipboard.writeText(currentSessionId);
-        showToast('Session ID copied!');
-      }
-    }
-
-    // Provider Defaults
-    function updateProviderDefaults() {
-      const p = document.getElementById('provider-select').value;
-      const m = document.getElementById('model-input');
-      const b = document.getElementById('base-url-input');
-      if (p === 'gemini') { m.value = 'gemini-2.5-flash'; b.placeholder = ''; }
-      else if (p === 'openai') { m.value = 'gpt-4o-mini'; b.placeholder = 'https://api.openai.com/v1 (or Groq/vLLM)'; }
-      else if (p === 'anthropic') { m.value = 'claude-3-5-haiku-20241022'; b.placeholder = ''; }
-      else if (p === 'ollama') { m.value = 'llama3'; b.value = 'http://localhost:11434'; }
-      else if (p === 'mock') { m.value = 'mock-planner'; }
-    }
-
-    // Initialize Discovered Datasets
+    // Load Available Datasets
     async function loadDiscoveredDatasets() {
       try {
         const res = await fetch('/api/datasets');
         const data = await res.json();
         const sel = document.getElementById('dataset-select');
-        sel.innerHTML = '<option value="">Select a discovered dataset...</option>';
+        sel.innerHTML = '<option value="">Select a dataset...</option>';
         (data.datasets || []).forEach(d => {
           const opt = document.createElement('option');
           opt.value = d.path;
-          opt.textContent = `${d.name} (${d.size_kb} KB)${d.is_benchmark ? ' [Benchmark]' : ''}`;
+          opt.textContent = `${d.name} (${d.size_kb} KB)`;
           sel.appendChild(opt);
         });
       } catch (err) {
@@ -1255,21 +797,22 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       }
     }
 
-    // 1-Click Preset Selector
-    function selectPresetDataset(path) {
-      const sel = document.getElementById('dataset-select');
-      sel.value = path;
-      profileSelectedDataset();
+    function onDatasetDropdownChange(val) {
+      if (val) {
+        currentFilePath = val;
+        document.getElementById('file-upload-name').textContent = val.split('/').pop().split('\\').pop();
+      }
     }
 
-    function handleFileSelected(input) {
+    function handleFileUpload(input) {
       if (input.files.length > 0) {
-        document.getElementById('file-upload-text').textContent = input.files[0].name;
+        document.getElementById('file-upload-name').textContent = input.files[0].name;
+        document.getElementById('dataset-select').value = '';
       }
     }
 
     // Profiling Engine
-    async function profileSelectedDataset() {
+    async function profileCurrentDataset() {
       const fileInput = document.getElementById('file-upload');
       let filepath = document.getElementById('dataset-select').value;
 
@@ -1286,13 +829,14 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       }
 
       if (!filepath) {
-        showToast('Please select or upload a CSV dataset.', true);
+        showToast('Please select a dataset or upload a CSV file.', true);
         return;
       }
 
       currentFilePath = filepath;
       const btn = document.getElementById('btn-profile');
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i><span>Profiling...</span>';
+      const btnText = document.getElementById('btn-profile-text');
+      btnText.textContent = 'Profiling...';
       btn.disabled = true;
 
       try {
@@ -1307,7 +851,7 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
         currentSessionId = data.session_id;
         currentColumns = data.columns || [];
 
-        // Update badges
+        // Update Session Badge
         document.getElementById('current-session-id').textContent = currentSessionId.slice(0, 8);
         document.getElementById('session-badge').classList.remove('hidden');
         document.getElementById('session-badge').classList.add('flex');
@@ -1317,136 +861,82 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
         document.getElementById('stat-cols').textContent = data.summary.columns;
         document.getElementById('stat-dups').textContent = data.summary.duplicate_rows;
         document.getElementById('stat-missing').textContent = data.summary.total_missing_cells.toLocaleString();
-        document.getElementById('profile-stats-card').classList.remove('hidden');
 
-        // Calculate Data Health Score
-        calculateAndRenderHealthScore(data.summary, currentColumns);
+        // Render Data Quality Findings
+        renderQualityFindings(data.summary, currentColumns);
 
-        // Render Charts
-        renderProfileCharts(currentColumns);
-        document.getElementById('profile-charts-card').classList.remove('hidden');
+        // Render Preview Table
+        renderPreviewTable(data.preview_rows, currentColumns);
 
-        // Render Data Preview
-        renderDataPreviewTable(data.preview_rows, currentColumns);
-        document.getElementById('data-preview-card').classList.remove('hidden');
+        // Display results container
+        document.getElementById('step-1-empty-state').classList.add('hidden');
+        document.getElementById('step-1-results').classList.remove('hidden');
 
-        // Render Column Deep Dive Cards
-        renderColumnsGrid(currentColumns);
-        document.getElementById('columns-deepdive-card').classList.remove('hidden');
-
-        // Populate Custom Action Column Select
-        populateCustomActionColumns(currentColumns);
-
-        showToast('Dataset profiled successfully!');
+        showToast('Dataset profiled successfully.');
       } catch (err) {
         showToast(err.message, true);
       } finally {
-        btn.innerHTML = '<span>Profile Dataset</span><i class="fa-solid fa-arrow-right"></i>';
+        btnText.textContent = 'Profile Dataset';
         btn.disabled = false;
       }
     }
 
-    function calculateAndRenderHealthScore(summary, cols) {
-      const totalCells = summary.rows * summary.columns;
-      const completeness = totalCells > 0 ? (1 - (summary.total_missing_cells / totalCells)) * 100 : 100;
-      const uniqueness = summary.rows > 0 ? (1 - (summary.duplicate_rows / summary.rows)) * 100 : 100;
-      const healthScore = Math.max(0, Math.min(100, Math.round((completeness * 0.6) + (uniqueness * 0.4))));
+    function renderQualityFindings(summary, cols) {
+      const list = document.getElementById('quality-findings-list');
+      list.innerHTML = '';
 
-      document.getElementById('health-score-val').textContent = healthScore;
-      document.getElementById('health-completeness').textContent = `${completeness.toFixed(1)}%`;
-      document.getElementById('health-uniqueness').textContent = `${uniqueness.toFixed(1)}%`;
+      let issuesCount = 0;
 
-      const ring = document.getElementById('health-ring');
-      const circumference = 301.59;
-      const offset = circumference - (healthScore / 100 * circumference);
-      ring.style.strokeDashoffset = offset;
+      // 1. Missing values
+      if (summary.total_missing_cells > 0) {
+        issuesCount++;
+        const item = document.createElement('div');
+        item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
+        item.innerHTML = `<strong>Missing Data:</strong> ${summary.total_missing_cells.toLocaleString()} empty cells across columns.`;
+        list.appendChild(item);
+      }
 
-      const badge = document.getElementById('health-badge');
-      if (healthScore >= 90) {
-        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
-        badge.textContent = 'Excellent Health';
-        ring.className.baseVal = 'text-emerald-400 transition-all duration-1000';
-      } else if (healthScore >= 70) {
-        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30';
-        badge.textContent = 'Moderate Health';
-        ring.className.baseVal = 'text-indigo-400 transition-all duration-1000';
+      // 2. Duplicates
+      if (summary.duplicate_rows > 0) {
+        issuesCount++;
+        const item = document.createElement('div');
+        item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
+        item.innerHTML = `<strong>Duplicate Records:</strong> ${summary.duplicate_rows} duplicate rows detected.`;
+        list.appendChild(item);
+      }
+
+      // 3. Format & type inconsistencies
+      cols.forEach(c => {
+        if (c.semantic_hints && c.semantic_hints.length > 0) {
+          issuesCount++;
+          const item = document.createElement('div');
+          item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
+          item.innerHTML = `<strong>${c.name}:</strong> ${c.semantic_hints.join(', ')}`;
+          list.appendChild(item);
+        }
+      });
+
+      const badge = document.getElementById('issues-detected-badge');
+      if (issuesCount > 0) {
+        badge.className = 'text-[11px] px-2 py-0.5 rounded font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        badge.textContent = `${issuesCount} Observations Detected`;
       } else {
-        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30';
-        badge.textContent = 'Needs Cleaning';
-        ring.className.baseVal = 'text-amber-400 transition-all duration-1000';
+        badge.className = 'text-[11px] px-2 py-0.5 rounded font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        badge.textContent = 'No Immediate Anomalies Detected';
       }
     }
 
-    function renderProfileCharts(cols) {
-      // 1. Missing Values Bar Chart
-      const missingLabels = cols.map(c => c.name);
-      const missingData = cols.map(c => c.missing_pct);
-
-      if (chartMissingInstance) chartMissingInstance.destroy();
-      const ctxMissing = document.getElementById('chart-missing-cols').getContext('2d');
-      chartMissingInstance = new Chart(ctxMissing, {
-        type: 'bar',
-        data: {
-          labels: missingLabels,
-          datasets: [{
-            label: 'Missing %',
-            data: missingData,
-            backgroundColor: missingData.map(v => v > 15 ? 'rgba(244, 63, 94, 0.7)' : (v > 0 ? 'rgba(99, 102, 241, 0.7)' : 'rgba(16, 185, 129, 0.4)')),
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '%' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
-          }
-        }
-      });
-
-      // 2. Data Types Composition Donut
-      const typeCounts = {};
-      cols.forEach(c => {
-        const t = c.semantic_type || c.dtype;
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      });
-
-      if (chartDtypesInstance) chartDtypesInstance.destroy();
-      const ctxDtypes = document.getElementById('chart-dtypes').getContext('2d');
-      chartDtypesInstance = new Chart(ctxDtypes, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(typeCounts),
-          datasets: [{
-            data: Object.values(typeCounts),
-            backgroundColor: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } }
-          },
-          cutout: '68%'
-        }
-      });
-    }
-
-    function renderDataPreviewTable(rows, cols) {
+    function renderPreviewTable(rows, cols) {
       const thead = document.getElementById('preview-table-header');
-      thead.innerHTML = '<th class="px-3 py-2 w-10">#</th>';
+      thead.innerHTML = '<th class="px-3 py-2 w-10 text-zinc-500 font-normal">#</th>';
       cols.forEach(col => {
         const th = document.createElement('th');
-        th.className = 'px-3 py-2 whitespace-nowrap cursor-pointer hover:text-indigo-400 transition';
+        th.className = 'px-3 py-2 whitespace-nowrap cursor-pointer hover:text-blue-400 transition font-normal';
         th.onclick = () => openColumnDetailModal(col.name);
         th.innerHTML = `
           <div class="flex items-center space-x-1.5">
-            <span>${col.name}</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded bg-surface-subtle font-mono text-gray-400">${col.dtype}</span>
+            <span class="font-medium text-zinc-200">${col.name}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-surface-card border border-surface-border text-zinc-400 font-mono">${col.dtype}</span>
           </div>
         `;
         thead.appendChild(th);
@@ -1456,15 +946,15 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       tbody.innerHTML = '';
       (rows || []).forEach((row, idx) => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-subtle/50 transition';
-        let rowHtml = `<td class="px-3 py-2 text-gray-500">${idx}</td>`;
+        tr.className = 'hover:bg-surface-elevated/40 transition';
+        let rowHtml = `<td class="px-3 py-2 text-zinc-500">${idx}</td>`;
         cols.forEach(col => {
           const val = row[col.name];
           const isNull = val === null || val === undefined || val === '';
           if (isNull) {
             rowHtml += `<td class="px-3 py-2 text-rose-400/80 italic whitespace-nowrap">null</td>`;
           } else {
-            rowHtml += `<td class="px-3 py-2 text-gray-200 whitespace-nowrap">${val}</td>`;
+            rowHtml += `<td class="px-3 py-2 text-zinc-300 whitespace-nowrap">${val}</td>`;
           }
         });
         tr.innerHTML = rowHtml;
@@ -1473,36 +963,10 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
     }
 
     function filterPreviewTable() {
-      const query = document.getElementById('preview-search').value.toLowerCase();
+      const q = document.getElementById('preview-search').value.toLowerCase();
       const rows = document.querySelectorAll('#preview-table-body tr');
       rows.forEach(r => {
-        const text = r.innerText.toLowerCase();
-        r.style.display = text.includes(query) ? '' : 'none';
-      });
-    }
-
-    function renderColumnsGrid(cols) {
-      const grid = document.getElementById('columns-grid');
-      grid.innerHTML = '';
-      cols.forEach(col => {
-        const card = document.createElement('div');
-        card.className = 'glass-card p-3.5 rounded-xl cursor-pointer hover:border-indigo-500/40 space-y-2';
-        card.onclick = () => openColumnDetailModal(col.name);
-
-        const hasNull = col.missing_count > 0;
-        card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="font-mono font-bold text-xs text-white">${col.name}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded ${hasNull ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400'}">
-              ${hasNull ? `${col.missing_count} nulls (${col.missing_pct}%)` : 'Complete'}
-            </span>
-          </div>
-          <div class="flex items-center justify-between text-[11px] text-gray-400 font-mono">
-            <span>${col.semantic_type || col.dtype}</span>
-            <span>${col.unique_count} unique</span>
-          </div>
-        `;
-        grid.appendChild(card);
+        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
       });
     }
 
@@ -1514,30 +978,25 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       document.getElementById('modal-col-type').textContent = col.semantic_type || col.dtype;
       document.getElementById('modal-col-missing').textContent = `${col.missing_count} (${col.missing_pct}%)`;
 
-      const numStatsCard = document.getElementById('modal-col-numeric-stats');
+      const numCard = document.getElementById('modal-col-numeric-stats');
       if (col.numeric_stats) {
-        numStatsCard.classList.remove('hidden');
+        numCard.classList.remove('hidden');
         document.getElementById('num-min').textContent = col.numeric_stats.min;
         document.getElementById('num-max').textContent = col.numeric_stats.max;
         document.getElementById('num-mean').textContent = col.numeric_stats.mean;
         document.getElementById('num-median').textContent = col.numeric_stats.median;
       } else {
-        numStatsCard.classList.add('hidden');
+        numCard.classList.add('hidden');
       }
 
       const topValuesWrap = document.getElementById('modal-col-top-values');
       topValuesWrap.innerHTML = '';
       (col.top_values || []).forEach(item => {
         const row = document.createElement('div');
-        row.className = 'space-y-1';
+        row.className = 'flex justify-between items-center py-1 border-b border-surface-border text-zinc-300';
         row.innerHTML = `
-          <div class="flex justify-between text-[11px]">
-            <span class="text-gray-300 truncate max-w-[200px]">${item.value}</span>
-            <span class="text-gray-400">${item.count} (${item.percentage}%)</span>
-          </div>
-          <div class="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden">
-            <div class="bg-indigo-500 h-full rounded-full" style="width: ${Math.min(100, item.percentage)}%"></div>
-          </div>
+          <span class="truncate max-w-[240px]">${item.value}</span>
+          <span class="text-zinc-500">${item.count} (${item.percentage}%)</span>
         `;
         topValuesWrap.appendChild(row);
       });
@@ -1545,22 +1004,23 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       openModal('modal-col-detail');
     }
 
-    // AI Planning Engine
-    async function generatePlan() {
-      if (!currentSessionId) {
-        showToast('Please profile a dataset first.', true);
-        return;
+    // STEP 2: AI PLANNING & APPROVAL
+    function generatePlanIfNeeded() {
+      if (!currentPlan) {
+        generateCleaningPlan();
       }
+    }
 
-      const provider = document.getElementById('provider-select').value;
-      const model = document.getElementById('model-input').value;
-      const apiKey = document.getElementById('api-key-input').value;
-      const baseUrl = document.getElementById('base-url-input').value;
+    async function generateCleaningPlan() {
+      if (!currentSessionId) return;
+
+      const provider = document.getElementById('settings-provider').value;
+      const model = document.getElementById('settings-model').value;
+      const apiKey = document.getElementById('settings-api-key').value;
+      const baseUrl = document.getElementById('settings-base-url').value;
 
       document.getElementById('plan-loading').classList.remove('hidden');
-      document.getElementById('plan-results').classList.add('hidden');
-      const btn = document.getElementById('btn-generate-plan');
-      btn.disabled = true;
+      document.getElementById('plan-content').classList.add('hidden');
 
       try {
         const res = await fetch('/api/plan', {
@@ -1579,18 +1039,16 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
 
         currentPlan = data;
         renderPlanView(data);
-        showToast('AI Cleaning Plan generated!');
+        showToast('Cleaning recommendations synthesized.');
       } catch (err) {
         showToast(err.message, true);
       } finally {
-        document.getElementById('plan-loading').classList.remove('hidden');
         document.getElementById('plan-loading').classList.add('hidden');
-        btn.disabled = false;
+        document.getElementById('plan-content').classList.remove('hidden');
       }
     }
 
     function renderPlanView(data) {
-      document.getElementById('plan-provider-badge').textContent = `${data.provider} (${data.model})`;
       document.getElementById('plan-summary-text').textContent = data.summary;
       document.getElementById('actions-count').textContent = data.actions.length;
 
@@ -1599,31 +1057,26 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
 
       data.actions.forEach((act, idx) => {
         const card = document.createElement('div');
-        card.className = 'glass-card p-4 rounded-xl border border-surface-border flex items-start justify-between space-x-4 transition hover:border-indigo-500/30';
-        
-        let riskBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">SAFE FIX</span>';
-        if (act.action.includes('drop')) {
-          riskBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">DATA LOSS RISK</span>';
-        }
+        card.className = 'p-4 hover:bg-surface-elevated/20 transition flex items-start space-x-3.5';
+
+        const isRisk = act.action.includes('drop');
+        const badgeClass = isRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        const badgeLabel = isRisk ? 'Row Drop' : 'Safe Repair';
 
         card.innerHTML = `
-          <div class="flex items-start space-x-3">
-            <input type="checkbox" id="action-chk-${idx}" checked class="mt-1 w-4 h-4 rounded text-indigo-600 bg-surface-subtle border-gray-600 focus:ring-indigo-500">
-            <div class="space-y-1">
-              <div class="flex items-center space-x-2 flex-wrap">
-                <span class="font-mono text-xs font-bold text-white">${act.action}</span>
-                ${act.column ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-subtle text-indigo-300">${act.column}</span>` : ''}
-                ${riskBadge}
-              </div>
-              <p class="text-xs text-gray-300">${act.reasoning}</p>
-              ${Object.keys(act.params || {}).length > 0 ? `<div class="text-[10px] font-mono text-gray-400">Parameters: ${JSON.stringify(act.params)}</div>` : ''}
+          <input type="checkbox" id="action-chk-${idx}" checked class="mt-1 w-4 h-4 rounded text-blue-600 bg-surface-elevated border-zinc-700 focus:ring-blue-500">
+          <div class="space-y-1 flex-1 text-xs">
+            <div class="flex items-center space-x-2 flex-wrap">
+              <span class="font-mono font-semibold text-white">${act.action}</span>
+              ${act.column ? `<span class="px-1.5 py-0.5 rounded bg-surface-elevated text-zinc-300 font-mono text-[10px]">${act.column}</span>` : ''}
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${badgeClass}">${badgeLabel}</span>
             </div>
+            <p class="text-zinc-400 text-xs">${act.reasoning}</p>
+            ${Object.keys(act.params || {}).length > 0 ? `<div class="text-[10px] font-mono text-zinc-500">Params: ${JSON.stringify(act.params)}</div>` : ''}
           </div>
         `;
         list.appendChild(card);
       });
-
-      document.getElementById('plan-results').classList.remove('hidden');
     }
 
     function toggleAllActions(check) {
@@ -1634,69 +1087,24 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       });
     }
 
-    // Custom Action Submissions
-    function populateCustomActionColumns(cols) {
-      const sel = document.getElementById('custom-action-column');
-      sel.innerHTML = '<option value="">All Columns / Global</option>';
-      cols.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        sel.appendChild(opt);
-      });
-    }
-
-    function updateCustomActionForm() {
-      const type = document.getElementById('custom-action-type').value;
-      const methodWrap = document.getElementById('custom-param-method-wrap');
-      methodWrap.style.display = type === 'impute_missing' ? '' : 'none';
-    }
-
-    function submitCustomAction() {
-      if (!currentPlan) {
-        currentPlan = { actions: [], summary: 'Custom user defined cleaning recipe', provider: 'user', model: 'manual' };
-      }
-      const col = document.getElementById('custom-action-column').value;
-      const actionType = document.getElementById('custom-action-type').value;
-      const reason = document.getElementById('custom-action-reason').value || 'Manually added custom action';
-      const params = {};
-
-      if (actionType === 'impute_missing') {
-        params.method = document.getElementById('custom-param-method').value;
-      }
-
-      currentPlan.actions.push({
-        action: actionType,
-        column: col || null,
-        params,
-        reasoning: reason
-      });
-
-      closeModal('modal-custom-action');
-      renderPlanView(currentPlan);
-      showToast('Custom action added to plan!');
-    }
-
-    // Execute Approved Plan
+    // STEP 2 -> STEP 3: EXECUTE APPROVED PLAN
     async function executeApprovedPlan() {
-      if (!currentSessionId || !currentPlan) {
-        showToast('No active plan to execute.', true);
-        return;
-      }
+      if (!currentSessionId || !currentPlan) return;
 
-      const approvedActionIds = [];
+      const approvedIds = [];
       currentPlan.actions.forEach((_, idx) => {
         const chk = document.getElementById(`action-chk-${idx}`);
-        if (chk && chk.checked) approvedActionIds.push(idx);
+        if (chk && chk.checked) approvedIds.push(idx);
       });
 
-      if (approvedActionIds.length === 0) {
-        showToast('Please approve at least one cleaning action.', true);
+      if (approvedIds.length === 0) {
+        showToast('Please select at least one action to execute.', true);
         return;
       }
 
-      const btn = document.getElementById('btn-execute-plan');
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i><span>Executing Plan...</span>';
+      const btn = document.getElementById('btn-execute-clean');
+      const btnText = document.getElementById('btn-execute-clean-text');
+      btnText.textContent = 'Executing...';
       btn.disabled = true;
 
       try {
@@ -1705,68 +1113,68 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             session_id: currentSessionId,
-            approved_action_ids: approvedActionIds
+            approved_action_ids: approvedIds
           })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Cleaning execution failed');
+        if (!res.ok) throw new Error(data.detail || 'Execution failed');
 
         currentDiffData = data;
         renderDiffView(data);
-        switchTab('diff');
-        showToast('Approved cleaning pipeline executed!');
+        goToStep(3);
+        showToast('Approved cleaning operations executed successfully.');
       } catch (err) {
         showToast(err.message, true);
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-bolt"></i><span>Execute Approved Plan</span>';
+        btnText.textContent = 'Execute Approved Actions';
         btn.disabled = false;
       }
     }
 
-    // Diff & Rollback View Rendering
+    // STEP 3: RENDER DIFF & ROLLBACK
     function renderDiffView(data) {
       currentDiffData = data;
-      document.getElementById('diff-rows-delta').textContent = `${data.diff_summary.rows_before} ➔ ${data.diff_summary.rows_after}`;
+      document.getElementById('diff-rows-delta').textContent = `${data.diff_summary.rows_before} → ${data.diff_summary.rows_after}`;
       document.getElementById('diff-modified-cells').textContent = data.diff_summary.modified_cells_count.toLocaleString();
-      document.getElementById('diff-missing-delta').textContent = `${data.diff_summary.total_missing_before} ➔ ${data.diff_summary.total_missing_after}`;
+      document.getElementById('diff-missing-delta').textContent = `${data.diff_summary.total_missing_before} → ${data.diff_summary.total_missing_after}`;
 
-      // Checkpoints scrubber
+      // Checkpoint timeline
       const timeline = document.getElementById('checkpoints-timeline');
       timeline.innerHTML = '';
       (data.checkpoints || []).forEach(cp => {
         const pill = document.createElement('span');
-        pill.className = 'px-2 py-0.5 rounded text-[10px] bg-surface-subtle border border-surface-border text-gray-300 font-mono whitespace-nowrap';
-        pill.textContent = cp.step === 0 ? 'Step 0: Original' : `Step ${cp.step}: ${cp.action_name}`;
+        pill.className = 'px-2 py-0.5 rounded text-[10px] bg-surface-elevated border border-surface-border text-zinc-300 font-mono whitespace-nowrap';
+        pill.textContent = cp.step === 0 ? 'Step 0: Initial' : `Step ${cp.step}: ${cp.action_name}`;
         timeline.appendChild(pill);
       });
 
       // Diff table header
       const thead = document.getElementById('diff-table-header');
-      thead.innerHTML = '<th class="px-3 py-2 w-10">#</th>';
+      thead.innerHTML = '<th class="px-3 py-2 w-10 text-zinc-500 font-normal">#</th>';
       const cols = data.columns || [];
       cols.forEach(col => {
         const th = document.createElement('th');
-        th.className = 'px-3 py-2 font-mono whitespace-nowrap';
+        th.className = 'px-3 py-2 font-mono whitespace-nowrap font-normal text-zinc-300';
         th.textContent = col;
         thead.appendChild(th);
       });
 
-      // Diff table body
+      // Diff table rows
       renderDiffTableRows(data.diff_table || [], cols);
 
       // Unresolved issues
-      const unresolvedCard = document.getElementById('unresolved-issues-card');
-      const unresolvedList = document.getElementById('unresolved-issues-list');
+      const unresCard = document.getElementById('unresolved-issues-card');
+      const unresList = document.getElementById('unresolved-issues-list');
       if (data.unresolved_issues && data.unresolved_issues.length > 0) {
-        unresolvedList.innerHTML = '';
+        unresList.innerHTML = '';
         data.unresolved_issues.forEach(iss => {
           const li = document.createElement('li');
-          li.textContent = `${iss.column}: ${iss.issue} (${iss.unresolved_count} unresolved cells remaining)`;
-          unresolvedList.appendChild(li);
+          li.textContent = `${iss.column}: ${iss.issue} (${iss.unresolved_count} missing records preserved)`;
+          unresList.appendChild(li);
         });
-        unresolvedCard.classList.remove('hidden');
+        unresCard.classList.remove('hidden');
       } else {
-        unresolvedCard.classList.add('hidden');
+        unresCard.classList.add('hidden');
       }
     }
 
@@ -1778,15 +1186,15 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
         if (showChangedDiffOnly && r.status === 'unchanged') return;
 
         const tr = document.createElement('tr');
-        tr.className = r.status === 'modified' ? 'bg-emerald-950/20' : (r.status === 'dropped' ? 'bg-rose-950/20' : '');
+        tr.className = r.status === 'modified' ? 'bg-emerald-950/10' : (r.status === 'dropped' ? 'bg-rose-950/10' : 'hover:bg-surface-elevated/20 transition');
 
-        let rowHtml = `<td class="px-3 py-1.5 text-gray-500">${r.row_index}</td>`;
+        let rowHtml = `<td class="px-3 py-1.5 text-zinc-500">${r.row_index}</td>`;
         cols.forEach(col => {
           const cell = (r.cells && r.cells[col]) ? r.cells[col] : { original: '', cleaned: '', changed: false };
           if (cell.changed) {
             rowHtml += `<td class="px-3 py-1.5 cell-modified whitespace-nowrap" title="Original: ${cell.original !== null ? cell.original : 'NaN'}">${cell.cleaned !== null ? cell.cleaned : 'NaN'}</td>`;
           } else {
-            rowHtml += `<td class="px-3 py-1.5 text-gray-300 whitespace-nowrap">${cell.cleaned !== null ? cell.cleaned : ''}</td>`;
+            rowHtml += `<td class="px-3 py-1.5 text-zinc-300 whitespace-nowrap">${cell.cleaned !== null ? cell.cleaned : ''}</td>`;
           }
         });
         tr.innerHTML = rowHtml;
@@ -1799,10 +1207,10 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       const btn = document.getElementById('btn-diff-filter');
       const lbl = document.getElementById('diff-filter-label');
       if (showChangedDiffOnly) {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 transition flex items-center space-x-1.5';
+        btn.className = 'px-3 py-1.5 rounded bg-blue-600 text-white border border-blue-500 text-xs transition';
         lbl.textContent = 'Showing Changed Only';
       } else {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-subtle text-gray-300 border border-surface-border hover:text-white transition flex items-center space-x-1.5';
+        btn.className = 'px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition';
         lbl.textContent = 'Show Changed Only';
       }
       if (currentDiffData) {
@@ -1867,39 +1275,41 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       }
     }
 
-    // Python Script Export Generator
+    // Downloads
+    function downloadCleanedCsv() {
+      if (!currentSessionId) return;
+      window.location.href = `/api/download/cleaned?session_id=${currentSessionId}`;
+    }
+
+    function downloadReportJson() {
+      if (!currentSessionId) return;
+      window.location.href = `/api/download/report?session_id=${currentSessionId}`;
+    }
+
+    // Standalone Python Script Exporter
     function openPythonExportModal() {
-      if (!currentPlan) {
-        showToast('Please generate and execute a plan first.', true);
-        return;
-      }
-      const filename = currentFilePath ? currentFilePath.split('/').pop() : 'dataset.csv';
-      let script = `# Generated by AI Data Cleaner Studio\nimport pandas as pd\nimport numpy as np\n\n# 1. Load data\ndf = pd.read_csv("${filename}")\nprint(f"Loaded {len(df)} rows.")\n\n`;
+      if (!currentPlan) return;
+      const filename = currentFilePath ? currentFilePath.split('/').pop().split('\\').pop() : 'dataset.csv';
+      let script = `# DataRefine Standalone Pipeline\nimport pandas as pd\nimport numpy as np\n\n# 1. Load data\ndf = pd.read_csv("${filename}")\n\n`;
 
       currentPlan.actions.forEach((act, idx) => {
         script += `# Step ${idx + 1}: ${act.reasoning}\n`;
         if (act.action === 'impute_missing') {
           const col = act.column;
-          const method = act.params ? act.params.method : 'median';
-          if (method === 'median') {
-            script += `df['${col}'] = df['${col}'].fillna(df['${col}'].median())\n\n`;
-          } else if (method === 'mean') {
-            script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mean())\n\n`;
-          } else if (method === 'mode') {
-            script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mode()[0])\n\n`;
-          }
+          const m = act.params ? act.params.method : 'median';
+          if (m === 'median') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].median())\n\n`;
+          else if (m === 'mean') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mean())\n\n`;
+          else if (m === 'mode') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mode()[0])\n\n`;
         } else if (act.action === 'normalize_whitespace') {
           script += `df['${act.column}'] = df['${act.column}'].astype(str).str.strip().str.replace(r'\\s+', ' ', regex=True)\n\n`;
         } else if (act.action === 'remove_duplicates') {
           script += `df = df.drop_duplicates().reset_index(drop=True)\n\n`;
         } else if (act.action === 'normalize_column_names') {
           script += `df.columns = [c.lower().strip().replace(' ', '_').replace('-', '_') for c in df.columns]\n\n`;
-        } else {
-          script += `# Action: ${act.action} on ${act.column}\n\n`;
         }
       });
 
-      script += `# Save cleaned artifact\ndf.to_csv("cleaned_${filename}", index=False)\nprint("Cleaning complete!")\n`;
+      script += `# Output cleaned artifact\ndf.to_csv("cleaned_${filename}", index=False)\n`;
       document.getElementById('python-script-code').textContent = script;
       openModal('modal-python-export');
     }
@@ -1907,16 +1317,10 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
     function copyPythonScript() {
       const code = document.getElementById('python-script-code').textContent;
       navigator.clipboard.writeText(code);
-      showToast('Python script copied to clipboard!');
+      showToast('Python script copied to clipboard.');
     }
 
-    // Benchmark Quality Evaluation
-    function loadDefaultBenchmarkPair() {
-      selectPresetDataset('data/benchmark/dirty_sample.csv');
-      document.getElementById('eval-gt-path').value = 'data/benchmark/clean_ground_truth.csv';
-      showToast('Loaded benchmark dataset pair!');
-    }
-
+    // Benchmark Quality Scoring
     async function runBenchmarkEvaluation() {
       if (!currentSessionId) {
         showToast('Please profile and clean a dataset first.', true);
@@ -1924,7 +1328,7 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
       }
       const gtPath = document.getElementById('eval-gt-path').value;
       const btn = document.getElementById('btn-eval');
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i><span>Scoring...</span>';
+      btn.textContent = 'Scoring...';
       btn.disabled = true;
 
       try {
@@ -1946,29 +1350,29 @@ curl -O http://localhost:8000/api/download/cleaned?session_id=YOUR_SESSION_ID</c
         document.getElementById('eval-accuracy').textContent = `${(ov.accuracy * 100).toFixed(1)}%`;
 
         document.getElementById('eval-tp').textContent = ov.true_positives;
+        document.getElementById('eval-tn').textContent = ov.true_negatives;
         document.getElementById('eval-fp').textContent = ov.false_positives;
         document.getElementById('eval-fn').textContent = ov.false_negatives;
-        document.getElementById('eval-tn').textContent = ov.true_negatives;
 
         document.getElementById('eval-results-card').classList.remove('hidden');
-        showToast('Quality benchmark evaluation complete!');
+        showToast('Quality scorecard computed.');
       } catch (err) {
         showToast(err.message, true);
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-chart-line"></i><span>Evaluate Quality Scorecard</span>';
+        btn.textContent = 'Run Scorecard';
         btn.disabled = false;
       }
     }
 
-    // Downloads
-    function downloadCleanedCsv() {
-      if (!currentSessionId) return;
-      window.location.href = `/api/download/cleaned?session_id=${currentSessionId}`;
-    }
-
-    function downloadReportJson() {
-      if (!currentSessionId) return;
-      window.location.href = `/api/download/report?session_id=${currentSessionId}`;
+    function onProviderChange(p) {
+      document.getElementById('nav-active-provider').textContent = p;
+      const m = document.getElementById('settings-model');
+      const b = document.getElementById('settings-base-url');
+      if (p === 'gemini') { m.value = 'gemini-2.5-flash'; b.placeholder = ''; }
+      else if (p === 'openai') { m.value = 'gpt-4o-mini'; b.placeholder = 'https://api.openai.com/v1'; }
+      else if (p === 'anthropic') { m.value = 'claude-3-5-haiku-20241022'; b.placeholder = ''; }
+      else if (p === 'ollama') { m.value = 'llama3'; b.value = 'http://localhost:11434'; }
+      else if (p === 'mock') { m.value = 'mock-model'; }
     }
 
     // Keyboard Shortcuts (Ctrl+Z Undo, Ctrl+Y Redo)

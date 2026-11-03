@@ -1,11 +1,11 @@
-# 🤖 AI Data Cleaner
+# DataRefine
 
-### Privacy-Aware AI Planning · Deterministic Data Cleaning · Validated Execution
+### Deterministic Data Quality & AI-Assisted Cleaning Studio
 
 <p align="left">
   <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas" alt="Pandas">
-  <img src="https://img.shields.io/badge/FastAPI-Web%20Studio%20%26%20REST%20API-009688?logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/FastAPI-REST%20API%20%26%20Web%20Studio-009688?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/Docker-Production%20Ready-2496ED?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
 
-**AI Data Cleaner is a production-grade Python automation system that profiles messy CSV datasets, uses a provider-agnostic LLM planning layer (Google Gemini, OpenAI, Claude, or air-gapped local Ollama/vLLM) to recommend targeted cleaning operations under strict privacy constraints, validates plans with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions with step-by-step undo, complete rollback, benchmarked quality evaluation, and an interactive FastAPI web dashboard.**
+**DataRefine is a production-grade data engineering studio that profiles messy CSV datasets, uses a provider-agnostic LLM planning layer (Google Gemini, OpenAI, Anthropic Claude, or air-gapped local Ollama) to recommend targeted cleaning operations under strict privacy constraints, validates plans with bounded retries, enforces local safety guardrails, and executes approved transformations through trusted, deterministic Python functions with step-by-step undo, complete rollback, benchmarked quality evaluation, and a modern web studio.**
 
 Rather than letting an LLM execute arbitrary code or write directly to your database, AI Data Cleaner enforces a strict separation of concerns:
 

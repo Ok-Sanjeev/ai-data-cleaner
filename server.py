@@ -37,7 +37,7 @@ from session import CleaningSession
 
 
 app = FastAPI(
-    title="AI Data Cleaner API & Dashboard",
+    title="DataRefine — AI Data Cleaner & Quality Studio",
     description="Privacy-Aware AI Planning, Deterministic Data Cleaning, Visual Diffs & Checkpoint Rollback",
     version="2.0.0",
 )
@@ -251,7 +251,7 @@ def get_health():
     """Health check endpoint and list of supported LLM providers."""
     return {
         "status": "healthy",
-        "service": "AI Data Cleaner",
+        "service": "DataRefine (AI Data Cleaner)",
         "version": "2.0.0",
         "supported_providers": ["gemini", "openai", "anthropic", "ollama", "mock"],
         "active_sessions": len(SESSIONS),
@@ -1560,7 +1560,7 @@ def main():
     args = parser.parse_args()
 
     print(f"\n=======================================================")
-    print(f"  AI Data Cleaner Dashboard & API Server")
+    print(f"  DataRefine — Data Quality & Cleaning Studio")
     print(f"  Running at: http://{args.host}:{args.port}")
     print(f"=======================================================\n")
     uvicorn.run("server:app", host=args.host, port=args.port, reload=False)
