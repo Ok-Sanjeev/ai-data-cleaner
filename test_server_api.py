@@ -248,3 +248,66 @@ def test_visual_diff_table_values_not_null_on_jobs_dataset():
     assert row_dropped["cells"]["job_title"]["original"] == "Backend Dev"
     assert row_dropped["cells"]["job_title"]["cleaned"] is None
 
+
+def test_add_and_remove_action_api(client):
+    """Test dynamically adding and removing operations via API."""
+    res = client.post("/api/profile", json={"filepath": "data/benchmark/dirty_sample.csv"})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    # 1. Add action
+    add_res = client.post("/api/plan/add_action", json={
+        "session_id": session_id,
+        "action": "trim_whitespace",
+        "column": "name",
+        "params": {},
+        "reasoning": "Trim customer names",
+    })
+    assert add_res.status_code == 200
+    add_data = add_res.json()
+    assert len(add_data["actions"]) == 1
+    assert add_data["actions"][0]["action"] == "trim_whitespace"
+    assert add_data["actions"][0]["column"] == "name"
+    assert add_data["actions"][0]["risk_level"] == "green"
+
+    # Add second action (destructive)
+    add_res2 = client.post("/api/plan/add_action", json={
+        "session_id": session_id,
+        "action": "remove_column",
+        "column": "phone",
+        "params": {},
+        "reasoning": "Discard phone column",
+    })
+    assert add_res2.status_code == 200
+    assert len(add_res2.json()["actions"]) == 2
+    assert add_res2.json()["actions"][1]["risk_level"] == "red"
+
+    # 2. Remove first action
+    del_res = client.post("/api/plan/remove_action", json={
+        "session_id": session_id,
+        "action_index": 0,
+    })
+    assert del_res.status_code == 200
+    del_data = del_res.json()
+    assert len(del_data["actions"]) == 1
+    assert del_data["actions"][0]["action"] == "remove_column"
+
+
+def test_clean_with_zero_approved_actions(client):
+    """Test that executing clean with zero approved actions transitions smoothly without errors."""
+    res = client.post("/api/profile", json={"filepath": "data/benchmark/dirty_sample.csv"})
+    assert res.status_code == 200
+    session_id = res.json()["session_id"]
+
+    clean_res = client.post("/api/clean", json={
+        "session_id": session_id,
+        "approved_action_ids": [],
+    })
+    assert clean_res.status_code == 200
+    clean_data = clean_res.json()
+    assert clean_data["diff_summary"]["actions_executed"] == 0
+    assert clean_data["diff_summary"]["modified_cells_count"] == 0
+    assert clean_data["diff_summary"]["rows_retained"] == 11
+    assert len(clean_data["diff_table"]) > 0
+
+

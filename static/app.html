@@ -342,6 +342,9 @@
             <button onclick="toggleIncludeRedActions()" class="px-2.5 py-1.5 rounded text-xs bg-rose-950/20 hover:bg-rose-950/40 text-rose-300 border border-rose-900/40 transition flex items-center space-x-1" title="Requires explicit confirmation to select destructive operations">
               <span>Include RED</span>
             </button>
+            <button onclick="openAddOperationModal()" class="px-2.5 py-1.5 rounded text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 transition flex items-center space-x-1" title="Manually configure and add a cleaning operation">
+              <span>+ Add Operation</span>
+            </button>
             <button onclick="generateCleaningPlan()" id="btn-replan" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition flex items-center space-x-1">
               <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -644,6 +647,108 @@
         </button>
         <button onclick="downloadExportScript()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
           Download .py
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Custom Cleaning Operation -->
+  <div id="modal-add-operation" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="fixed inset-0 bg-black/70" onclick="closeModal('modal-add-operation')"></div>
+    <div class="relative bg-surface-card border border-surface-border rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+        <div>
+          <h3 class="text-sm font-semibold text-white">Add Cleaning Operation</h3>
+          <p class="text-[11px] text-zinc-400">Select and configure an action from the deterministic library.</p>
+        </div>
+        <button onclick="closeModal('modal-add-operation')" class="text-zinc-400 hover:text-white text-xs">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-zinc-300 font-medium mb-1">Operation</label>
+          <select id="add-op-action" onchange="onAddOpActionChange(this.value)" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
+            <optgroup label="Text Cleaning (Safe Repair)">
+              <option value="trim_whitespace" selected>trim_whitespace — Trim leading/trailing spaces</option>
+              <option value="remove_extra_spaces">remove_extra_spaces — Collapse multiple internal spaces</option>
+              <option value="standardize_case">standardize_case — Convert to lower / upper / title case</option>
+              <option value="normalize_whitespace">normalize_whitespace — Clean whitespace and tabs</option>
+              <option value="remove_special_characters">remove_special_characters — Strip punctuation</option>
+              <option value="remove_html_tags">remove_html_tags — Strip HTML markup</option>
+              <option value="remove_non_printable">remove_non_printable — Strip control characters</option>
+              <option value="normalize_unicode">normalize_unicode — Unicode NFKD/NFC normalization</option>
+            </optgroup>
+            <optgroup label="Missing Values & Imputation">
+              <option value="impute_missing">impute_missing — Fill with mean / median / mode / constant</option>
+              <option value="fill_with_constant">fill_with_constant — Fill missing with specified constant</option>
+              <option value="fill_with_forward_value">fill_with_forward_value — Forward fill (ffill)</option>
+              <option value="fill_with_backward_value">fill_with_backward_value — Backward fill (bfill)</option>
+              <option value="replace_empty_strings">replace_empty_strings — Convert blank strings to NaN</option>
+              <option value="handle_infinite_values">handle_infinite_values — Convert inf to NaN or max</option>
+            </optgroup>
+            <optgroup label="Structuring & Row Operations (Needs Review / Destructive)">
+              <option value="drop_missing_rows">drop_missing_rows — Drop rows with missing values</option>
+              <option value="remove_duplicates">remove_duplicates — Deduplicate exact duplicate rows</option>
+              <option value="remove_column">remove_column — Discard unwanted or constant column (Red)</option>
+              <option value="rename_column">rename_column — Rename column to target name</option>
+              <option value="normalize_column_names">normalize_column_names — Snake_case all column headers</option>
+              <option value="reorder_columns">reorder_columns — Alphabetical column ordering</option>
+            </optgroup>
+            <optgroup label="Data Types, Dates & Numbers">
+              <option value="convert_to_date">convert_to_date — Parse dates to datetime64</option>
+              <option value="standardize_date_format">standardize_date_format — Format dates (YYYY-MM-DD)</option>
+              <option value="convert_to_numeric">convert_to_numeric — Parse strings/currency to float</option>
+              <option value="convert_to_boolean">convert_to_boolean — Standardize Yes/No to boolean</option>
+              <option value="round_numeric">round_numeric — Round decimal places</option>
+              <option value="standardize_currency">standardize_currency — Clean currency values</option>
+              <option value="clip_outliers">clip_outliers — Cap statistical outliers at IQR bounds</option>
+              <option value="clean_phone_number">clean_phone_number — Clean digits in phone numbers</option>
+              <option value="standardize_country_names">standardize_country_names — Standardize country names</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div id="add-op-col-container">
+          <label class="block text-zinc-300 font-medium mb-1">Target Column</label>
+          <select id="add-op-column" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono"></select>
+        </div>
+
+        <div id="add-op-param-case" class="hidden">
+          <label class="block text-zinc-300 font-medium mb-1">Target Casing</label>
+          <select id="add-op-param-case-val" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
+            <option value="title" selected>Title Case (e.g. Data Scientist)</option>
+            <option value="lower">lower case (e.g. data scientist)</option>
+            <option value="upper">UPPER CASE (e.g. DATA SCIENTIST)</option>
+          </select>
+        </div>
+
+        <div id="add-op-param-method" class="hidden">
+          <label class="block text-zinc-300 font-medium mb-1">Imputation Method</label>
+          <select id="add-op-param-method-val" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
+            <option value="median" selected>median — Robust for numeric distributions</option>
+            <option value="mean">mean — Average for normal distributions</option>
+            <option value="mode">mode — Most frequent (best for categories/text)</option>
+            <option value="constant">constant — Fill with constant value</option>
+          </select>
+        </div>
+
+        <div id="add-op-param-value" class="hidden">
+          <label class="block text-zinc-300 font-medium mb-1" id="add-op-param-value-label">Constant Value / New Name</label>
+          <input type="text" id="add-op-param-value-val" placeholder="Enter value..." class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
+        </div>
+
+        <div>
+          <label class="block text-zinc-300 font-medium mb-1">Reasoning</label>
+          <input type="text" id="add-op-reasoning" value="User-configured operation" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-surface-border flex justify-end space-x-2">
+        <button onclick="closeModal('modal-add-operation')" class="px-4 py-2 rounded-lg bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-zinc-300 text-xs font-medium transition">
+          Cancel
+        </button>
+        <button onclick="submitAddOperation()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
+          Add Operation
         </button>
       </div>
     </div>
@@ -1019,11 +1124,42 @@
     }
 
     function renderPlanView(data) {
+      currentPlan = data;
       document.getElementById('plan-summary-text').textContent = data.summary;
-      document.getElementById('actions-count').textContent = data.actions.length;
+      document.getElementById('actions-count').textContent = data.actions ? data.actions.length : 0;
 
       const list = document.getElementById('actions-list');
       list.innerHTML = '';
+
+      const btnExecText = document.getElementById('btn-execute-clean-text');
+
+      if (!data.actions || data.actions.length === 0) {
+        list.innerHTML = `
+          <div class="p-8 text-center bg-surface-card rounded-lg">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 mb-3">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h4 class="text-sm font-semibold text-zinc-100">Dataset Meets Quality Standards — No Automatic Fixes Required</h4>
+            <p class="text-xs text-zinc-400 max-w-lg mx-auto mt-1 mb-4 leading-relaxed">
+              The AI analyzer and deterministic safety guardrails evaluated all columns and determined that no automated changes are needed. You can proceed directly to verification and export, or manually add a custom cleaning operation.
+            </p>
+            <div class="flex items-center justify-center space-x-3">
+              <button onclick="openAddOperationModal()" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated border border-surface-border hover:bg-zinc-800 text-xs text-zinc-200 transition flex items-center space-x-1.5">
+                <span>+ Add Custom Operation</span>
+              </button>
+              <button onclick="executeApprovedPlan()" class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs text-white font-medium transition shadow-sm flex items-center space-x-1.5">
+                <span>Proceed to Results & Export →</span>
+              </button>
+            </div>
+          </div>
+        `;
+        if (btnExecText) btnExecText.textContent = 'Verify & Proceed to Results →';
+        return;
+      }
+
+      if (btnExecText) btnExecText.textContent = 'Execute Approved Actions';
 
       data.actions.forEach((act, idx) => {
         const card = document.createElement('div');
@@ -1082,9 +1218,125 @@
               </div>
             ` : ''}
           </div>
+
+          <button onclick="removeAction(${idx})" class="text-zinc-500 hover:text-rose-400 p-1.5 rounded transition text-xs shrink-0" title="Remove this operation">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         `;
         list.appendChild(card);
       });
+    }
+
+    function openAddOperationModal() {
+      if (!currentSessionId) {
+        showToast('Please upload and profile a dataset first.', true);
+        return;
+      }
+      const colSelect = document.getElementById('add-op-column');
+      colSelect.innerHTML = '<option value="">(Dataset-wide / All Columns)</option>';
+      (currentColumns || []).forEach(col => {
+        const cname = typeof col === 'string' ? col : col.name;
+        if (cname) {
+          const opt = document.createElement('option');
+          opt.value = cname;
+          opt.textContent = cname;
+          colSelect.appendChild(opt);
+        }
+      });
+      onAddOpActionChange(document.getElementById('add-op-action').value);
+      openModal('modal-add-operation');
+    }
+
+    function onAddOpActionChange(action) {
+      const caseDiv = document.getElementById('add-op-param-case');
+      const methodDiv = document.getElementById('add-op-param-method');
+      const valDiv = document.getElementById('add-op-param-value');
+      const valLabel = document.getElementById('add-op-param-value-label');
+      const colContainer = document.getElementById('add-op-col-container');
+
+      caseDiv.classList.add('hidden');
+      methodDiv.classList.add('hidden');
+      valDiv.classList.add('hidden');
+      colContainer.classList.remove('hidden');
+
+      if (action === 'standardize_case' || action === 'normalize_text') {
+        caseDiv.classList.remove('hidden');
+      } else if (action === 'impute_missing') {
+        methodDiv.classList.remove('hidden');
+      } else if (action === 'fill_with_constant') {
+        valDiv.classList.remove('hidden');
+        valLabel.textContent = 'Constant Fill Value';
+      } else if (action === 'rename_column') {
+        valDiv.classList.remove('hidden');
+        valLabel.textContent = 'New Column Name';
+      } else if (action === 'remove_duplicates' || action === 'normalize_column_names') {
+        colContainer.classList.add('hidden');
+      }
+    }
+
+    async function submitAddOperation() {
+      if (!currentSessionId) return;
+      const action = document.getElementById('add-op-action').value;
+      const column = document.getElementById('add-op-column').value || null;
+      const reasoning = document.getElementById('add-op-reasoning').value.trim() || 'User-configured operation';
+
+      const params = {};
+      if (action === 'standardize_case' || action === 'normalize_text') {
+        params.case = document.getElementById('add-op-param-case-val').value;
+      } else if (action === 'impute_missing') {
+        params.method = document.getElementById('add-op-param-method-val').value;
+      } else if (action === 'fill_with_constant') {
+        params.value = document.getElementById('add-op-param-value-val').value;
+      } else if (action === 'rename_column') {
+        params.new_name = document.getElementById('add-op-param-value-val').value;
+      }
+
+      try {
+        const res = await fetch('/api/plan/add_action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            action,
+            column,
+            params,
+            reasoning
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to add operation');
+
+        currentPlan = data;
+        closeModal('modal-add-operation');
+        renderPlanView(data);
+        showToast(`Added operation: ${formatActionName(action)}.`);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    async function removeAction(idx) {
+      if (!currentSessionId || !currentPlan) return;
+      try {
+        const res = await fetch('/api/plan/remove_action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            action_index: idx
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to remove operation');
+
+        currentPlan = data;
+        renderPlanView(data);
+        showToast('Operation removed from plan.');
+      } catch (err) {
+        showToast(err.message, true);
+      }
     }
 
     function toggleAllActions(check) {
@@ -1129,14 +1381,20 @@
       if (!currentSessionId || !currentPlan) return;
 
       const approvedIds = [];
-      currentPlan.actions.forEach((_, idx) => {
+      (currentPlan.actions || []).forEach((_, idx) => {
         const chk = document.getElementById(`action-chk-${idx}`);
         if (chk && chk.checked) approvedIds.push(idx);
       });
 
       if (approvedIds.length === 0) {
-        showToast('Please select at least one action to execute.', true);
-        return;
+        if (!currentPlan.actions || currentPlan.actions.length === 0) {
+          // Zero actions proposed (clean dataset) - proceed directly to results!
+        } else {
+          // User deliberately deselected all actions
+          if (!confirm('No cleaning actions are selected. Proceed to Results & Export with the dataset unchanged?')) {
+            return;
+          }
+        }
       }
 
       // Explicit confirmation if any RED action is checked

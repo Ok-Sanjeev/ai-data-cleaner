@@ -307,6 +307,19 @@ class CleanRequest(BaseModel):
     approved_action_ids: List[int]
 
 
+class AddActionRequest(BaseModel):
+    session_id: str
+    action: str
+    column: Optional[str] = None
+    params: Optional[Dict[str, Any]] = {}
+    reasoning: Optional[str] = "User-configured operation"
+
+
+class RemoveActionRequest(BaseModel):
+    session_id: str
+    action_index: int
+
+
 class EvaluateRequest(BaseModel):
     session_id: str
     ground_truth_path: Optional[str] = "data/benchmark/ground_truth.csv"
@@ -517,6 +530,93 @@ def api_plan(req: PlanRequest):
     }
 
 
+@app.post("/api/plan/add_action")
+def api_plan_add_action(req: AddActionRequest):
+    """Manually add a custom cleaning operation to the current session plan."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    session = SESSIONS[req.session_id]
+    if not session.get("plan"):
+        session["plan"] = CleaningPlan(summary="User-configured plan", actions=[])
+
+    plan = session["plan"]
+
+    try:
+        from schemas import CleaningAction
+        act_dict = {
+            "action": req.action,
+            "column": req.column,
+            "params": req.params or {},
+            "reasoning": req.reasoning or "User-configured operation",
+        }
+        action_obj = CleaningAction(**act_dict)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid action parameters: {e}")
+
+    from planner import assign_action_risk
+    assign_action_risk(action_obj, session.get("profile", {}), session.get("df_original"))
+    plan.actions.append(action_obj)
+
+    actions_list = []
+    for idx, act in enumerate(plan.actions):
+        is_red = getattr(act, "risk_level", "yellow") == "red"
+        actions_list.append({
+            "id": idx,
+            "action": act.action,
+            "column": act.column,
+            "params": act.params,
+            "reasoning": act.reasoning,
+            "risk_level": getattr(act, "risk_level", "yellow"),
+            "risk_label": getattr(act, "risk_label", "Needs Review"),
+            "warning": getattr(act, "warning", None),
+            "expected_impact": getattr(act, "expected_impact", None),
+            "approved": not is_red,
+        })
+
+    return {
+        "status": "success",
+        "summary": plan.summary,
+        "actions": actions_list,
+    }
+
+
+@app.post("/api/plan/remove_action")
+def api_plan_remove_action(req: RemoveActionRequest):
+    """Remove an operation from the plan by index."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    session = SESSIONS[req.session_id]
+    plan = session.get("plan")
+    if not plan or req.action_index < 0 or req.action_index >= len(plan.actions):
+        raise HTTPException(status_code=400, detail="Invalid action index.")
+
+    plan.actions.pop(req.action_index)
+
+    actions_list = []
+    for idx, act in enumerate(plan.actions):
+        is_red = getattr(act, "risk_level", "yellow") == "red"
+        actions_list.append({
+            "id": idx,
+            "action": act.action,
+            "column": act.column,
+            "params": act.params,
+            "reasoning": act.reasoning,
+            "risk_level": getattr(act, "risk_level", "yellow"),
+            "risk_label": getattr(act, "risk_label", "Needs Review"),
+            "warning": getattr(act, "warning", None),
+            "expected_impact": getattr(act, "expected_impact", None),
+            "approved": not is_red,
+        })
+
+    return {
+        "status": "success",
+        "summary": plan.summary,
+        "actions": actions_list,
+    }
+
+
 @app.post("/api/clean")
 def api_clean(req: CleanRequest):
     """Execute user-approved cleaning actions and return visual diff."""
@@ -526,7 +626,9 @@ def api_clean(req: CleanRequest):
     session = SESSIONS[req.session_id]
     plan = session.get("plan")
     if not plan:
-        raise HTTPException(status_code=400, detail="No cleaning plan available. Generate a plan first.")
+        from schemas import CleaningPlan
+        plan = CleaningPlan(summary="Direct dataset review", actions=[])
+        session["plan"] = plan
 
     df_original = session["df_original"]
     cleaning_session = CleaningSession(df_original)
