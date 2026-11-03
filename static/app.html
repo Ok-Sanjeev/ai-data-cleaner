@@ -1225,6 +1225,16 @@
       }
     }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function renderDiffTableRows(diffRows, cols) {
       const tbody = document.getElementById('diff-table-body');
       tbody.innerHTML = '';
@@ -1232,25 +1242,54 @@
       diffRows.forEach(r => {
         if (showChangedDiffOnly && r.status === 'unchanged') return;
 
+        const isRowDropped = r.status === 'dropped';
+        const isRowModified = r.status === 'modified';
+
         const tr = document.createElement('tr');
-        tr.className = r.status === 'modified' ? 'bg-emerald-950/10' : (r.status === 'dropped' ? 'bg-rose-950/10' : 'hover:bg-surface-elevated/20 transition');
+        tr.className = isRowModified 
+          ? 'bg-emerald-950/10' 
+          : (isRowDropped ? 'bg-rose-950/15' : 'hover:bg-surface-elevated/20 transition');
 
         let rowHtml = `<td class="px-3 py-1.5 text-zinc-500">${r.row_index}</td>`;
         cols.forEach(col => {
-          const cell = (r.cells && r.cells[col]) || { value: '', status: 'unchanged' };
+          const cell = (r.cells && r.cells[col]) || {};
           let cellClass = 'px-3 py-1.5 whitespace-nowrap ';
           let tooltip = '';
 
-          if (cell.status === 'modified') {
-            cellClass += 'cell-modified';
-            tooltip = `title="Original: ${cell.original_value !== null ? cell.original_value : 'null'}"`;
-          } else if (cell.status === 'dropped') {
+          // Support both backend formats seamlessly
+          const cellVal = cell.cleaned !== undefined ? cell.cleaned : cell.value;
+          const origVal = cell.original !== undefined ? cell.original : cell.original_value;
+          const isModified = cell.status === 'modified' || cell.changed === true;
+          const isDropped = isRowDropped || cell.status === 'dropped';
+
+          let displayVal;
+          if (isDropped) {
             cellClass += 'cell-dropped';
+            const origStr = (origVal !== null && origVal !== undefined && origVal !== '') ? escapeHtml(String(origVal)) : 'null';
+            tooltip = `title="Row Dropped (Original: ${origStr})"`;
+            displayVal = (origVal !== null && origVal !== undefined) ? escapeHtml(String(origVal)) : '<span class="italic text-zinc-600">null</span>';
+          } else if (isModified) {
+            cellClass += 'cell-modified';
+            const origStr = (origVal !== null && origVal !== undefined && origVal !== '') ? escapeHtml(String(origVal)) : 'null';
+            tooltip = `title="Original: ${origStr}"`;
+            if (cellVal === null || cellVal === undefined) {
+              displayVal = '<span class="italic text-zinc-600">null</span>';
+            } else if (cellVal === '') {
+              displayVal = '<span class="italic text-zinc-600 text-xs">(empty)</span>';
+            } else {
+              displayVal = escapeHtml(String(cellVal));
+            }
           } else {
             cellClass += 'text-zinc-300';
+            if (cellVal === null || cellVal === undefined) {
+              displayVal = '<span class="italic text-zinc-600">null</span>';
+            } else if (cellVal === '') {
+              displayVal = '<span class="italic text-zinc-600 text-xs">(empty)</span>';
+            } else {
+              displayVal = escapeHtml(String(cellVal));
+            }
           }
 
-          const displayVal = (cell.value === null || cell.value === undefined || cell.value === '') ? '<span class="italic text-zinc-600">null</span>' : cell.value;
           rowHtml += `<td class="${cellClass}" ${tooltip}>${displayVal}</td>`;
         });
         tr.innerHTML = rowHtml;

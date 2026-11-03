@@ -147,20 +147,40 @@ def compute_side_by_side_diff(
     modified_cells_count = 0
     row_diffs = []
 
+    # Check whether we can use index alignment for exact row tracking
+    can_use_index = (
+        len(df_after) <= len(df_before)
+        and df_after.index.isin(df_before.index).all()
+        and df_before.index.is_unique
+        and df_after.index.is_unique
+    )
+
     preview_limit = min(rows_before, max_preview_rows)
     for idx in range(preview_limit):
         row_has_changes = False
         cells = {}
 
-        if idx < rows_after:
+        if can_use_index:
+            row_key = df_before.index[idx]
+            row_orig = df_before.loc[row_key]
+            is_dropped = row_key not in df_after.index
+            row_clean = df_after.loc[row_key] if not is_dropped else None
+            row_display_idx = int(row_key) if isinstance(row_key, (int, np.integer)) else idx
+        else:
+            row_orig = df_before.iloc[idx]
+            is_dropped = idx >= rows_after
+            row_clean = df_after.iloc[idx] if not is_dropped else None
+            row_display_idx = idx
+
+        if not is_dropped and row_clean is not None:
             for col_after in df_after.columns:
                 col_before = col_map.get(col_after)
                 v_orig = (
-                    df_before.iloc[idx][col_before]
-                    if (col_before is not None and col_before in df_before.columns)
+                    row_orig[col_before]
+                    if (col_before is not None and col_before in row_orig.index)
                     else None
                 )
-                v_clean = df_after.iloc[idx][col_after]
+                v_clean = row_clean[col_after]
 
                 orig_null = pd.isna(v_orig) or v_orig is None
                 clean_null = pd.isna(v_clean) or v_clean is None
@@ -170,16 +190,28 @@ def compute_side_by_side_diff(
                 elif orig_null != clean_null:
                     changed = True
                 else:
-                    changed = str(v_orig).strip() != str(v_clean).strip()
+                    try:
+                        if isinstance(v_orig, (float, np.floating)) and isinstance(v_clean, (float, np.floating)):
+                            changed = not np.isclose(v_orig, v_clean)
+                        else:
+                            changed = str(v_orig).strip() != str(v_clean).strip()
+                    except Exception:
+                        changed = str(v_orig) != str(v_clean)
 
                 if changed:
                     row_has_changes = True
                     modified_cells_count += 1
 
+                orig_json = sanitize_value_for_json(v_orig)
+                clean_json = sanitize_value_for_json(v_clean)
+
                 cells[col_after] = {
-                    "original": sanitize_value_for_json(v_orig),
-                    "cleaned": sanitize_value_for_json(v_clean),
+                    "original": orig_json,
+                    "cleaned": clean_json,
                     "changed": changed,
+                    "value": clean_json,
+                    "original_value": orig_json,
+                    "status": "modified" if changed else "unchanged",
                 }
             status = "modified" if row_has_changes else "unchanged"
         else:
@@ -187,18 +219,22 @@ def compute_side_by_side_diff(
             for col_after in df_after.columns:
                 col_before = col_map.get(col_after)
                 v_orig = (
-                    df_before.iloc[idx][col_before]
-                    if (col_before is not None and col_before in df_before.columns)
+                    row_orig[col_before]
+                    if (col_before is not None and col_before in row_orig.index)
                     else None
                 )
+                orig_json = sanitize_value_for_json(v_orig)
                 cells[col_after] = {
-                    "original": sanitize_value_for_json(v_orig),
+                    "original": orig_json,
                     "cleaned": None,
                     "changed": True,
+                    "value": None,
+                    "original_value": orig_json,
+                    "status": "dropped",
                 }
 
         row_diffs.append({
-            "row_index": idx,
+            "row_index": row_display_idx,
             "status": status,
             "cells": cells,
         })
@@ -598,6 +634,7 @@ def api_session_redo(req: Dict[str, str]):
 
 
 @app.post("/api/session/rollback")
+@app.post("/api/session/rollback_all")
 def api_session_rollback(req: Dict[str, str]):
     """Rollback all changes to Step 0 (original data state)."""
     session_id = req.get("session_id")

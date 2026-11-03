@@ -1,5 +1,6 @@
 import json
 import os
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -187,3 +188,63 @@ def test_diff_with_column_name_normalization(client):
     assert "employee_id" in row0["cells"]
     assert row0["cells"]["employee_id"]["original"] is not None
     assert row0["cells"]["employee_id"]["cleaned"] is not None
+    # Compatibility aliases for frontend
+    assert row0["cells"]["employee_id"]["value"] is not None
+    assert row0["cells"]["employee_id"]["original_value"] is not None
+    assert "status" in row0["cells"]["employee_id"]
+
+
+def test_visual_diff_table_values_not_null_on_jobs_dataset():
+    """Ensure visual diff table produces populated, non-null cells for real datasets."""
+    from server import compute_side_by_side_diff
+
+    # Sample dataset mirroring the user's screenshot
+    df_before = pd.DataFrame({
+        "job_id": [1, 2, 3],
+        "job_title": ["Data Scientist", "Backend Dev", "ML Engineer"],
+        "company_name": ["Cisco", "Google", "Microsoft"],
+        "company_rating": [4.1, 4.5, 4.3],
+        "location": ["Bengaluru", "Hyderabad", "Pune"],
+    })
+
+    # Cleaned DataFrame with title whitespace normalized
+    df_after = df_before.copy()
+    df_after["job_title"] = ["Data Scientist", "Backend Developer", "ML Engineer"]
+
+    diff = compute_side_by_side_diff(df_before, df_after)
+
+    assert diff["rows_before"] == 3
+    assert diff["rows_after"] == 3
+    assert len(diff["row_diffs"]) == 3
+
+    # Row 0: Unchanged
+    row0 = diff["row_diffs"][0]
+    assert row0["cells"]["job_title"]["cleaned"] == "Data Scientist"
+    assert row0["cells"]["job_title"]["value"] == "Data Scientist"
+    assert row0["cells"]["job_title"]["original"] == "Data Scientist"
+    assert row0["cells"]["job_title"]["original_value"] == "Data Scientist"
+    assert row0["cells"]["job_title"]["changed"] is False
+    assert row0["cells"]["job_title"]["status"] == "unchanged"
+    assert row0["cells"]["company_name"]["value"] == "Cisco"
+
+    # Row 1: Modified
+    row1 = diff["row_diffs"][1]
+    assert row1["cells"]["job_title"]["cleaned"] == "Backend Developer"
+    assert row1["cells"]["job_title"]["value"] == "Backend Developer"
+    assert row1["cells"]["job_title"]["original"] == "Backend Dev"
+    assert row1["cells"]["job_title"]["original_value"] == "Backend Dev"
+    assert row1["cells"]["job_title"]["changed"] is True
+    assert row1["cells"]["job_title"]["status"] == "modified"
+    assert row1["status"] == "modified"
+
+    # Test dropped row handling with index alignment
+    df_dropped = df_before.drop(index=[1])
+    diff_drop = compute_side_by_side_diff(df_before, df_dropped)
+    assert len(diff_drop["row_diffs"]) == 3
+    # Row index 1 should be explicitly marked as dropped
+    row_dropped = [r for r in diff_drop["row_diffs"] if r["row_index"] == 1][0]
+    assert row_dropped["status"] == "dropped"
+    assert row_dropped["cells"]["job_title"]["status"] == "dropped"
+    assert row_dropped["cells"]["job_title"]["original"] == "Backend Dev"
+    assert row_dropped["cells"]["job_title"]["cleaned"] is None
+
