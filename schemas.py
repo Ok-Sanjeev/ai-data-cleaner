@@ -50,6 +50,21 @@ ALLOWED_ACTIONS = Literal[
     "remove_constant_columns",
     # Value Mapping
     "map_values",
+    # Advanced Missing Value & Group Imputation
+    "fill_with_constant",
+    "fill_with_forward_value",
+    "fill_with_backward_value",
+    "fill_with_group_median",
+    "fill_with_group_mode",
+    "drop_columns_by_missing_threshold",
+    # Advanced Text & Formatting
+    "remove_html_tags",
+    "handle_infinite_values",
+    "validate_date_range",
+    "reorder_columns",
+    "extract_pattern",
+    "standardize_phone_number",
+    "standardize_country_names",
 ]
 
 
@@ -108,6 +123,17 @@ class CleaningAction(BaseModel):
             "detect_invalid_categories",
             "split_column",
             "map_values",
+            "fill_with_constant",
+            "fill_with_forward_value",
+            "fill_with_backward_value",
+            "fill_with_group_median",
+            "fill_with_group_mode",
+            "remove_html_tags",
+            "handle_infinite_values",
+            "validate_date_range",
+            "extract_pattern",
+            "standardize_phone_number",
+            "standardize_country_names",
         }
 
         if self.action in column_actions and not self.column:
@@ -197,6 +223,25 @@ class CleaningAction(BaseModel):
             threshold = float(self.params.get("threshold", 0.8))
             if not (0.0 < threshold <= 1.0):
                 raise ValueError("remove_high_missing_columns threshold must be between 0.0 and 1.0")
+
+        elif self.action in {"fill_with_group_median", "fill_with_group_mode"}:
+            if not self.params.get("group_column"):
+                raise ValueError(f"{self.action} requires params['group_column']")
+
+        elif self.action == "drop_columns_by_missing_threshold":
+            th = float(self.params.get("threshold", 0.5))
+            if not (0.0 < th <= 1.0):
+                raise ValueError("drop_columns_by_missing_threshold threshold must be between 0.0 and 1.0")
+
+        elif self.action == "reorder_columns":
+            order = self.params.get("column_order")
+            if not isinstance(order, list) or not order:
+                raise ValueError("reorder_columns requires a non-empty params['column_order'] list")
+
+        elif self.action == "extract_pattern":
+            pat = self.params.get("regex_pattern")
+            if not isinstance(pat, str) or not pat:
+                raise ValueError("extract_pattern requires a non-empty string in params['regex_pattern']")
 
         return self
 

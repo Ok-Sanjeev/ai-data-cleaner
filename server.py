@@ -80,6 +80,18 @@ def sanitize_value_for_json(val: Any) -> Any:
     return str(val) if not isinstance(val, (str, list, dict)) else val
 
 
+def sanitize_obj_for_json(obj: Any) -> Any:
+    """Recursively sanitize dicts, lists, numpy types, and float NaNs for JSON compliance."""
+    if isinstance(obj, dict):
+        return {
+            ("null" if (pd.isna(k) or k is None) else str(k)): sanitize_obj_for_json(v)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, (list, tuple)):
+        return [sanitize_obj_for_json(item) for item in obj]
+    return sanitize_value_for_json(obj)
+
+
 def compute_column_distributions(df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
     """Compute summary distributions (top categories, numeric stats) for each column."""
     distributions = {}
@@ -139,7 +151,7 @@ def compute_side_by_side_diff(
             col_map[col_after] = col_after
         elif norm_key in cols_before_norm:
             col_map[col_after] = cols_before_norm[norm_key]
-        elif idx < len(df_before.columns):
+        elif len(df_after.columns) == len(df_before.columns) and idx < len(df_before.columns):
             col_map[col_after] = df_before.columns[idx]
         else:
             col_map[col_after] = None
@@ -239,14 +251,36 @@ def compute_side_by_side_diff(
             "cells": cells,
         })
 
+    # Exact calculation of total modified cells across the ENTIRE dataset (not just preview rows)
+    dataset_total_modified_cells = 0
+    for col_after, col_before in col_map.items():
+        if col_before is not None and col_before in df_before.columns and col_after in df_after.columns:
+            s_before = df_before[col_before]
+            s_after = df_after[col_after]
+            if can_use_index:
+                s_before_aligned = s_before.loc[df_after.index]
+                s_after_aligned = s_after
+            else:
+                common_len = min(len(s_before), len(s_after))
+                s_before_aligned = s_before.iloc[:common_len].reset_index(drop=True)
+                s_after_aligned = s_after.iloc[:common_len].reset_index(drop=True)
+
+            na_both = s_before_aligned.isna() & s_after_aligned.isna()
+            if s_before_aligned.dtype == s_after_aligned.dtype and pd.api.types.is_numeric_dtype(s_before_aligned):
+                diff = (s_before_aligned != s_after_aligned) & ~na_both
+            else:
+                diff = (s_before_aligned.astype(str) != s_after_aligned.astype(str)) & ~na_both
+            dataset_total_modified_cells += int(diff.sum())
+
     return {
         "rows_before": rows_before,
         "rows_after": rows_after,
         "rows_delta": rows_after - rows_before,
         "columns_before": list(df_before.columns),
         "columns_after": list(df_after.columns),
-        "total_cells_evaluated": preview_limit * len(df_after.columns),
-        "modified_cells_count": modified_cells_count,
+        "total_cells_evaluated": rows_before * len(df_after.columns),
+        "modified_cells_count": dataset_total_modified_cells,
+        "preview_modified_cells_count": modified_cells_count,
         "row_diffs": row_diffs,
     }
 
@@ -409,6 +443,8 @@ def api_profile(req: ProfileRequest):
         },
         "columns": columns_summary,
         "preview_rows": preview_records,
+        "profile": sanitize_obj_for_json(profile),
+        "quality_categories_summary": sanitize_obj_for_json(profile.get("quality_categories_summary", {})),
     }
 
 
@@ -559,9 +595,18 @@ def api_clean(req: CleanRequest):
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
             "rows_delta": diff_data["rows_delta"],
+            "rows_retained": diff_data["rows_after"],
+            "rows_retained_pct": round((diff_data["rows_after"] / max(1, diff_data["rows_before"])) * 100, 1),
             "modified_cells_count": diff_data["modified_cells_count"],
             "total_missing_before": sum(original_missing.values()),
             "total_missing_after": sum(cleaned_missing.values()),
+            "missing_resolved": max(0, sum(original_missing.values()) - sum(cleaned_missing.values())),
+            "duplicates_removed": max(0, int(df_before.duplicated().sum() - df_cleaned.duplicated().sum())),
+            "columns_removed": [c for c in diff_data["columns_before"] if c not in diff_data["columns_after"]],
+            "columns_removed_count": max(0, len(diff_data["columns_before"]) - len(diff_data["columns_after"])),
+            "actions_executed": len(executed_actions),
+            "actions_proposed": len(plan.actions) if hasattr(plan, "actions") else 0,
+            "actions_approved": len(req.approved_action_ids),
         },
         "diff_table": diff_data["row_diffs"],
         "columns": diff_data["columns_after"],
@@ -593,9 +638,15 @@ def api_session_undo(req: Dict[str, str]):
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
             "rows_delta": diff_data["rows_delta"],
+            "rows_retained": diff_data["rows_after"],
+            "rows_retained_pct": round((diff_data["rows_after"] / max(1, diff_data["rows_before"])) * 100, 1),
             "modified_cells_count": diff_data["modified_cells_count"],
             "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
             "total_missing_after": int(df_current.isna().sum().sum()),
+            "missing_resolved": max(0, int(SESSIONS[session_id]["df_original"].isna().sum().sum()) - int(df_current.isna().sum().sum())),
+            "duplicates_removed": max(0, int(SESSIONS[session_id]["df_original"].duplicated().sum() - df_current.duplicated().sum())),
+            "columns_removed": [c for c in diff_data["columns_before"] if c not in diff_data["columns_after"]],
+            "columns_removed_count": max(0, len(diff_data["columns_before"]) - len(diff_data["columns_after"])),
         },
         "diff_table": diff_data["row_diffs"],
         "columns": diff_data["columns_after"],
@@ -624,9 +675,15 @@ def api_session_redo(req: Dict[str, str]):
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
             "rows_delta": diff_data["rows_delta"],
+            "rows_retained": diff_data["rows_after"],
+            "rows_retained_pct": round((diff_data["rows_after"] / max(1, diff_data["rows_before"])) * 100, 1),
             "modified_cells_count": diff_data["modified_cells_count"],
             "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
             "total_missing_after": int(df_current.isna().sum().sum()),
+            "missing_resolved": max(0, int(SESSIONS[session_id]["df_original"].isna().sum().sum()) - int(df_current.isna().sum().sum())),
+            "duplicates_removed": max(0, int(SESSIONS[session_id]["df_original"].duplicated().sum() - df_current.duplicated().sum())),
+            "columns_removed": [c for c in diff_data["columns_before"] if c not in diff_data["columns_after"]],
+            "columns_removed_count": max(0, len(diff_data["columns_before"]) - len(diff_data["columns_after"])),
         },
         "diff_table": diff_data["row_diffs"],
         "columns": diff_data["columns_after"],
@@ -656,9 +713,15 @@ def api_session_rollback(req: Dict[str, str]):
             "rows_before": diff_data["rows_before"],
             "rows_after": diff_data["rows_after"],
             "rows_delta": 0,
+            "rows_retained": diff_data["rows_after"],
+            "rows_retained_pct": 100.0,
             "modified_cells_count": 0,
             "total_missing_before": int(SESSIONS[session_id]["df_original"].isna().sum().sum()),
             "total_missing_after": int(df_current.isna().sum().sum()),
+            "missing_resolved": 0,
+            "duplicates_removed": 0,
+            "columns_removed": [],
+            "columns_removed_count": 0,
         },
         "diff_table": diff_data["row_diffs"],
         "columns": diff_data["columns_after"],

@@ -240,3 +240,91 @@ def test_execute_action_integration_on_new_actions():
     )
     df = execute_action(df, action2)
     assert list(df["salary"]) == [1000.0, 2000.0]
+
+
+def test_fill_with_constant():
+    from actions import fill_with_constant
+    df = pd.DataFrame({"category": ["Tech", None, "Finance"]})
+    res = fill_with_constant(df, "category", "Unknown")
+    assert list(res["category"]) == ["Tech", "Unknown", "Finance"]
+
+
+def test_fill_with_forward_and_backward():
+    from actions import fill_with_backward_value, fill_with_forward_value
+    df = pd.DataFrame({"val": [10.0, None, None, 40.0]})
+    res_f = fill_with_forward_value(df, "val")
+    assert list(res_f["val"]) == [10.0, 10.0, 10.0, 40.0]
+    res_b = fill_with_backward_value(df, "val")
+    assert list(res_b["val"]) == [10.0, 40.0, 40.0, 40.0]
+
+
+def test_fill_with_group_median_and_mode():
+    from actions import fill_with_group_median, fill_with_group_mode
+    df = pd.DataFrame({
+        "dept": ["IT", "IT", "HR", "HR"],
+        "salary": [100.0, None, 50.0, 70.0],
+        "grade": ["Senior", None, "Junior", "Junior"],
+    })
+    res_med = fill_with_group_median(df, "salary", "dept")
+    assert res_med["salary"].iloc[1] == 100.0
+
+    res_mode = fill_with_group_mode(df, "grade", "dept")
+    assert res_mode["grade"].iloc[1] == "Senior"
+
+
+def test_drop_columns_by_missing_threshold():
+    from actions import drop_columns_by_missing_threshold
+    df = pd.DataFrame({
+        "a": [1, 2, 3, 4],
+        "mostly_empty": [1, None, None, None],  # 75% missing
+    })
+    res = drop_columns_by_missing_threshold(df, threshold=0.5)
+    assert "a" in res.columns
+    assert "mostly_empty" not in res.columns
+
+
+def test_remove_html_tags():
+    from actions import remove_html_tags
+    df = pd.DataFrame({"desc": ["<p><b>Senior Developer</b> &amp; Lead</p>", "Plain text"]})
+    res = remove_html_tags(df, "desc")
+    assert list(res["desc"]) == ["Senior Developer & Lead", "Plain text"]
+
+
+def test_handle_infinite_values():
+    import numpy as np
+    from actions import handle_infinite_values
+    df = pd.DataFrame({"num": [1.0, np.inf, -np.inf, 4.0]})
+    res = handle_infinite_values(df, "num")
+    assert pd.isna(res["num"].iloc[1])
+    assert pd.isna(res["num"].iloc[2])
+
+
+def test_validate_date_range():
+    from actions import validate_date_range
+    df = pd.DataFrame({"joined": ["2020-01-01", "1980-01-01", "2025-05-01", "2099-01-01"]})
+    res = validate_date_range(df, "joined", min_date="2000-01-01", max_date="2026-01-01")
+    assert pd.isna(res["joined"].iloc[1])  # 1980 coerced to None
+    assert pd.isna(res["joined"].iloc[3])  # 2099 coerced to None
+    assert res["joined"].iloc[0] == "2020-01-01"
+
+
+def test_reorder_columns():
+    from actions import reorder_columns
+    df = pd.DataFrame({"c": [3], "a": [1], "b": [2]})
+    res = reorder_columns(df, ["a", "b", "c"])
+    assert list(res.columns) == ["a", "b", "c"]
+
+
+def test_extract_pattern():
+    from actions import extract_pattern
+    df = pd.DataFrame({"info": ["Order #12345", "Order #67890"]})
+    res = extract_pattern(df, "info", r"#(\d+)", "order_id")
+    assert list(res["order_id"]) == ["12345", "67890"]
+
+
+def test_standardize_country_names():
+    from actions import standardize_country_names
+    df = pd.DataFrame({"country": ["USA", "uk", "ind", "Germany"]})
+    res = standardize_country_names(df, "country")
+    assert list(res["country"]) == ["United States", "United Kingdom", "India", "Germany"]
+

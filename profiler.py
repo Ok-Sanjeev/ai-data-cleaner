@@ -294,7 +294,160 @@ def compute_iqr_statistics(series):
         "outlier_count": int(len(outliers))
     }
 
-def profile_column(series):
+def compute_column_quality_categories(series, column_name, semantic_hints=None):
+    """Compute the 5 independent data-quality categories for a column:
+    A. Missing Values
+    B. Statistical Outliers
+    C. Invalid Values
+    D. Data Type Inconsistencies
+    E. Formatting Issues
+    """
+    total = len(series)
+    non_null = series.dropna()
+    categories = {}
+    col_str = str(column_name).lower() if column_name is not None else ""
+    hints = set(semantic_hints or [])
+
+    # A. Missing Values
+    null_count = int(series.isna().sum())
+    empty_str_count = 0
+    marker_count = 0
+    missing_markers = {"nan", "null", "none", "na", "n/a", "n.a.", "-", "--", "?", "unknown", "missing", "undefined"}
+
+    if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
+        str_s = series.dropna().astype(str).str.strip()
+        empty_str_count = int((str_s == "").sum())
+        marker_count = int(str_s.str.lower().isin(missing_markers).sum())
+
+    total_missing = null_count + empty_str_count + marker_count
+    categories["missing_values"] = {
+        "category": "Missing Values",
+        "count": total_missing,
+        "percentage": round((total_missing / max(1, total)) * 100, 2),
+        "null_count": null_count,
+        "empty_string_count": empty_str_count,
+        "marker_count": marker_count,
+        "status": "detected" if total_missing > 0 else "clean",
+        "explanation": f"{total_missing} missing value(s) ({round((total_missing/max(1,total))*100,1)}%)" if total_missing > 0 else "No missing values."
+    }
+
+    # B. Statistical Outliers (Numeric columns only, never identifier)
+    outlier_count = 0
+    outlier_stats = {}
+    if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series) and "possible_identifier" not in hints:
+        clean_num = series.dropna()
+        if len(clean_num) >= 4:
+            outlier_stats = compute_iqr_statistics(clean_num)
+            outlier_count = outlier_stats.get("outlier_count", 0)
+
+    categories["statistical_outliers"] = {
+        "category": "Statistical Outliers",
+        "count": outlier_count,
+        "percentage": round((outlier_count / max(1, total)) * 100, 2),
+        "stats": outlier_stats,
+        "status": "preserved_for_review" if outlier_count > 0 else "clean",
+        "explanation": f"{outlier_count} statistical outlier(s) detected via IQR; statistical variation preserved without clipping." if outlier_count > 0 else "No statistical outliers detected."
+    }
+
+    # C. Invalid Values
+    invalid_count = 0
+    invalid_reasons = []
+    if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
+        non_neg_hints = {"id", "age", "count", "number", "duration", "rating", "score", "year", "price", "salary"}
+        if any(h in col_str for h in non_neg_hints) and (series.dropna() < 0).any():
+            neg_count = int((series.dropna() < 0).sum())
+            invalid_count += neg_count
+            invalid_reasons.append(f"{neg_count} negative value(s) in non-negative column")
+
+    if (pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series)) and len(non_null) > 0:
+        str_nonempty = series.dropna().astype(str).str.strip()
+        str_nonempty = str_nonempty[str_nonempty != ""]
+        if "email" in col_str and len(str_nonempty) > 0:
+            valid_email = str_nonempty.str.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+            bad_email = int((~valid_email).sum())
+            if bad_email > 0:
+                invalid_count += bad_email
+                invalid_reasons.append(f"{bad_email} malformed email address(es)")
+        if ("phone" in col_str or "mobile" in col_str) and len(str_nonempty) > 0:
+            digits = str_nonempty.str.replace(r"\D", "", regex=True)
+            valid_phone = digits.str.len().between(7, 15)
+            bad_phone = int((~valid_phone).sum())
+            if bad_phone > 0:
+                invalid_count += bad_phone
+                invalid_reasons.append(f"{bad_phone} malformed phone number(s)")
+
+    categories["invalid_values"] = {
+        "category": "Invalid Values",
+        "count": invalid_count,
+        "percentage": round((invalid_count / max(1, total)) * 100, 2),
+        "reasons": invalid_reasons,
+        "status": "detected" if invalid_count > 0 else "clean",
+        "explanation": "; ".join(invalid_reasons) if invalid_reasons else "No constraint violations or invalid values detected."
+    }
+
+    # D. Data Type Inconsistencies
+    type_count = 0
+    type_notes = []
+    if (pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series)) and len(non_null) > 0:
+        str_s = series.dropna().astype(str).str.strip()
+        num_clean = str_s.str.replace(r"[$€£¥₹%]", "", regex=True).str.replace(",", "", regex=False)
+        converted_num = pd.to_numeric(num_clean, errors="coerce")
+        if converted_num.notna().mean() >= 0.8 and not converted_num.notna().all():
+            unparsed = int((converted_num.isna()).sum())
+            type_count += unparsed
+            type_notes.append(f"Numeric column with {unparsed} non-numeric string value(s)")
+        lower_s = str_s.str.lower()
+        if lower_s.isin(BOOLEAN_VALUES).mean() >= 0.8 and not lower_s.isin(BOOLEAN_VALUES).all():
+            bad_bool = int((~lower_s.isin(BOOLEAN_VALUES)).sum())
+            type_count += bad_bool
+            type_notes.append(f"Mixed boolean representation with {bad_bool} unparseable value(s)")
+        if ("date" in col_str or "time" in col_str or "_at" in col_str) and not pd.api.types.is_datetime64_any_dtype(series):
+            parsed_d = pd.to_datetime(str_s, format="mixed", errors="coerce")
+            if parsed_d.notna().mean() >= 0.5:
+                unparsed_d = int(parsed_d.isna().sum())
+                if unparsed_d > 0:
+                    type_count += unparsed_d
+                    type_notes.append(f"{unparsed_d} unparseable temporal/date string(s)")
+
+    categories["type_inconsistencies"] = {
+        "category": "Data Type Inconsistencies",
+        "count": type_count,
+        "percentage": round((type_count / max(1, total)) * 100, 2),
+        "notes": type_notes,
+        "status": "detected" if type_count > 0 else "clean",
+        "explanation": "; ".join(type_notes) if type_notes else "Consistent data types throughout column."
+    }
+
+    # E. Formatting Issues
+    format_count = 0
+    format_notes = []
+    if (pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series)) and len(non_null) > 0:
+        str_s = series.dropna().astype(str)
+        ws_issue = (str_s != str_s.str.strip()) | str_s.str.contains(r"\s{2,}", regex=True)
+        ws_cnt = int(ws_issue.sum())
+        if ws_cnt > 0:
+            format_count += ws_cnt
+            format_notes.append(f"{ws_cnt} leading/trailing or repeated whitespace issue(s)")
+        lower_nunique = str_s.str.strip().str.lower().nunique()
+        raw_nunique = str_s.str.strip().nunique()
+        if lower_nunique < raw_nunique:
+            diff_cnt = raw_nunique - lower_nunique
+            format_count += diff_cnt
+            format_notes.append(f"{diff_cnt} category casing variation(s)")
+
+    categories["formatting_issues"] = {
+        "category": "Formatting Issues",
+        "count": format_count,
+        "percentage": round((format_count / max(1, total)) * 100, 2),
+        "notes": format_notes,
+        "status": "detected" if format_count > 0 else "clean",
+        "explanation": "; ".join(format_notes) if format_notes else "Consistent formatting throughout column."
+    }
+
+    return categories
+
+
+def profile_column(series, column_name=None):
     semantic_hints = detect_semantic_hints(series)
 
     column_profile = {
@@ -385,9 +538,36 @@ def build_profile(df):
                 }
             )
 
-        column_profile = profile_column(df[column])
+        column_profile = profile_column(df[column], column_name=column_string)
         column_profile.update(detect_semantic_type(column_string, df[column]))
+        column_profile["quality_categories"] = compute_column_quality_categories(
+            df[column], column_name=column_string, semantic_hints=column_profile.get("semantic_hints", [])
+        )
         profile["column_profiles"][column] = column_profile
+
+    # Dataset-level quality summary
+    profile["quality_categories_summary"] = {
+        "missing_values": {
+            "total_count": sum(cp.get("quality_categories", {}).get("missing_values", {}).get("count", 0) for cp in profile["column_profiles"].values()),
+            "affected_columns": [c for c, cp in profile["column_profiles"].items() if cp.get("quality_categories", {}).get("missing_values", {}).get("count", 0) > 0],
+        },
+        "statistical_outliers": {
+            "total_count": sum(cp.get("quality_categories", {}).get("statistical_outliers", {}).get("count", 0) for cp in profile["column_profiles"].values()),
+            "affected_columns": [c for c, cp in profile["column_profiles"].items() if cp.get("quality_categories", {}).get("statistical_outliers", {}).get("count", 0) > 0],
+        },
+        "invalid_values": {
+            "total_count": sum(cp.get("quality_categories", {}).get("invalid_values", {}).get("count", 0) for cp in profile["column_profiles"].values()),
+            "affected_columns": [c for c, cp in profile["column_profiles"].items() if cp.get("quality_categories", {}).get("invalid_values", {}).get("count", 0) > 0],
+        },
+        "type_inconsistencies": {
+            "total_count": sum(cp.get("quality_categories", {}).get("type_inconsistencies", {}).get("count", 0) for cp in profile["column_profiles"].values()),
+            "affected_columns": [c for c, cp in profile["column_profiles"].items() if cp.get("quality_categories", {}).get("type_inconsistencies", {}).get("count", 0) > 0],
+        },
+        "formatting_issues": {
+            "total_count": sum(cp.get("quality_categories", {}).get("formatting_issues", {}).get("count", 0) for cp in profile["column_profiles"].values()),
+            "affected_columns": [c for c, cp in profile["column_profiles"].items() if cp.get("quality_categories", {}).get("formatting_issues", {}).get("count", 0) > 0],
+        },
+    }
 
     return profile
 

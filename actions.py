@@ -1,7 +1,9 @@
+import html
 import re
 import unicodedata
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 
@@ -51,6 +53,21 @@ ALLOWED_ACTIONS = {
     "remove_constant_columns",
     # Value Mapping
     "map_values",
+    # Advanced Missing Value & Group Imputation
+    "fill_with_constant",
+    "fill_with_forward_value",
+    "fill_with_backward_value",
+    "fill_with_group_median",
+    "fill_with_group_mode",
+    "drop_columns_by_missing_threshold",
+    # Advanced Text & Formatting
+    "remove_html_tags",
+    "handle_infinite_values",
+    "validate_date_range",
+    "reorder_columns",
+    "extract_pattern",
+    "standardize_phone_number",
+    "standardize_country_names",
 }
 
 
@@ -1126,6 +1143,242 @@ def map_values(df, column, mapping):
 
 
 # ============================================================
+# 40. FILL WITH CONSTANT
+# ============================================================
+
+def fill_with_constant(df: pd.DataFrame, column: str, fill_value: Any) -> pd.DataFrame:
+    """Fill missing values in a column with an explicit constant value."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    df[column] = df[column].fillna(fill_value)
+    return df
+
+
+# ============================================================
+# 41. FILL WITH FORWARD VALUE
+# ============================================================
+
+def fill_with_forward_value(df: pd.DataFrame, column: str, limit: Optional[int] = None) -> pd.DataFrame:
+    """Forward-fill missing values with the preceding valid observation."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    df[column] = df[column].ffill(limit=limit)
+    return df
+
+
+# ============================================================
+# 42. FILL WITH BACKWARD VALUE
+# ============================================================
+
+def fill_with_backward_value(df: pd.DataFrame, column: str, limit: Optional[int] = None) -> pd.DataFrame:
+    """Backward-fill missing values with the subsequent valid observation."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    df[column] = df[column].bfill(limit=limit)
+    return df
+
+
+# ============================================================
+# 43. FILL WITH GROUP MEDIAN
+# ============================================================
+
+def fill_with_group_median(df: pd.DataFrame, column: str, group_column: str) -> pd.DataFrame:
+    """Impute numeric missing values using group-level median values."""
+    if column not in df.columns:
+        raise ValueError(f"Target column '{column}' does not exist")
+    if group_column not in df.columns:
+        raise ValueError(f"Grouping column '{group_column}' does not exist")
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise TypeError(f"Target column '{column}' must be numeric for median imputation")
+
+    df = df.copy()
+    group_medians = df.groupby(group_column)[column].transform("median")
+    df[column] = df[column].fillna(group_medians)
+    overall_median = df[column].median()
+    if pd.notna(overall_median):
+        df[column] = df[column].fillna(overall_median)
+    return df
+
+
+# ============================================================
+# 44. FILL WITH GROUP MODE
+# ============================================================
+
+def fill_with_group_mode(df: pd.DataFrame, column: str, group_column: str) -> pd.DataFrame:
+    """Impute categorical missing values using group-level mode values."""
+    if column not in df.columns:
+        raise ValueError(f"Target column '{column}' does not exist")
+    if group_column not in df.columns:
+        raise ValueError(f"Grouping column '{group_column}' does not exist")
+
+    df = df.copy()
+    def get_mode(s):
+        m = s.dropna().mode()
+        return m.iloc[0] if not m.empty else None
+
+    group_modes = df.groupby(group_column)[column].transform(get_mode)
+    df[column] = df[column].fillna(group_modes)
+    overall_mode = df[column].dropna().mode()
+    if not overall_mode.empty:
+        df[column] = df[column].fillna(overall_mode.iloc[0])
+    return df
+
+
+# ============================================================
+# 45. DROP COLUMNS BY MISSING THRESHOLD
+# ============================================================
+
+def drop_columns_by_missing_threshold(df: pd.DataFrame, threshold: float = 0.5) -> pd.DataFrame:
+    """Drop columns whose missing value fraction strictly exceeds the threshold."""
+    if not (0.0 < threshold <= 1.0):
+        raise ValueError("threshold must be between 0.0 and 1.0")
+    df = df.copy()
+    missing_pct = df.isna().mean()
+    cols_to_drop = missing_pct[missing_pct > threshold].index.tolist()
+    if cols_to_drop:
+        df = df.drop(columns=cols_to_drop).copy()
+    df.attrs["columns_dropped"] = cols_to_drop
+    return df
+
+
+# ============================================================
+# 46. REMOVE HTML TAGS
+# ============================================================
+
+def remove_html_tags(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    """Strip HTML tags and unescape HTML entities from a text column."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    tag_pattern = re.compile(r"<[^>]+>")
+
+    def strip_html(val):
+        if pd.isna(val) or not isinstance(val, str):
+            return val
+        clean = html.unescape(val)
+        return tag_pattern.sub("", clean).strip()
+
+    df[column] = df[column].map(strip_html)
+    return df
+
+
+# ============================================================
+# 47. HANDLE INFINITE VALUES
+# ============================================================
+
+def handle_infinite_values(df: pd.DataFrame, column: str, replacement: Optional[Any] = None) -> pd.DataFrame:
+    """Replace positive and negative infinity with NaN or a designated numeric boundary."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    rep = np.nan if replacement is None else replacement
+    df[column] = df[column].replace([np.inf, -np.inf], rep)
+    return df
+
+
+# ============================================================
+# 48. VALIDATE DATE RANGE
+# ============================================================
+
+def validate_date_range(
+    df: pd.DataFrame,
+    column: str,
+    min_date: Optional[str] = None,
+    max_date: Optional[str] = None,
+    action_on_invalid: str = "coerce",
+) -> pd.DataFrame:
+    """Verify temporal values fall within [min_date, max_date], setting out-of-range values to null."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    dt_series = pd.to_datetime(df[column], errors="coerce")
+    mask_invalid = pd.Series(False, index=df.index)
+    if min_date is not None:
+        min_dt = pd.to_datetime(min_date)
+        mask_invalid |= (dt_series < min_dt)
+    if max_date is not None:
+        max_dt = pd.to_datetime(max_date)
+        mask_invalid |= (dt_series > max_dt)
+
+    if action_on_invalid == "coerce":
+        df.loc[mask_invalid, column] = None
+    return df
+
+
+# ============================================================
+# 49. REORDER COLUMNS
+# ============================================================
+
+def reorder_columns(df: pd.DataFrame, column_order: List[str]) -> pd.DataFrame:
+    """Reorder dataset columns according to an explicitly approved order."""
+    if not isinstance(column_order, list) or not column_order:
+        raise ValueError("column_order must be a non-empty list of column names")
+    ordered_cols = [c for c in column_order if c in df.columns]
+    remaining_cols = [c for c in df.columns if c not in ordered_cols]
+    return df[ordered_cols + remaining_cols].copy()
+
+
+# ============================================================
+# 50. EXTRACT PATTERN
+# ============================================================
+
+def extract_pattern(df: pd.DataFrame, column: str, regex_pattern: str, new_column: str, group_index: int = 1) -> pd.DataFrame:
+    """Extract a regular expression capture group from an existing column into a new column."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    extracted = df[column].astype(str).str.extract(regex_pattern)
+    if extracted.shape[1] >= group_index:
+        df[new_column] = extracted.iloc[:, group_index - 1]
+    else:
+        df[new_column] = None
+    return df
+
+
+# ============================================================
+# 51. STANDARDIZE PHONE NUMBER
+# ============================================================
+
+def standardize_phone_number(df: pd.DataFrame, column: str, format: str = "E164") -> pd.DataFrame:
+    """Standardize phone numbers into clean digit-only representations."""
+    return clean_phone_number(df, column)
+
+
+# ============================================================
+# 52. STANDARDIZE COUNTRY NAMES
+# ============================================================
+
+COUNTRY_NAME_MAPPINGS = {
+    "us": "United States", "usa": "United States", "united states of america": "United States",
+    "uk": "United Kingdom", "great britain": "United Kingdom", "england": "United Kingdom",
+    "in": "India", "ind": "India", "bharat": "India",
+    "ca": "Canada", "can": "Canada",
+    "de": "Germany", "deu": "Germany", "deutschland": "Germany",
+    "fr": "France", "fra": "France",
+    "ae": "United Arab Emirates", "uae": "United Arab Emirates",
+    "au": "Australia", "aus": "Australia",
+    "jp": "Japan", "jpn": "Japan",
+    "cn": "China", "chn": "China", "prc": "China",
+}
+
+def standardize_country_names(df: pd.DataFrame, column: str, target_format: str = "name") -> pd.DataFrame:
+    """Standardize common country codes, acronyms, and variants into canonical English names."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    def map_country(val):
+        if pd.isna(val) or not isinstance(val, str):
+            return val
+        norm = val.strip().lower()
+        return COUNTRY_NAME_MAPPINGS.get(norm, val.strip().title())
+    df[column] = df[column].map(map_country)
+    return df
+
+
+# ============================================================
 # ACTION METADATA & RISK REGISTRY
 # ============================================================
 
@@ -1379,6 +1632,88 @@ ACTION_METADATA: Dict[str, Dict[str, Any]] = {
         "label": "Deduplicate by Key Columns",
         "description": "Drop duplicate records based on a critical subset of columns."
     },
+
+    # Advanced Missing Value & Group Imputation (6 actions)
+    "fill_with_constant": {
+        "category": "Missing Values",
+        "risk": "yellow",
+        "label": "Fill With Constant",
+        "description": "Fill missing values with an explicit constant value."
+    },
+    "fill_with_forward_value": {
+        "category": "Missing Values",
+        "risk": "yellow",
+        "label": "Forward Fill Missing",
+        "description": "Propagate preceding valid values forward into missing entries."
+    },
+    "fill_with_backward_value": {
+        "category": "Missing Values",
+        "risk": "yellow",
+        "label": "Backward Fill Missing",
+        "description": "Propagate subsequent valid values backward into missing entries."
+    },
+    "fill_with_group_median": {
+        "category": "Missing Values",
+        "risk": "yellow",
+        "label": "Group Median Imputation",
+        "description": "Impute numeric nulls using group-specific median values."
+    },
+    "fill_with_group_mode": {
+        "category": "Missing Values",
+        "risk": "yellow",
+        "label": "Group Mode Imputation",
+        "description": "Impute categorical nulls using group-specific mode values."
+    },
+    "drop_columns_by_missing_threshold": {
+        "category": "Missing Values",
+        "risk": "red",
+        "label": "Drop Columns by Missing Ratio",
+        "description": "Permanently drop columns whose missing fraction exceeds threshold."
+    },
+
+    # Advanced Formatting & Structural (7 actions)
+    "remove_html_tags": {
+        "category": "Text Cleaning",
+        "risk": "green",
+        "label": "Remove HTML Tags",
+        "description": "Strip HTML markup and unescape HTML entities from text."
+    },
+    "handle_infinite_values": {
+        "category": "Numeric Cleaning",
+        "risk": "yellow",
+        "label": "Handle Infinite Values",
+        "description": "Convert +/- infinity values into standard nulls or designated limits."
+    },
+    "validate_date_range": {
+        "category": "Data Type & Formatting",
+        "risk": "yellow",
+        "label": "Validate Date Range",
+        "description": "Nullify or flag temporal values outside valid min/max date bounds."
+    },
+    "reorder_columns": {
+        "category": "Structural Cleaning",
+        "risk": "green",
+        "label": "Reorder Columns",
+        "description": "Reorganize columns into an approved logical column order."
+    },
+    "extract_pattern": {
+        "category": "Text Cleaning",
+        "risk": "yellow",
+        "label": "Extract Pattern to Column",
+        "description": "Extract regular expression pattern into a newly created column."
+    },
+    "standardize_phone_number": {
+        "category": "Data Type & Formatting",
+        "risk": "yellow",
+        "label": "Standardize Phone Number",
+        "description": "Format phone numbers to clean uniform representation."
+    },
+    "standardize_country_names": {
+        "category": "Value Mapping",
+        "risk": "yellow",
+        "label": "Standardize Country Names",
+        "description": "Map country codes and variations to canonical country names."
+    },
 }
 
 
@@ -1428,6 +1763,21 @@ ACTION_REGISTRY = {
     "remove_high_missing_columns": remove_high_missing_columns,
     "remove_constant_columns": remove_constant_columns,
     "map_values": map_values,
+    # Advanced Missing Value & Group Imputation
+    "fill_with_constant": fill_with_constant,
+    "fill_with_forward_value": fill_with_forward_value,
+    "fill_with_backward_value": fill_with_backward_value,
+    "fill_with_group_median": fill_with_group_median,
+    "fill_with_group_mode": fill_with_group_mode,
+    "drop_columns_by_missing_threshold": drop_columns_by_missing_threshold,
+    # Advanced Text & Formatting
+    "remove_html_tags": remove_html_tags,
+    "handle_infinite_values": handle_infinite_values,
+    "validate_date_range": validate_date_range,
+    "reorder_columns": reorder_columns,
+    "extract_pattern": extract_pattern,
+    "standardize_phone_number": standardize_phone_number,
+    "standardize_country_names": standardize_country_names,
 }
 
 
@@ -1640,6 +1990,86 @@ def execute_action(df, action):
             action.column,
             action.params.get("delimiter", ","),
             action.params.get("new_columns")
+        )
+
+    # Advanced Missing Value & Group Imputation
+    if action.action == "fill_with_constant":
+        return function(
+            df,
+            action.column,
+            action.params.get("fill_value")
+        )
+
+    if action.action in {"fill_with_forward_value", "fill_with_backward_value"}:
+        return function(
+            df,
+            action.column,
+            action.params.get("limit")
+        )
+
+    if action.action in {"fill_with_group_median", "fill_with_group_mode"}:
+        return function(
+            df,
+            action.column,
+            action.params.get("group_column")
+        )
+
+    if action.action == "drop_columns_by_missing_threshold":
+        return function(
+            df,
+            float(action.params.get("threshold", 0.5))
+        )
+
+    # Advanced Text, Formatting & Structural
+    if action.action == "remove_html_tags":
+        return function(
+            df,
+            action.column
+        )
+
+    if action.action == "handle_infinite_values":
+        return function(
+            df,
+            action.column,
+            action.params.get("replacement")
+        )
+
+    if action.action == "validate_date_range":
+        return function(
+            df,
+            action.column,
+            action.params.get("min_date"),
+            action.params.get("max_date"),
+            action.params.get("action_on_invalid", "coerce")
+        )
+
+    if action.action == "reorder_columns":
+        return function(
+            df,
+            action.params.get("column_order", [])
+        )
+
+    if action.action == "extract_pattern":
+        return function(
+            df,
+            action.column,
+            action.params.get("regex_pattern", ""),
+            action.params.get("new_column", f"{action.column}_extracted"),
+            int(action.params.get("group_index", 1))
+        )
+
+    if action.action == "standardize_phone_number":
+        return function(
+            df,
+            action.column,
+            action.params.get("format", "E164")
+        )
+
+    if action.action == "standardize_country_names":
+        return function(
+            df,
+            action.column,
+            action.params.get("target_format", "name")
         )
 
     raise ValueError(

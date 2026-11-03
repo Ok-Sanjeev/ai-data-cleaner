@@ -1281,47 +1281,70 @@ def build_cleaning_report(
 
             unresolved_issues.append({
                 "issue_type": "missing_values",
+                "category": "Missing Values",
                 "column": col,
                 "count": count,
                 "unresolved_count": count,
                 "missing_count": count,
                 "missing_percentage": pct,
+                "percentage": pct,
                 "total_rows": cleaned_rows,
                 "dtype": dtype,
                 "semantic_type": sem_type,
                 "suggested_remediation": remediation,
                 "risk_level": risk,
                 "status": "unresolved_preserved",
+                "remediation_status": "Unresolved Missing Values",
                 "issue": f"{count} ({pct}%) missing records preserved",
                 "details": detail,
-                "explanation": f"Column '{col}' has {count} missing records ({pct}% of {cleaned_rows} total rows). {remediation}",
+                "explanation": f"Column '{col}' ({dtype}) has {count} missing records ({pct}% of {cleaned_rows} total rows). {remediation}",
             })
 
-    # 2. Flagged numerical outliers (preserved for human review)
+    # 2. Flagged numerical outliers (strictly separated from missing values; preserved for domain review)
     for col, details in column_profiles.items():
         if col in df_cleaned.columns:
             stats = details.get("statistics", {})
             outlier_count = stats.get("outlier_count", 0)
             if outlier_count > 0:
+                actual_dtype = str(df_cleaned[col].dtype)
+                sem_type = details.get("semantic_type", "numeric_measure_or_identifier")
+                pct = round((outlier_count / max(1, cleaned_rows)) * 100, 2)
                 unresolved_issues.append({
                     "issue_type": "numerical_outliers",
+                    "category": "Statistical Outliers",
                     "column": col,
                     "count": outlier_count,
+                    "outlier_count": outlier_count,
+                    "missing_count": 0,
+                    "percentage": pct,
+                    "total_rows": cleaned_rows,
+                    "dtype": actual_dtype,
+                    "semantic_type": sem_type,
                     "status": "flagged_for_review",
-                    "details": f"{outlier_count} statistical outlier(s) detected via IQR; preserved without clipping to avoid silent data corruption."
+                    "remediation_status": "Preserved for Domain Review",
+                    "suggested_remediation": "Review domain context before applying clipping or capping; statistical variation is often legitimate business data.",
+                    "details": f"{outlier_count} statistical outlier(s) detected via IQR; preserved without clipping to avoid silent data corruption.",
+                    "explanation": f"Column '{col}' ({actual_dtype}) exhibits {outlier_count} statistical outlier records ({pct}% of dataset) detected via IQR. These have been intentionally preserved as valid statistical observations rather than discarded as corrupted data."
                 })
 
-    # 3. Raw relative dates
+    # 3. Raw relative dates / unparsed temporal records
     for col, details in column_profiles.items():
         if col in df_cleaned.columns:
             hints = set(details.get("semantic_hints", []))
             if "possible_date" in hints or "date" in col.lower():
                 if not pd.api.types.is_datetime64_any_dtype(df_cleaned[col]):
+                    actual_dtype = str(df_cleaned[col].dtype)
                     unresolved_issues.append({
                         "issue_type": "relative_or_unparsed_dates",
+                        "category": "Data Type Inconsistencies",
                         "column": col,
+                        "count": int(df_cleaned[col].notna().sum()),
+                        "dtype": actual_dtype,
                         "status": "preserved_raw",
-                        "details": f"Raw date/temporal strings in '{col}' preserved in original format; relative or unstructured dates cannot be safely parsed without reference context."
+                        "remediation_status": "Preserved Raw Format",
+                        "suggested_remediation": "Specify explicit reference anchor dates or use convert_to_date with a matching format string.",
+                        "details": f"Raw date/temporal strings in '{col}' preserved in original format; relative or unstructured dates cannot be safely parsed without reference context.",
+                        "explanation": f"Column '{col}' contains unstandardized temporal representations preserved in raw string format."
                     })
 
     # 4. Inconsistent text casing / categories not approved or pruned
@@ -1330,11 +1353,18 @@ def build_cleaning_report(
         if col in df_cleaned.columns:
             hints = set(details.get("semantic_hints", []))
             if "inconsistent_text_case" in hints and (col, "normalize_text") not in executed_col_actions:
+                actual_dtype = str(df_cleaned[col].dtype)
                 unresolved_issues.append({
                     "issue_type": "inconsistent_casing",
+                    "category": "Formatting Issues",
                     "column": col,
+                    "count": int(df_cleaned[col].nunique()),
+                    "dtype": actual_dtype,
                     "status": "preserved_raw",
-                    "details": f"Text casing variations in '{col}' preserved to protect acronyms, proper names, or domain terminology from destructive normalization."
+                    "remediation_status": "Preserved Raw Format",
+                    "suggested_remediation": "Review casing with domain stakeholders before applying normalize_text.",
+                    "details": f"Text casing variations in '{col}' preserved to protect acronyms, proper names, or domain terminology from destructive normalization.",
+                    "explanation": f"Text casing variations in '{col}' preserved in raw form to protect domain-specific terms."
                 })
 
     report = {

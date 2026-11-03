@@ -405,28 +405,48 @@
     <!-- ============================================================ -->
     <section id="step-3" class="hidden space-y-6">
       
-      <!-- Top Delta Metrics Summary -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Rows Retained</span>
-          <p class="text-lg font-semibold text-white font-mono mt-0.5" id="diff-rows-delta">-</p>
+      <!-- Top Delta Metrics Summary: 6 Precision Metrics -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Rows Retained</span>
+          <p class="text-base font-semibold text-white font-mono mt-0.5" id="diff-rows-delta">-</p>
         </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Cells Repaired</span>
-          <p class="text-lg font-semibold text-emerald-400 font-mono mt-0.5" id="diff-modified-cells">-</p>
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Cells Repaired</span>
+          <p class="text-base font-semibold text-emerald-400 font-mono mt-0.5" id="diff-modified-cells">-</p>
         </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Missing Values Resolved</span>
-          <p class="text-lg font-semibold text-blue-400 font-mono mt-0.5" id="diff-missing-delta">-</p>
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Missing Resolved</span>
+          <p class="text-base font-semibold text-blue-400 font-mono mt-0.5" id="diff-missing-delta">-</p>
         </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border flex items-center justify-around gap-2">
-          <button onclick="downloadCleanedCsv()" class="flex-1 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition text-center shadow-sm">
-            Cleaned CSV
-          </button>
-          <button onclick="downloadReportJson()" class="flex-1 py-2 rounded bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-zinc-200 text-xs font-medium transition text-center">
-            Audit JSON
-          </button>
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Duplicates Removed</span>
+          <p class="text-base font-semibold text-amber-400 font-mono mt-0.5" id="diff-dupes-removed">0</p>
         </div>
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Columns Removed</span>
+          <p class="text-base font-semibold text-rose-400 font-mono mt-0.5" id="diff-cols-removed">0</p>
+        </div>
+        <div class="bg-surface-card p-3.5 rounded-xl border border-surface-border">
+          <span class="text-[10px] font-medium text-zinc-400 block uppercase tracking-wider">Actions Executed</span>
+          <p class="text-base font-semibold text-emerald-300 font-mono mt-0.5" id="diff-actions-executed">-</p>
+        </div>
+      </div>
+
+      <!-- Export Action Bar -->
+      <div class="flex items-center justify-end space-x-2.5">
+        <button onclick="downloadCleanedCsv()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span>Download Cleaned CSV</span>
+        </button>
+        <button onclick="downloadReportJson()" class="px-3 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-zinc-200 text-xs font-medium transition flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span>Download Audit JSON</span>
+        </button>
       </div>
 
       <!-- Rollback & Stepwise Undo Engine Controls -->
@@ -457,7 +477,12 @@
             <p class="text-[11px] text-zinc-500 mt-0.5">Modified values highlighted in green. Hover over any cell to see original pre-cleaned value.</p>
           </div>
 
-          <div class="flex items-center space-x-2.5">
+          <div class="flex items-center space-x-2.5 flex-wrap gap-y-1.5">
+            <!-- Search & Filter Input -->
+            <div class="relative">
+              <input type="text" id="diff-search-input" oninput="filterDiffTableRows()" placeholder="Search diff..." class="w-36 sm:w-44 px-2.5 py-1 text-xs bg-surface-elevated border border-surface-border rounded text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono transition">
+            </div>
+
             <!-- Filter Changed Only Toggle -->
             <button onclick="toggleDiffFilter()" id="btn-diff-filter" class="px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition">
               <span id="diff-filter-label">Show Changed Only</span>
@@ -1065,20 +1090,13 @@
     function toggleAllActions(check) {
       if (!currentPlan) return;
       if (check) {
-        // Normal Select All selects GREEN and YELLOW actions
-        let redCount = 0;
+        // Select All (Safe) checks ONLY GREEN actions by default
         currentPlan.actions.forEach((act, idx) => {
           const chk = document.getElementById(`action-chk-${idx}`);
           const risk = chk ? chk.dataset.risk : (act.risk_level || 'yellow');
-          if (risk === 'red') {
-            redCount++;
-          } else {
-            if (chk) chk.checked = true;
-          }
+          if (chk) chk.checked = (risk === 'green');
         });
-        if (redCount > 0) {
-          showToast(`Selected safe and review actions. ${redCount} Potentially Destructive (RED) action(s) kept unchecked for safety.`);
-        }
+        showToast('Selected all Safe Repair (GREEN) actions. Review (YELLOW) and Destructive (RED) kept for explicit selection.');
       } else {
         currentPlan.actions.forEach((_, idx) => {
           const chk = document.getElementById(`action-chk-${idx}`);
@@ -1121,6 +1139,18 @@
         return;
       }
 
+      // Explicit confirmation if any RED action is checked
+      const selectedRedActions = currentPlan.actions.filter((act, idx) => {
+        const chk = document.getElementById(`action-chk-${idx}`);
+        return chk && chk.checked && act.risk_level === 'red';
+      });
+
+      if (selectedRedActions.length > 0) {
+        const redDetails = selectedRedActions.map(a => `• ${a.action} on '${a.column || 'dataset'}'`).join('\n');
+        const confirmed = confirm(`POTENTIALLY DESTRUCTIVE (RED) ACTIONS SELECTED:\n\n${redDetails}\n\nThese operations permanently discard columns or rows. Are you sure you want to execute them?`);
+        if (!confirmed) return;
+      }
+
       const btnText = document.getElementById('btn-execute-clean-text');
       btnText.textContent = 'Executing...';
 
@@ -1149,9 +1179,43 @@
 
     function renderDiffView(data) {
       currentDiffData = data;
-      document.getElementById('diff-rows-delta').textContent = `${data.diff_summary.rows_before} → ${data.diff_summary.rows_after}`;
-      document.getElementById('diff-modified-cells').textContent = data.diff_summary.modified_cells_count.toLocaleString();
-      document.getElementById('diff-missing-delta').textContent = `${data.diff_summary.total_missing_before} → ${data.diff_summary.total_missing_after}`;
+      const s = data.diff_summary || {};
+
+      // Rows Retained
+      const rowsRetained = s.rows_retained || s.rows_after || 0;
+      const rowsBefore = s.rows_before || 0;
+      const rowsPct = s.rows_retained_pct !== undefined ? s.rows_retained_pct : (rowsBefore > 0 ? ((rowsRetained / rowsBefore) * 100).toFixed(1) : 100);
+      document.getElementById('diff-rows-delta').textContent = `${rowsRetained.toLocaleString()} / ${rowsBefore.toLocaleString()} (${rowsPct}%)`;
+
+      // Cells Repaired (whole dataset)
+      const repairedCount = s.modified_cells_count || 0;
+      document.getElementById('diff-modified-cells').textContent = repairedCount.toLocaleString();
+
+      // Missing Values Resolved
+      const missBefore = s.total_missing_before || 0;
+      const missAfter = s.total_missing_after || 0;
+      const missResolved = s.missing_resolved !== undefined ? s.missing_resolved : Math.max(0, missBefore - missAfter);
+      document.getElementById('diff-missing-delta').textContent = `${missResolved.toLocaleString()} (${missBefore} → ${missAfter})`;
+
+      // Duplicate Rows Removed
+      const dupesRemoved = s.duplicates_removed || 0;
+      const dupesEl = document.getElementById('diff-dupes-removed');
+      if (dupesEl) dupesEl.textContent = dupesRemoved.toLocaleString();
+
+      // Columns Removed
+      const colsRemoved = s.columns_removed_count || (s.columns_removed ? s.columns_removed.length : 0);
+      const colsEl = document.getElementById('diff-cols-removed');
+      if (colsEl) {
+        colsEl.textContent = `${colsRemoved} removed`;
+        if (s.columns_removed && s.columns_removed.length > 0) {
+          colsEl.title = `Removed columns: ${s.columns_removed.join(', ')}`;
+        }
+      }
+
+      // Actions Executed
+      const actionsExec = s.actions_executed || (data.checkpoints ? Math.max(0, data.checkpoints.length - 1) : 0);
+      const actEl = document.getElementById('diff-actions-executed');
+      if (actEl) actEl.textContent = `${actionsExec} applied`;
 
       // Checkpoint timeline with guaranteed valid labels
       const timeline = document.getElementById('checkpoints-timeline');
@@ -1182,32 +1246,59 @@
       // Unresolved issues card with rich statistics
       const unresCard = document.getElementById('unresolved-issues-card');
       const unresContainer = document.getElementById('unresolved-issues-container');
-      if (data.unresolved_issues && data.unresolved_issues.length > 0) {
+      const issues = data.unresolved_issues || [];
+
+      // Filter out any false missing issues if count === 0
+      const validIssues = issues.filter(iss => {
+        if (iss.issue_type === 'missing_values' && (iss.count === 0 || iss.missing_count === 0)) return false;
+        return true;
+      });
+
+      if (validIssues.length > 0) {
         unresContainer.innerHTML = '';
-        data.unresolved_issues.forEach(iss => {
+        validIssues.forEach(iss => {
           const card = document.createElement('div');
           card.className = 'bg-surface-elevated rounded-lg border border-surface-border p-3.5 space-y-2 text-xs';
           
           const colName = iss.column || 'Dataset';
-          const count = iss.missing_count || iss.count || iss.unresolved_count || 0;
+          const count = iss.count || iss.outlier_count || iss.missing_count || 0;
           const total = iss.total_rows || data.diff_summary?.rows_after || 0;
-          const pct = iss.missing_percentage || (total > 0 ? ((count / total) * 100).toFixed(1) : '0.0');
-          const dtype = iss.dtype || 'string';
+          const pct = iss.percentage || iss.missing_percentage || (total > 0 ? ((count / total) * 100).toFixed(1) : '0.0');
+          const dtype = iss.dtype || 'int64';
           const semType = iss.semantic_type || 'General';
+          
+          const isOutlier = iss.issue_type === 'numerical_outliers' || iss.category === 'Statistical Outliers';
+          const isMissing = iss.issue_type === 'missing_values' || iss.category === 'Missing Values';
+          const categoryName = iss.category || (isOutlier ? 'Statistical Outliers' : (isMissing ? 'Missing Values' : 'Quality Observation'));
+
+          let badgeColor = 'bg-blue-950/30 text-blue-400 border border-blue-900/30';
+          let statusBadge = '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/30 text-blue-400 border border-blue-800/40">In Review</span>';
+          let countLabel = 'Affected';
+
+          if (isOutlier) {
+            badgeColor = 'bg-amber-950/30 text-amber-400 border border-amber-900/40';
+            statusBadge = '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/30 text-amber-400 border border-amber-800/40">Preserved Outlier</span>';
+            countLabel = 'Outliers';
+          } else if (isMissing) {
+            badgeColor = 'bg-rose-950/30 text-rose-400 border border-rose-900/40';
+            statusBadge = '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/30 text-rose-400 border border-rose-800/40">Unresolved Missing</span>';
+            countLabel = 'Missing';
+          }
+
           const remediation = iss.suggested_remediation || iss.details || 'Preserved for domain inspection';
-          const explanation = iss.explanation || iss.details || `${count} missing records preserved without synthetic fabrication.`;
+          const explanation = iss.explanation || iss.details || (isOutlier ? `${count.toLocaleString()} statistical outlier records preserved without synthetic alteration.` : `${count.toLocaleString()} records preserved.`);
 
           card.innerHTML = `
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <span class="font-mono font-semibold text-white">${colName}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-card text-zinc-400 font-mono border border-surface-border">${dtype}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950/30 text-blue-400 font-mono border border-blue-900/30">${semType}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-card text-zinc-300 font-mono border border-surface-border">${dtype}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded ${badgeColor} font-mono">${categoryName}</span>
               </div>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/30 text-amber-400 border border-amber-800/40">Preserved</span>
+              ${statusBadge}
             </div>
             <div class="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-surface-border/50 text-zinc-400 font-mono">
-              <div>Missing: <span class="text-white">${count.toLocaleString()}</span></div>
+              <div>${countLabel}: <span class="text-white">${count.toLocaleString()}</span></div>
               <div>Share: <span class="text-white">${pct}%</span></div>
               <div>Total: <span class="text-white">${total.toLocaleString()}</span></div>
             </div>
@@ -1221,8 +1312,34 @@
         });
         unresCard.classList.remove('hidden');
       } else {
-        unresCard.classList.add('hidden');
+        unresContainer.innerHTML = `
+          <div class="col-span-1 md:col-span-2 p-4 text-center text-xs text-zinc-400 bg-surface-elevated rounded-lg border border-surface-border">
+            <span class="text-emerald-400 font-medium block text-sm mb-1">✓ Complete Quality Convergence</span>
+            All detected and actionable quality issues have been addressed. Statistical observations intentionally preserved are listed separately.
+          </div>
+        `;
+        unresCard.classList.remove('hidden');
       }
+    }
+
+    function filterDiffTableRows() {
+      const query = (document.getElementById('diff-search-input')?.value || '').toLowerCase().trim();
+      if (!currentDiffData) return;
+      const allRows = currentDiffData.diff_table || [];
+      const cols = currentDiffData.columns || [];
+      if (!query) {
+        renderDiffTableRows(allRows, cols);
+        return;
+      }
+      const filtered = allRows.filter(r => {
+        if (String(r.row_index).includes(query)) return true;
+        if (!r.cells) return false;
+        return Object.values(r.cells).some(c => {
+          const val = c.cleaned !== undefined ? c.cleaned : c.value;
+          return val !== null && val !== undefined && String(val).toLowerCase().includes(query);
+        });
+      });
+      renderDiffTableRows(filtered, cols);
     }
 
     function escapeHtml(str) {
@@ -1309,7 +1426,7 @@
         label.textContent = 'Show Changed Only';
       }
       if (currentDiffData) {
-        renderDiffTableRows(currentDiffData.diff_table || [], currentDiffData.columns || []);
+        filterDiffTableRows();
       }
     }
 
