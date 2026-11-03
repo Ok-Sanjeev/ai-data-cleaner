@@ -1534,9 +1534,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/ui", response_class=HTMLResponse)
-def index_page():
-    """Serve the interactive single-page web dashboard with no-cache headers."""
+def home_page():
+    """Serve the public-facing DataRefine homepage with no-cache headers."""
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
@@ -1547,6 +1546,50 @@ def index_page():
         content=content,
         status_code=200,
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
+@app.get("/app", response_class=HTMLResponse)
+@app.get("/ui", response_class=HTMLResponse)
+def workspace_page():
+    """Serve the DataRefine application workspace with no-cache headers."""
+    app_path = os.path.join(STATIC_DIR, "app.html")
+    if os.path.exists(app_path):
+        with open(app_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    else:
+        content = DASHBOARD_HTML
+    return HTMLResponse(
+        content=content,
+        status_code=200,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
+
+
+@app.exception_handler(404)
+async def custom_404_handler(request, exc):
+    """Clean, branded 404 page for unknown routes."""
+    return HTMLResponse(
+        content="""<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>404 — Page Not Found | DataRefine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#090a0f] text-zinc-300 min-h-screen flex items-center justify-center p-6 font-sans">
+  <div class="max-w-md w-full bg-[#11141e] border border-[#1f2536] rounded-xl p-8 text-center space-y-4">
+    <span class="text-xs font-mono text-blue-500 uppercase font-semibold">404 Error</span>
+    <h1 class="text-xl font-bold text-white">Page Not Found</h1>
+    <p class="text-xs text-zinc-400">The route you requested does not exist in DataRefine.</p>
+    <div class="pt-2 flex justify-center space-x-3">
+      <a href="/" class="px-4 py-2 rounded-lg bg-[#171c28] border border-[#1f2536] hover:bg-zinc-800 text-xs font-medium text-zinc-200 transition">Homepage</a>
+      <a href="/app" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white transition">Workspace</a>
+    </div>
+  </div>
+</body>
+</html>""",
+        status_code=404,
     )
 
 

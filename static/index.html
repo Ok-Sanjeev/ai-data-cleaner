@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataRefine — Professional AI Data Cleaner & Quality Studio</title>
-  <meta name="description" content="DataRefine: Production-ready data cleaning studio with deterministic Python execution, privacy-safe AI planning, side-by-side visual diffs, and audit reports.">
+  <title>DataRefine — AI Data Cleaner & Quality Studio</title>
+  <meta name="description" content="DataRefine: Profile datasets, identify quality issues, and review intelligent cleaning recommendations before applying changes with deterministic Python execution.">
 
   <!-- Favicon: Precision Grid Mark -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23090a0f'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h16M13 7v18M19 7v18' stroke='%233b82f6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -26,8 +26,7 @@
             },
             accent: {
               DEFAULT: '#2563eb',
-              hover: '#1d4ed8',
-              subtle: 'rgba(37, 99, 235, 0.1)'
+              hover: '#1d4ed8'
             }
           },
           fontFamily: {
@@ -42,7 +41,7 @@
   <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <style>
     body {
@@ -51,1345 +50,354 @@
       font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
 
-    /* Subtle custom scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #090a0f; }
     ::-webkit-scrollbar-thumb { background: #272c3d; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #373f55; }
-
-    /* Diff cell highlights - Clean & Restrained */
-    .cell-modified {
-      background-color: rgba(16, 185, 129, 0.12) !important;
-      color: #34d399 !important;
-      font-weight: 500;
-      border-bottom: 2px solid #059669;
-    }
-    .cell-dropped {
-      background-color: rgba(239, 68, 68, 0.1) !important;
-      color: #f87171 !important;
-      text-decoration: line-through;
-    }
-
-    /* Slide-over drawer transition */
-    .drawer-backdrop {
-      transition: opacity 0.2s ease-out;
-    }
-    .drawer-panel {
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-blue-600/30 selection:text-blue-200">
 
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium transition-all duration-200 transform translate-y-[-50px] opacity-0 flex items-center space-x-2.5 pointer-events-none border"></div>
-
-  <!-- TOP APP BAR -->
-  <header class="bg-surface-card border-b border-surface-border sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+  <!-- PUBLIC NAVIGATION HEADER -->
+  <header class="bg-surface-card/90 backdrop-blur-md border-b border-surface-border sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       
-      <!-- Brand & Product Title -->
-      <div class="flex items-center space-x-3">
-        <!-- Minimal Grid Mark Logo -->
-        <svg class="w-7 h-7 text-blue-500 shrink-0" viewBox="0 0 32 32" fill="none" stroke="currentColor">
+      <!-- Brand Logo & Name -->
+      <a href="/" class="flex items-center space-x-3 group">
+        <svg class="w-7 h-7 text-blue-500 shrink-0 group-hover:text-blue-400 transition" viewBox="0 0 32 32" fill="none" stroke="currentColor">
           <rect width="32" height="32" rx="6" fill="#171c28" stroke="#1f2536" stroke-width="1"/>
           <path d="M8 11h16M8 16h16M8 21h16M13 8v16M19 8v16" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
+        <span class="text-base font-semibold tracking-tight text-white">DataRefine</span>
+      </a>
 
-        <div>
-          <div class="flex items-center space-x-2">
-            <span class="text-sm font-semibold tracking-tight text-white">DataRefine</span>
-            <span class="text-[11px] text-zinc-500 hidden sm:inline">|</span>
-            <span class="text-[11px] text-zinc-400 hidden sm:inline">AI Data Cleaner & Engineering Studio</span>
-          </div>
-        </div>
-      </div>
+      <!-- Minimal Navigation Links -->
+      <nav class="hidden md:flex items-center space-x-6 text-xs font-medium text-zinc-400">
+        <a href="#features" class="hover:text-zinc-200 transition">Features</a>
+        <a href="#how-it-works" class="hover:text-zinc-200 transition">How It Works</a>
+        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy</a>
+        <a href="/docs" target="_blank" class="hover:text-zinc-200 transition">API Docs</a>
+      </nav>
 
-      <!-- Action & Meta Bar -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
-        <!-- Active Session Badge -->
-        <div id="session-badge" class="hidden items-center text-[11px] font-mono bg-surface-elevated border border-surface-border px-2.5 py-1 rounded text-zinc-300">
-          <span class="text-zinc-500 mr-1.5">Session:</span>
-          <span id="current-session-id" class="text-blue-400 font-semibold"></span>
-        </div>
-
-        <!-- Privacy Architecture Modal Trigger -->
-        <button onclick="openModal('modal-privacy')" class="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded hover:bg-surface-elevated transition flex items-center space-x-1.5" title="Privacy: Zero raw data leakage architecture">
-          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          <span class="hidden md:inline">Privacy Model</span>
-        </button>
-
-        <!-- Benchmark Evaluation Trigger -->
-        <button onclick="openModal('modal-benchmark')" class="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded hover:bg-surface-elevated transition flex items-center space-x-1.5" title="Run precision & recall quality evaluation">
-          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          <span class="hidden sm:inline">Benchmark</span>
-        </button>
-
-        <!-- Settings Drawer Trigger -->
-        <button onclick="toggleSettingsDrawer(true)" class="text-xs text-zinc-300 hover:text-white px-2.5 py-1.5 rounded bg-surface-elevated border border-surface-border hover:border-surface-borderMuted transition flex items-center space-x-1.5" title="Configure LLM Provider & Parameters">
-          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span id="nav-active-provider" class="font-mono text-[11px] text-zinc-300">gemini</span>
-        </button>
-
-        <!-- API Documentation -->
-        <a href="/docs" target="_blank" class="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded hover:bg-surface-elevated transition" title="Swagger REST API Specification">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+      <!-- Primary Call to Action -->
+      <div class="flex items-center space-x-3">
+        <a href="/app" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm flex items-center space-x-1.5">
+          <span>Start Cleaning</span>
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
         </a>
       </div>
+
     </div>
   </header>
 
-  <!-- WORKFLOW STEP BAR (3-STEP CORE WORKFLOW) -->
-  <div class="border-b border-surface-border bg-surface-base">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6">
-      <nav class="flex space-x-1 sm:space-x-4 py-2.5" aria-label="Workflow Steps">
-        
-        <!-- Step 1 Button -->
-        <button onclick="goToStep(1)" id="step-btn-1" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-white bg-surface-elevated border border-surface-border">
-          <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-          <span>Upload & Profile</span>
-        </button>
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-1">
 
-        <span class="text-zinc-600 flex items-center">/</span>
-
-        <!-- Step 2 Button -->
-        <button onclick="goToStep(2)" id="step-btn-2" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card">
-          <span class="w-4 h-4 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center text-[10px] font-bold" id="step-num-2">2</span>
-          <span>Review & Clean</span>
-        </button>
-
-        <span class="text-zinc-600 flex items-center">/</span>
-
-        <!-- Step 3 Button -->
-        <button onclick="goToStep(3)" id="step-btn-3" class="flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card">
-          <span class="w-4 h-4 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center text-[10px] font-bold" id="step-num-3">3</span>
-          <span>Results & Export</span>
-        </button>
-
-      </nav>
-    </div>
-  </div>
-
-  <!-- MAIN WORKSPACE CONTAINER -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-
-    <!-- ============================================================ -->
-    <!-- STEP 1: UPLOAD & PROFILE                                     -->
-    <!-- ============================================================ -->
-    <section id="step-1" class="space-y-6">
+    <!-- HERO SECTION -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-16 text-center space-y-6">
       
-      <!-- Top Ingestion Bar -->
-      <div class="bg-surface-card rounded-xl border border-surface-border p-5">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated text-zinc-300 border border-surface-border">
+        <span>Deterministic Data Quality & AI-Assisted Cleaning</span>
+      </div>
+
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight max-w-4xl mx-auto leading-tight sm:leading-tight">
+        Clean data. Build with confidence.
+      </h1>
+
+      <p class="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+        Profile datasets, identify quality issues and review intelligent cleaning recommendations before applying changes.
+      </p>
+
+      <!-- Hero Call-to-Actions -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <a href="/app" class="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center justify-center space-x-2 shadow-sm">
+          <span>Start Cleaning</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+
+        <a href="#features" class="w-full sm:w-auto px-5 py-3 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border text-xs font-medium transition flex items-center justify-center">
+          Explore Features
+        </a>
+      </div>
+
+      <!-- Genuine Product Visual (Realistic Clean Workspace Mockup) -->
+      <div class="pt-10 max-w-5xl mx-auto">
+        <div class="bg-surface-card rounded-xl border border-surface-border p-4 sm:p-6 shadow-2xl text-left space-y-4">
           
-          <!-- File Ingestion Dropzone & Selector -->
-          <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            
-            <!-- Quick Preset Dropdown -->
-            <div>
-              <label class="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-1.5">Load Dataset</label>
-              <select id="dataset-select" onchange="onDatasetDropdownChange(this.value)" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
-                <option value="">Select a dataset...</option>
-              </select>
+          <!-- Mock Header Bar -->
+          <div class="flex items-center justify-between pb-3 border-b border-surface-border text-xs text-zinc-400 font-mono">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-zinc-700"></span>
+              <span class="ml-2 text-zinc-300">workspace_preview.csv · 1,020 rows · 12 columns</span>
             </div>
+            <span class="text-emerald-400 font-sans text-[11px] bg-emerald-950/30 border border-emerald-800/40 px-2 py-0.5 rounded">
+              Verified Pipeline Ready
+            </span>
+          </div>
 
-            <!-- Upload Custom File -->
-            <div>
-              <label class="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-1.5">Or Upload CSV File</label>
-              <div class="relative">
-                <input type="file" id="file-upload" accept=".csv" class="hidden" onchange="handleFileUpload(this)">
-                <label for="file-upload" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-dashed border-zinc-700 hover:border-zinc-500 cursor-pointer flex items-center justify-between text-xs text-zinc-300 transition">
-                  <span id="file-upload-name" class="truncate">Choose local CSV file...</span>
-                  <span class="text-[11px] text-blue-400 font-medium shrink-0 ml-2">Browse</span>
-                </label>
-              </div>
+          <!-- Mock Stats Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
+              <span class="text-zinc-500 text-[10px] block uppercase">Missing Values</span>
+              <span class="text-base font-semibold text-white font-mono mt-0.5 block">235 cells</span>
             </div>
-
-          </div>
-
-          <!-- Profile Action Button -->
-          <div class="flex items-end">
-            <button onclick="profileCurrentDataset()" id="btn-profile" class="w-full md:w-auto px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center space-x-2 transition shadow-sm">
-              <span id="btn-profile-text">Profile Dataset</span>
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Initial Empty State (Visible before any dataset is loaded) -->
-      <div id="step-1-empty-state" class="border border-dashed border-zinc-800 rounded-xl p-12 text-center space-y-3">
-        <svg class="w-10 h-10 mx-auto text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-        </svg>
-        <div class="space-y-1">
-          <h3 class="text-sm font-medium text-zinc-300">No Dataset Selected</h3>
-          <p class="text-xs text-zinc-500 max-w-sm mx-auto">Select a sample dataset from the dropdown above or upload a CSV file to inspect data distributions, missing values, and anomalies.</p>
-        </div>
-      </div>
-
-      <!-- Profile View Container (Appears after profiling) -->
-      <div id="step-1-results" class="hidden space-y-6">
-        
-        <!-- Dataset Overview Summary Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Total Rows</span>
-            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-rows">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Columns</span>
-            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-cols">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Duplicate Rows</span>
-            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-dups">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Missing Values</span>
-            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-missing">-</p>
-          </div>
-        </div>
-
-        <!-- Data Quality Findings Panel -->
-        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Data Quality Summary</h3>
-            <span id="issues-detected-badge" class="text-[11px] px-2 py-0.5 rounded font-mono"></span>
-          </div>
-          <div id="quality-findings-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Dataset Preview Table with Row Filter -->
-        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Dataset Preview (First 15 Rows)</h3>
-              <p class="text-[11px] text-zinc-500 mt-0.5">Click any column header to view distribution stats, top values, and numeric bounds.</p>
+            <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
+              <span class="text-zinc-500 text-[10px] block uppercase">Duplicates</span>
+              <span class="text-base font-semibold text-white font-mono mt-0.5 block">0 rows</span>
             </div>
-
-            <!-- Instant Search Input -->
-            <div class="relative w-full sm:w-64">
-              <input type="text" id="preview-search" placeholder="Filter rows in preview..." onkeyup="filterPreviewTable()" class="w-full pl-3 pr-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
+            <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
+              <span class="text-zinc-500 text-[10px] block uppercase">Proposed Fixes</span>
+              <span class="text-base font-semibold text-blue-400 font-mono mt-0.5 block">4 operations</span>
+            </div>
+            <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
+              <span class="text-zinc-500 text-[10px] block uppercase">Execution Engine</span>
+              <span class="text-base font-semibold text-emerald-400 font-mono mt-0.5 block">Pandas Vectorized</span>
             </div>
           </div>
 
-          <div class="overflow-x-auto max-h-[440px] overflow-y-auto rounded-lg border border-surface-border">
-            <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="preview-table">
-              <thead class="sticky top-0 bg-surface-elevated text-zinc-300 text-[11px] border-b border-surface-border select-none" id="preview-table-header"></thead>
-              <tbody id="preview-table-body" class="divide-y divide-surface-border font-mono"></tbody>
+          <!-- Mock Side-by-Side Visual Diff Table -->
+          <div class="overflow-x-auto rounded-lg border border-surface-border font-mono text-xs">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border">
+                <tr>
+                  <th class="px-3 py-2 text-zinc-500 font-normal">#</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">employee_id</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">first_name</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">age</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">department</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">salary</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">phone</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-border text-zinc-300">
+                <tr class="hover:bg-surface-elevated/30">
+                  <td class="px-3 py-2 text-zinc-500">0</td>
+                  <td class="px-3 py-2">EMP1000</td>
+                  <td class="px-3 py-2">Bob</td>
+                  <td class="px-3 py-2">25</td>
+                  <td class="px-3 py-2">DevOps</td>
+                  <td class="px-3 py-2">$59,767.65</td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 font-medium border-b border-emerald-600">1651623197</td>
+                </tr>
+                <tr class="hover:bg-surface-elevated/30">
+                  <td class="px-3 py-2 text-zinc-500">1</td>
+                  <td class="px-3 py-2">EMP1001</td>
+                  <td class="px-3 py-2">Bob</td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 font-medium border-b border-emerald-600">30.0</td>
+                  <td class="px-3 py-2">Finance</td>
+                  <td class="px-3 py-2">$65,304.66</td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 font-medium border-b border-emerald-600">1898471390</td>
+                </tr>
+                <tr class="hover:bg-surface-elevated/30">
+                  <td class="px-3 py-2 text-zinc-500">2</td>
+                  <td class="px-3 py-2">EMP1002</td>
+                  <td class="px-3 py-2">Alice</td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 font-medium border-b border-emerald-600">30.0</td>
+                  <td class="px-3 py-2">Admin</td>
+                  <td class="px-3 py-2">$88,145.90</td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 font-medium border-b border-emerald-600">5596363211</td>
+                </tr>
+              </tbody>
             </table>
           </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section id="features" class="border-t border-surface-border bg-surface-base py-16 sm:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
+        
+        <div class="text-center space-y-3 max-w-3xl mx-auto">
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Core Capabilities</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Built for serious data engineering</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            DataRefine provides a robust, transparent pipeline designed to eliminate manual data-cleaning tedium without black-box code execution.
+          </p>
         </div>
 
-        <!-- Bottom CTA to Step 2 -->
-        <div class="flex justify-end pt-2">
-          <button onclick="goToStep(2); generatePlanIfNeeded();" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-            <span>Continue to Review & Clean</span>
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          
+          <!-- Feature 1: Dataset Profiling -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
+            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
+              1
+            </div>
+            <h3 class="text-sm font-semibold text-white">Dataset Profiling</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Inspect column structures, detect encoding and delimiters, calculate missing value ratios, identify duplicates, and sniff semantic types like emails, phone numbers, and dates.
+            </p>
+          </div>
+
+          <!-- Feature 2: Intelligent Cleaning Recommendations -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
+            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
+              2
+            </div>
+            <h3 class="text-sm font-semibold text-white">Intelligent Cleaning Recommendations</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Generate AI-assisted cleaning plans tailored to your schema metadata. Review and approve proposed operations individually with human-in-the-loop oversight.
+            </p>
+          </div>
+
+          <!-- Feature 3: Reliable Data Processing -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
+            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
+              3
+            </div>
+            <h3 class="text-sm font-semibold text-white">Reliable Data Processing</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Execute validated deterministic cleaning operations through tested Python routines. No arbitrary, unreviewed code is run against your data.
+            </p>
+          </div>
+
+          <!-- Feature 4: Side-by-Side Visual Diff -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
+            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
+              4
+            </div>
+            <h3 class="text-sm font-semibold text-white">Side-by-Side Visual Diff</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Inspect exactly what changed cell by cell. Highlight modified values in green with pre-cleaned hover tooltips and step-by-step undo and rollback capabilities.
+            </p>
+          </div>
+
+          <!-- Feature 5: Export & Benchmark Evaluation -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 lg:col-span-2">
+            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
+              5
+            </div>
+            <h3 class="text-sm font-semibold text-white">Export & Benchmark Evaluation</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Download cleaned datasets in standard CSV format, retrieve comprehensive JSON audit logs, export standalone Pandas scripts for automated batch jobs, or evaluate cleaning quality against ground-truth benchmarks.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS SECTION -->
+    <section id="how-it-works" class="border-t border-surface-border bg-surface-card/40 py-16 sm:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
+        
+        <div class="text-center space-y-3 max-w-3xl mx-auto">
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Workflow</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">How It Works</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            A transparent three-step process built around developer verification.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
+            <span class="text-xs font-mono text-zinc-500 font-semibold">01</span>
+            <h3 class="text-sm font-semibold text-white">Upload your CSV</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Drag and drop your dataset. DataRefine instantly profiles column structures, null counts, duplicate records, and data-quality anomalies.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
+            <span class="text-xs font-mono text-zinc-500 font-semibold">02</span>
+            <h3 class="text-sm font-semibold text-white">Review & apply recommendations</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Inspect proposed cleaning operations. Approve or reject individual actions before deterministic Python functions execute the plan.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
+            <span class="text-xs font-mono text-zinc-500 font-semibold">03</span>
+            <h3 class="text-sm font-semibold text-white">Download your cleaned dataset</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Inspect side-by-side diffs, verify changes with step-by-step undo, and export clean CSVs or reusable Python ETL scripts.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Section CTA -->
+        <div class="text-center pt-4">
+          <a href="/app" class="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm">
+            <span>Open DataRefine Workspace</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
-          </button>
+          </a>
         </div>
 
       </div>
-
     </section>
 
-    <!-- ============================================================ -->
-    <!-- STEP 2: REVIEW & CLEAN                                       -->
-    <!-- ============================================================ -->
-    <section id="step-2" class="hidden space-y-6">
-      
-      <!-- Top Status Banner -->
-      <div class="bg-surface-card rounded-xl border border-surface-border p-5">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-white">Review Cleaning Recommendations</h2>
-            <p class="text-xs text-zinc-400 mt-0.5">The AI planning engine proposed the operations below based on dataset metadata. Select which operations to apply.</p>
-          </div>
-
-          <div class="flex items-center space-x-2 shrink-0">
-            <button onclick="toggleAllActions(true)" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition">
-              Select All
-            </button>
-            <button onclick="toggleAllActions(false)" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition">
-              Deselect All
-            </button>
-            <button onclick="generateCleaningPlan()" id="btn-replan" class="px-2.5 py-1.5 rounded text-xs bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border transition flex items-center space-x-1">
-              <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Regenerate</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Plan Loading Indicator -->
-      <div id="plan-loading" class="hidden bg-surface-card rounded-xl border border-surface-border p-12 text-center space-y-3">
-        <div class="inline-block animate-spin text-blue-500">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-        <p class="text-xs text-zinc-400">Analyzing statistical distributions and synthesizing verified cleaning plan...</p>
-      </div>
-
-      <!-- Plan Summary & Actions List -->
-      <div id="plan-content" class="space-y-4">
+    <!-- PRIVACY ARCHITECTURE SECTION -->
+    <section id="privacy" class="border-t border-surface-border bg-surface-base py-16 sm:py-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 space-y-8">
         
-        <!-- Summary Box -->
-        <div id="plan-summary-card" class="bg-surface-elevated rounded-lg border border-surface-border p-4 text-xs text-zinc-300 leading-relaxed">
-          <span class="font-medium text-zinc-400 block mb-1 uppercase tracking-wider text-[10px]">Plan Summary</span>
-          <p id="plan-summary-text">-</p>
+        <div class="space-y-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Security Architecture</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Accurate, verifiable privacy</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            DataRefine is architected specifically to prevent confidential data from leaving your environment.
+          </p>
         </div>
 
-        <!-- Action Items Table / List -->
-        <div class="bg-surface-card rounded-xl border border-surface-border overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-surface-border flex items-center justify-between text-xs">
-            <span class="font-semibold text-zinc-300 uppercase tracking-wider text-[11px]">Proposed Actions (<span id="actions-count">0</span>)</span>
-            <span class="text-zinc-500 text-[11px]">Validated against local guardrails</span>
+        <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-4 text-xs text-zinc-300 leading-relaxed">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div class="bg-surface-elevated p-4 rounded-lg border border-surface-border space-y-2">
+              <span class="font-semibold text-emerald-400 block">What is transmitted:</span>
+              <p class="text-zinc-400 leading-relaxed text-[11px]">
+                Only statistical schema metadata: Column headers, inferred data types, missing value percentages, and heuristic anomaly flags.
+              </p>
+            </div>
+
+            <div class="bg-surface-elevated p-4 rounded-lg border border-surface-border space-y-2">
+              <span class="font-semibold text-blue-400 block">What remains strictly local:</span>
+              <p class="text-zinc-400 leading-relaxed text-[11px]">
+                All raw cell records, personal identifiers, customer entries, and financial data. Transformations execute locally via verified Python and Pandas routines.
+              </p>
+            </div>
+
           </div>
 
-          <div id="actions-list" class="divide-y divide-surface-border"></div>
-        </div>
-
-        <!-- Bottom Action Bar -->
-        <div class="flex items-center justify-between pt-2">
-          <button onclick="goToStep(1)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
-            ← Back to Profile
-          </button>
-
-          <button onclick="executeApprovedPlan()" id="btn-execute-clean" class="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-            <span id="btn-execute-clean-text">Execute Approved Actions</span>
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-          </button>
+          <p class="text-[11px] text-zinc-500 pt-2 border-t border-surface-border">
+            For completely air-gapped or on-premise requirements, DataRefine supports local models running via Ollama with zero external internet dependencies.
+          </p>
         </div>
 
       </div>
-
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- STEP 3: RESULTS & EXPORT                                     -->
-    <!-- ============================================================ -->
-    <section id="step-3" class="hidden space-y-6">
-      
-      <!-- Top Delta Metrics Summary -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Rows Retained</span>
-          <p class="text-lg font-semibold text-white font-mono mt-0.5" id="diff-rows-delta">-</p>
-        </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Cells Repaired</span>
-          <p class="text-lg font-semibold text-emerald-400 font-mono mt-0.5" id="diff-modified-cells">-</p>
-        </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-          <span class="text-[11px] font-medium text-zinc-400">Missing Values Resolved</span>
-          <p class="text-lg font-semibold text-blue-400 font-mono mt-0.5" id="diff-missing-delta">-</p>
-        </div>
-        <div class="bg-surface-card p-4 rounded-xl border border-surface-border flex items-center justify-around gap-2">
-          <button onclick="downloadCleanedCsv()" class="flex-1 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition text-center">
-            Cleaned CSV
-          </button>
-          <button onclick="downloadReportJson()" class="flex-1 py-2 rounded bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-zinc-200 text-xs font-medium transition text-center">
-            Audit JSON
-          </button>
-        </div>
-      </div>
-
-      <!-- Rollback & Stepwise Undo Engine Controls -->
-      <div class="bg-surface-card rounded-xl border border-surface-border p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div class="flex items-center space-x-2 overflow-x-auto py-0.5">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 shrink-0">Checkpoints:</span>
-          <div id="checkpoints-timeline" class="flex items-center space-x-1.5 overflow-x-auto"></div>
-        </div>
-
-        <div class="flex items-center space-x-2 shrink-0">
-          <button onclick="undoStep()" class="px-2.5 py-1.5 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-200 text-xs font-medium border border-surface-border transition flex items-center space-x-1.5" title="Undo previous step (Ctrl+Z)">
-            <span>Undo Step</span>
-          </button>
-          <button onclick="redoStep()" class="px-2.5 py-1.5 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-200 text-xs font-medium border border-surface-border transition flex items-center space-x-1.5" title="Redo undone step (Ctrl+Y)">
-            <span>Redo Step</span>
-          </button>
-          <button onclick="rollbackAll()" class="px-2.5 py-1.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium border border-rose-500/30 transition flex items-center space-x-1.5" title="Rollback all changes to original state">
-            <span>Rollback All</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Side-by-Side Visual Diff Table -->
-      <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Side-by-Side Visual Diff (First 100 Rows)</h3>
-            <p class="text-[11px] text-zinc-500 mt-0.5">Modified values highlighted in green. Hover over any cell to see original pre-cleaned value.</p>
-          </div>
-
-          <div class="flex items-center space-x-2.5">
-            <!-- Filter Changed Only Toggle -->
-            <button onclick="toggleDiffFilter()" id="btn-diff-filter" class="px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition">
-              <span id="diff-filter-label">Show Changed Only</span>
-            </button>
-
-            <!-- Export Pandas Script -->
-            <button onclick="openPythonExportModal()" class="px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition">
-              Export Script
-            </button>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto max-h-[500px] overflow-y-auto rounded-lg border border-surface-border">
-          <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="diff-table">
-            <thead class="sticky top-0 bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border select-none">
-              <tr id="diff-table-header"></tr>
-            </thead>
-            <tbody id="diff-table-body" class="divide-y divide-surface-border font-mono"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Unresolved Quality Issues Alert (if any remain) -->
-      <div id="unresolved-issues-card" class="hidden bg-surface-card rounded-xl border border-amber-500/30 p-4 space-y-2">
-        <div class="flex items-center space-x-2 text-amber-300 text-xs font-semibold">
-          <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>Unresolved Quality Observations</span>
-        </div>
-        <p class="text-[11px] text-zinc-400">Certain missing values were preserved rather than guessed, preventing synthetic hallucinations:</p>
-        <ul id="unresolved-issues-list" class="list-disc list-inside text-xs text-amber-200/90 font-mono space-y-0.5"></ul>
-      </div>
-
-      <!-- Action Navigation -->
-      <div class="flex items-center justify-between pt-2">
-        <button onclick="goToStep(2)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
-          ← Back to Actions
-        </button>
-
-        <button onclick="goToStep(1)" class="px-4 py-2 rounded-lg bg-surface-card border border-surface-border hover:bg-surface-elevated text-zinc-300 text-xs font-medium transition">
-          Clean Another Dataset
-        </button>
-      </div>
-
     </section>
 
   </main>
 
-  <!-- ============================================================ -->
-  <!-- SECONDARY DRAWERS & MODALS (Clean & Non-Intrusive)           -->
-  <!-- ============================================================ -->
-
-  <!-- DRAWER: Settings & LLM Provider Configuration -->
-  <div id="drawer-settings" class="fixed inset-0 z-50 hidden">
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black/60 drawer-backdrop" onclick="toggleSettingsDrawer(false)"></div>
-    <!-- Slide-over Panel -->
-    <div class="fixed inset-y-0 right-0 max-w-sm w-full bg-surface-card border-l border-surface-border p-6 shadow-2xl drawer-panel flex flex-col justify-between">
-      <div class="space-y-5">
-        <div class="flex items-center justify-between pb-3 border-b border-surface-border">
-          <h3 class="text-sm font-semibold text-white">Engine Configuration</h3>
-          <button onclick="toggleSettingsDrawer(false)" class="text-zinc-400 hover:text-white text-xs">
-            ✕
-          </button>
-        </div>
-
-        <div class="space-y-4 text-xs">
-          <div>
-            <label class="block text-zinc-300 font-medium mb-1">Planning Provider</label>
-            <select id="settings-provider" onchange="onProviderChange(this.value)" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500">
-              <option value="gemini" selected>Google Gemini (Free-tier Flash)</option>
-              <option value="openai">OpenAI / Groq / vLLM</option>
-              <option value="anthropic">Anthropic Claude</option>
-              <option value="ollama">Ollama (Offline Local)</option>
-              <option value="mock">Deterministic Mock (Test Mode)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-zinc-300 font-medium mb-1">Model Name</label>
-            <input type="text" id="settings-model" value="gemini-2.5-flash" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
-          </div>
-
-          <div>
-            <label class="block text-zinc-300 font-medium mb-1">API Key (Optional override)</label>
-            <input type="password" id="settings-api-key" placeholder="Defaults to .env variable" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
-          </div>
-
-          <div>
-            <label class="block text-zinc-300 font-medium mb-1">Base URL (Local / Custom endpoints)</label>
-            <input type="text" id="settings-base-url" placeholder="e.g. http://localhost:11434" class="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 text-xs focus:outline-none focus:border-blue-500 font-mono">
-          </div>
-        </div>
+  <!-- PUBLIC FOOTER -->
+  <footer class="border-t border-surface-border bg-surface-card py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
+      
+      <div class="flex items-center space-x-3">
+        <span class="font-semibold text-zinc-300">DataRefine</span>
+        <span>·</span>
+        <span>A deterministic, privacy-aware data quality and cleaning studio.</span>
       </div>
 
-      <div class="pt-4 border-t border-surface-border flex justify-end">
-        <button onclick="toggleSettingsDrawer(false)" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition">
-          Save & Close
-        </button>
+      <div class="flex items-center space-x-6 text-zinc-400">
+        <a href="https://github.com/Ok-Sanjeev/ai-data-cleaner" target="_blank" class="hover:text-zinc-200 transition">GitHub</a>
+        <a href="/docs" target="_blank" class="hover:text-zinc-200 transition">API Documentation</a>
+        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy Architecture</a>
       </div>
+
     </div>
-  </div>
+  </footer>
 
-  <!-- MODAL: Benchmark Evaluation -->
-  <div id="modal-benchmark" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
-    <div class="bg-surface-card max-w-xl w-full p-6 rounded-xl border border-surface-border space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-semibold text-white">Benchmark Evaluation</h3>
-        <button onclick="closeModal('modal-benchmark')" class="text-zinc-400 hover:text-white text-xs">✕</button>
-      </div>
-
-      <div class="space-y-4 text-xs">
-        <p class="text-zinc-400 leading-relaxed">Score cleaning accuracy, precision, and recall against a known gold-standard ground truth CSV.</p>
-
-        <div>
-          <label class="block text-zinc-300 font-medium mb-1">Ground Truth Reference Path</label>
-          <div class="flex space-x-2">
-            <input type="text" id="eval-gt-path" value="data/benchmark/clean_ground_truth.csv" class="flex-1 px-3 py-2 rounded-lg bg-surface-elevated border border-surface-border text-zinc-200 font-mono text-xs focus:outline-none focus:border-blue-500">
-            <button onclick="runBenchmarkEvaluation()" id="btn-eval" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition shrink-0">
-              Run Scorecard
-            </button>
-          </div>
-        </div>
-
-        <div id="eval-results-card" class="hidden space-y-3 pt-2">
-          <div class="grid grid-cols-4 gap-2 text-center">
-            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-              <span class="text-[10px] text-zinc-400 block uppercase">Precision</span>
-              <span id="eval-precision" class="text-base font-bold text-emerald-400 font-mono mt-0.5 block">-</span>
-            </div>
-            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-              <span class="text-[10px] text-zinc-400 block uppercase">Recall</span>
-              <span id="eval-recall" class="text-base font-bold text-blue-400 font-mono mt-0.5 block">-</span>
-            </div>
-            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-              <span class="text-[10px] text-zinc-400 block uppercase">F1 Score</span>
-              <span id="eval-f1" class="text-base font-bold text-zinc-200 font-mono mt-0.5 block">-</span>
-            </div>
-            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-              <span class="text-[10px] text-zinc-400 block uppercase">Accuracy</span>
-              <span id="eval-accuracy" class="text-base font-bold text-zinc-200 font-mono mt-0.5 block">-</span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-4 gap-2 text-center font-mono text-[11px] pt-1">
-            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">TP</span><span id="eval-tp" class="text-emerald-400 font-semibold">-</span></div>
-            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">TN</span><span id="eval-tn" class="text-zinc-300 font-semibold">-</span></div>
-            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">FP</span><span id="eval-fp" class="text-amber-400 font-semibold">-</span></div>
-            <div class="p-2 rounded bg-surface-elevated"><span class="text-zinc-500 block">FN</span><span id="eval-fn" class="text-rose-400 font-semibold">-</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-benchmark')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Privacy Architecture -->
-  <div id="modal-privacy" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
-    <div class="bg-surface-card max-w-lg w-full p-6 rounded-xl border border-surface-border space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-semibold text-white">Privacy Architecture</h3>
-        <button onclick="closeModal('modal-privacy')" class="text-zinc-400 hover:text-white text-xs">✕</button>
-      </div>
-
-      <div class="space-y-3 text-xs text-zinc-300 leading-relaxed">
-        <p>DataRefine uses a strict separation of concerns between statistical reasoning and data execution:</p>
-        
-        <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-1.5">
-          <span class="font-medium text-emerald-400 block">Transmitted to AI Reasoner:</span>
-          <p class="text-zinc-400 text-[11px]">Only statistical schema metadata: Column names, inferred data types, null counts, and format anomaly flags. <strong>Zero cell values, customer records, or raw rows are ever transmitted.</strong></p>
-        </div>
-
-        <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-1.5">
-          <span class="font-medium text-blue-400 block">Executed Locally:</span>
-          <p class="text-zinc-400 text-[11px]">The AI returns a structured recipe. All actual transformations execute deterministically on your machine using verified Python/Pandas operations.</p>
-        </div>
-      </div>
-
-      <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-privacy')" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition">
-          Done
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Column Detail Drawer -->
-  <div id="modal-col-detail" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
-    <div class="bg-surface-card max-w-md w-full p-6 rounded-xl border border-surface-border space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-semibold text-white font-mono" id="modal-col-name">Column Details</h3>
-        <button onclick="closeModal('modal-col-detail')" class="text-zinc-400 hover:text-white text-xs">✕</button>
-      </div>
-
-      <div class="space-y-4 text-xs">
-        <div class="grid grid-cols-2 gap-2 text-center font-mono">
-          <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-            <span class="text-[10px] text-zinc-400 block uppercase">Inferred Type</span>
-            <span id="modal-col-type" class="font-semibold text-zinc-200 mt-0.5 block">-</span>
-          </div>
-          <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border">
-            <span class="text-[10px] text-zinc-400 block uppercase">Missing Rate</span>
-            <span id="modal-col-missing" class="font-semibold text-rose-400 mt-0.5 block">-</span>
-          </div>
-        </div>
-
-        <!-- Numeric stats if available -->
-        <div id="modal-col-numeric-stats" class="hidden p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-2">
-          <span class="text-[10px] font-medium uppercase tracking-wider text-zinc-400 block">Numeric Bounds</span>
-          <div class="grid grid-cols-4 gap-1 text-center font-mono text-xs">
-            <div><span class="text-[9px] text-zinc-500 block">Min</span><span id="num-min" class="text-zinc-200"></span></div>
-            <div><span class="text-[9px] text-zinc-500 block">Max</span><span id="num-max" class="text-zinc-200"></span></div>
-            <div><span class="text-[9px] text-zinc-500 block">Mean</span><span id="num-mean" class="text-zinc-200"></span></div>
-            <div><span class="text-[9px] text-zinc-500 block">Median</span><span id="num-median" class="text-blue-400 font-semibold"></span></div>
-          </div>
-        </div>
-
-        <!-- Top Frequent Values -->
-        <div class="space-y-2">
-          <span class="text-[10px] font-medium uppercase tracking-wider text-zinc-400 block">Top Values</span>
-          <div id="modal-col-top-values" class="space-y-1.5 font-mono text-[11px]"></div>
-        </div>
-      </div>
-
-      <div class="pt-3 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-col-detail')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Export Python Script -->
-  <div id="modal-python-export" class="fixed inset-0 z-50 hidden bg-black/70 flex items-center justify-center p-4">
-    <div class="bg-surface-card max-w-2xl w-full p-6 rounded-xl border border-surface-border space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-semibold text-white">Standalone Pandas Pipeline Script</h3>
-        <button onclick="closeModal('modal-python-export')" class="text-zinc-400 hover:text-white text-xs">✕</button>
-      </div>
-
-      <p class="text-xs text-zinc-400">Run this script in automated ETL pipelines without dependencies on the web server or LLMs:</p>
-
-      <div class="bg-surface-base p-4 rounded-lg border border-surface-border relative">
-        <pre class="text-xs font-mono text-zinc-300 overflow-x-auto max-h-72"><code id="python-script-code"></code></pre>
-        <button onclick="copyPythonScript()" class="absolute top-3 right-3 px-2.5 py-1 rounded bg-surface-elevated hover:bg-zinc-800 border border-surface-border text-xs text-zinc-200 transition">
-          Copy
-        </button>
-      </div>
-
-      <div class="pt-2 border-t border-surface-border flex justify-end">
-        <button onclick="closeModal('modal-python-export')" class="px-3.5 py-1.5 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-zinc-300 text-xs transition">
-          Done
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- JAVASCRIPT APPLICATION CORE -->
-  <script>
-    // State
-    let currentStep = 1;
-    let currentSessionId = null;
-    let currentFilePath = null;
-    let currentColumns = [];
-    let currentPlan = null;
-    let currentDiffData = null;
-    let showChangedDiffOnly = false;
-
-    // Toast Notification
-    function showToast(message, isError = false) {
-      const toast = document.getElementById('toast');
-      toast.className = `fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium transition-all duration-200 flex items-center space-x-2 border ${
-        isError 
-          ? 'bg-rose-950 text-rose-200 border-rose-800' 
-          : 'bg-zinc-900 text-zinc-100 border-zinc-700'
-      }`;
-      toast.textContent = message;
-      toast.style.transform = 'translateY(0)';
-      toast.style.opacity = '1';
-
-      setTimeout(() => {
-        toast.style.transform = 'translateY(-50px)';
-        toast.style.opacity = '0';
-      }, 3500);
-    }
-
-    // Modal Helpers
-    function openModal(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove('hidden');
-    }
-    function closeModal(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.add('hidden');
-    }
-
-    // Drawer Helpers
-    function toggleSettingsDrawer(show) {
-      const drawer = document.getElementById('drawer-settings');
-      if (show) drawer.classList.remove('hidden');
-      else drawer.classList.add('hidden');
-    }
-
-    // Workflow Step Navigation
-    function goToStep(step) {
-      if (step === 2 && !currentSessionId) {
-        showToast('Please select and profile a dataset first.', true);
-        return;
-      }
-      if (step === 3 && !currentDiffData) {
-        showToast('Please execute cleaning actions first.', true);
-        return;
-      }
-
-      currentStep = step;
-      [1, 2, 3].forEach(s => {
-        const sec = document.getElementById(`step-${s}`);
-        const btn = document.getElementById(`step-btn-${s}`);
-        if (sec) sec.classList.toggle('hidden', s !== step);
-        if (btn) {
-          if (s === step) {
-            btn.className = 'flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-white bg-surface-elevated border border-surface-border';
-          } else {
-            btn.className = 'flex items-center space-x-2 text-xs font-medium py-1.5 px-3 rounded-md transition text-zinc-400 hover:text-zinc-200 hover:bg-surface-card';
-          }
-        }
-      });
-    }
-
-    // Load Available Datasets
-    async function loadDiscoveredDatasets() {
-      try {
-        const res = await fetch('/api/datasets');
-        const data = await res.json();
-        const sel = document.getElementById('dataset-select');
-        sel.innerHTML = '<option value="">Select a dataset...</option>';
-        (data.datasets || []).forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = d.path;
-          opt.textContent = `${d.name} (${d.size_kb} KB)`;
-          sel.appendChild(opt);
-        });
-      } catch (err) {
-        console.error('Failed to load datasets:', err);
-      }
-    }
-
-    function onDatasetDropdownChange(val) {
-      if (val) {
-        currentFilePath = val;
-        document.getElementById('file-upload-name').textContent = val.split('/').pop().split('\\').pop();
-      }
-    }
-
-    function handleFileUpload(input) {
-      if (input.files.length > 0) {
-        document.getElementById('file-upload-name').textContent = input.files[0].name;
-        document.getElementById('dataset-select').value = '';
-      }
-    }
-
-    // Profiling Engine
-    async function profileCurrentDataset() {
-      const fileInput = document.getElementById('file-upload');
-      let filepath = document.getElementById('dataset-select').value;
-
-      if (fileInput.files.length > 0) {
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) {
-          showToast(uploadData.detail || 'Upload failed', true);
-          return;
-        }
-        filepath = uploadData.filepath;
-      }
-
-      if (!filepath) {
-        showToast('Please select a dataset or upload a CSV file.', true);
-        return;
-      }
-
-      currentFilePath = filepath;
-      const btn = document.getElementById('btn-profile');
-      const btnText = document.getElementById('btn-profile-text');
-      btnText.textContent = 'Profiling...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filepath })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Profiling failed');
-
-        currentSessionId = data.session_id;
-        currentColumns = data.columns || [];
-
-        // Update Session Badge
-        document.getElementById('current-session-id').textContent = currentSessionId.slice(0, 8);
-        document.getElementById('session-badge').classList.remove('hidden');
-        document.getElementById('session-badge').classList.add('flex');
-
-        // Overview Stats
-        document.getElementById('stat-rows').textContent = data.summary.rows.toLocaleString();
-        document.getElementById('stat-cols').textContent = data.summary.columns;
-        document.getElementById('stat-dups').textContent = data.summary.duplicate_rows;
-        document.getElementById('stat-missing').textContent = data.summary.total_missing_cells.toLocaleString();
-
-        // Render Data Quality Findings
-        renderQualityFindings(data.summary, currentColumns);
-
-        // Render Preview Table
-        renderPreviewTable(data.preview_rows, currentColumns);
-
-        // Display results container
-        document.getElementById('step-1-empty-state').classList.add('hidden');
-        document.getElementById('step-1-results').classList.remove('hidden');
-
-        showToast('Dataset profiled successfully.');
-      } catch (err) {
-        showToast(err.message, true);
-      } finally {
-        btnText.textContent = 'Profile Dataset';
-        btn.disabled = false;
-      }
-    }
-
-    function renderQualityFindings(summary, cols) {
-      const list = document.getElementById('quality-findings-list');
-      list.innerHTML = '';
-
-      let issuesCount = 0;
-
-      // 1. Missing values
-      if (summary.total_missing_cells > 0) {
-        issuesCount++;
-        const item = document.createElement('div');
-        item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
-        item.innerHTML = `<strong>Missing Data:</strong> ${summary.total_missing_cells.toLocaleString()} empty cells across columns.`;
-        list.appendChild(item);
-      }
-
-      // 2. Duplicates
-      if (summary.duplicate_rows > 0) {
-        issuesCount++;
-        const item = document.createElement('div');
-        item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
-        item.innerHTML = `<strong>Duplicate Records:</strong> ${summary.duplicate_rows} duplicate rows detected.`;
-        list.appendChild(item);
-      }
-
-      // 3. Format & type inconsistencies
-      cols.forEach(c => {
-        if (c.semantic_hints && c.semantic_hints.length > 0) {
-          issuesCount++;
-          const item = document.createElement('div');
-          item.className = 'p-2.5 rounded bg-surface-elevated border border-surface-border text-zinc-300';
-          item.innerHTML = `<strong>${c.name}:</strong> ${c.semantic_hints.join(', ')}`;
-          list.appendChild(item);
-        }
-      });
-
-      const badge = document.getElementById('issues-detected-badge');
-      if (issuesCount > 0) {
-        badge.className = 'text-[11px] px-2 py-0.5 rounded font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20';
-        badge.textContent = `${issuesCount} Observations Detected`;
-      } else {
-        badge.className = 'text-[11px] px-2 py-0.5 rounded font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-        badge.textContent = 'No Immediate Anomalies Detected';
-      }
-    }
-
-    function renderPreviewTable(rows, cols) {
-      const thead = document.getElementById('preview-table-header');
-      thead.innerHTML = '<th class="px-3 py-2 w-10 text-zinc-500 font-normal">#</th>';
-      cols.forEach(col => {
-        const th = document.createElement('th');
-        th.className = 'px-3 py-2 whitespace-nowrap cursor-pointer hover:text-blue-400 transition font-normal';
-        th.onclick = () => openColumnDetailModal(col.name);
-        th.innerHTML = `
-          <div class="flex items-center space-x-1.5">
-            <span class="font-medium text-zinc-200">${col.name}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded bg-surface-card border border-surface-border text-zinc-400 font-mono">${col.dtype}</span>
-          </div>
-        `;
-        thead.appendChild(th);
-      });
-
-      const tbody = document.getElementById('preview-table-body');
-      tbody.innerHTML = '';
-      (rows || []).forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-elevated/40 transition';
-        let rowHtml = `<td class="px-3 py-2 text-zinc-500">${idx}</td>`;
-        cols.forEach(col => {
-          const val = row[col.name];
-          const isNull = val === null || val === undefined || val === '';
-          if (isNull) {
-            rowHtml += `<td class="px-3 py-2 text-rose-400/80 italic whitespace-nowrap">null</td>`;
-          } else {
-            rowHtml += `<td class="px-3 py-2 text-zinc-300 whitespace-nowrap">${val}</td>`;
-          }
-        });
-        tr.innerHTML = rowHtml;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function filterPreviewTable() {
-      const q = document.getElementById('preview-search').value.toLowerCase();
-      const rows = document.querySelectorAll('#preview-table-body tr');
-      rows.forEach(r => {
-        r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
-      });
-    }
-
-    function openColumnDetailModal(colName) {
-      const col = currentColumns.find(c => c.name === colName);
-      if (!col) return;
-
-      document.getElementById('modal-col-name').textContent = col.name;
-      document.getElementById('modal-col-type').textContent = col.semantic_type || col.dtype;
-      document.getElementById('modal-col-missing').textContent = `${col.missing_count} (${col.missing_pct}%)`;
-
-      const numCard = document.getElementById('modal-col-numeric-stats');
-      if (col.numeric_stats) {
-        numCard.classList.remove('hidden');
-        document.getElementById('num-min').textContent = col.numeric_stats.min;
-        document.getElementById('num-max').textContent = col.numeric_stats.max;
-        document.getElementById('num-mean').textContent = col.numeric_stats.mean;
-        document.getElementById('num-median').textContent = col.numeric_stats.median;
-      } else {
-        numCard.classList.add('hidden');
-      }
-
-      const topValuesWrap = document.getElementById('modal-col-top-values');
-      topValuesWrap.innerHTML = '';
-      (col.top_values || []).forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'flex justify-between items-center py-1 border-b border-surface-border text-zinc-300';
-        row.innerHTML = `
-          <span class="truncate max-w-[240px]">${item.value}</span>
-          <span class="text-zinc-500">${item.count} (${item.percentage}%)</span>
-        `;
-        topValuesWrap.appendChild(row);
-      });
-
-      openModal('modal-col-detail');
-    }
-
-    // STEP 2: AI PLANNING & APPROVAL
-    function generatePlanIfNeeded() {
-      if (!currentPlan) {
-        generateCleaningPlan();
-      }
-    }
-
-    async function generateCleaningPlan() {
-      if (!currentSessionId) return;
-
-      const provider = document.getElementById('settings-provider').value;
-      const model = document.getElementById('settings-model').value;
-      const apiKey = document.getElementById('settings-api-key').value;
-      const baseUrl = document.getElementById('settings-base-url').value;
-
-      document.getElementById('plan-loading').classList.remove('hidden');
-      document.getElementById('plan-content').classList.add('hidden');
-
-      try {
-        const res = await fetch('/api/plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: currentSessionId,
-            provider,
-            model,
-            api_key: apiKey || null,
-            base_url: baseUrl || null
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Plan generation failed');
-
-        currentPlan = data;
-        renderPlanView(data);
-        showToast('Cleaning recommendations synthesized.');
-      } catch (err) {
-        showToast(err.message, true);
-      } finally {
-        document.getElementById('plan-loading').classList.add('hidden');
-        document.getElementById('plan-content').classList.remove('hidden');
-      }
-    }
-
-    function renderPlanView(data) {
-      document.getElementById('plan-summary-text').textContent = data.summary;
-      document.getElementById('actions-count').textContent = data.actions.length;
-
-      const list = document.getElementById('actions-list');
-      list.innerHTML = '';
-
-      data.actions.forEach((act, idx) => {
-        const card = document.createElement('div');
-        card.className = 'p-4 hover:bg-surface-elevated/20 transition flex items-start space-x-3.5';
-
-        const isRisk = act.action.includes('drop');
-        const badgeClass = isRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-        const badgeLabel = isRisk ? 'Row Drop' : 'Safe Repair';
-
-        card.innerHTML = `
-          <input type="checkbox" id="action-chk-${idx}" checked class="mt-1 w-4 h-4 rounded text-blue-600 bg-surface-elevated border-zinc-700 focus:ring-blue-500">
-          <div class="space-y-1 flex-1 text-xs">
-            <div class="flex items-center space-x-2 flex-wrap">
-              <span class="font-mono font-semibold text-white">${act.action}</span>
-              ${act.column ? `<span class="px-1.5 py-0.5 rounded bg-surface-elevated text-zinc-300 font-mono text-[10px]">${act.column}</span>` : ''}
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${badgeClass}">${badgeLabel}</span>
-            </div>
-            <p class="text-zinc-400 text-xs">${act.reasoning}</p>
-            ${Object.keys(act.params || {}).length > 0 ? `<div class="text-[10px] font-mono text-zinc-500">Params: ${JSON.stringify(act.params)}</div>` : ''}
-          </div>
-        `;
-        list.appendChild(card);
-      });
-    }
-
-    function toggleAllActions(check) {
-      if (!currentPlan) return;
-      currentPlan.actions.forEach((_, idx) => {
-        const chk = document.getElementById(`action-chk-${idx}`);
-        if (chk) chk.checked = check;
-      });
-    }
-
-    // STEP 2 -> STEP 3: EXECUTE APPROVED PLAN
-    async function executeApprovedPlan() {
-      if (!currentSessionId || !currentPlan) return;
-
-      const approvedIds = [];
-      currentPlan.actions.forEach((_, idx) => {
-        const chk = document.getElementById(`action-chk-${idx}`);
-        if (chk && chk.checked) approvedIds.push(idx);
-      });
-
-      if (approvedIds.length === 0) {
-        showToast('Please select at least one action to execute.', true);
-        return;
-      }
-
-      const btn = document.getElementById('btn-execute-clean');
-      const btnText = document.getElementById('btn-execute-clean-text');
-      btnText.textContent = 'Executing...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/clean', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: currentSessionId,
-            approved_action_ids: approvedIds
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Execution failed');
-
-        currentDiffData = data;
-        renderDiffView(data);
-        goToStep(3);
-        showToast('Approved cleaning operations executed successfully.');
-      } catch (err) {
-        showToast(err.message, true);
-      } finally {
-        btnText.textContent = 'Execute Approved Actions';
-        btn.disabled = false;
-      }
-    }
-
-    // STEP 3: RENDER DIFF & ROLLBACK
-    function renderDiffView(data) {
-      currentDiffData = data;
-      document.getElementById('diff-rows-delta').textContent = `${data.diff_summary.rows_before} → ${data.diff_summary.rows_after}`;
-      document.getElementById('diff-modified-cells').textContent = data.diff_summary.modified_cells_count.toLocaleString();
-      document.getElementById('diff-missing-delta').textContent = `${data.diff_summary.total_missing_before} → ${data.diff_summary.total_missing_after}`;
-
-      // Checkpoint timeline
-      const timeline = document.getElementById('checkpoints-timeline');
-      timeline.innerHTML = '';
-      (data.checkpoints || []).forEach(cp => {
-        const pill = document.createElement('span');
-        pill.className = 'px-2 py-0.5 rounded text-[10px] bg-surface-elevated border border-surface-border text-zinc-300 font-mono whitespace-nowrap';
-        pill.textContent = cp.step === 0 ? 'Step 0: Initial' : `Step ${cp.step}: ${cp.action_name}`;
-        timeline.appendChild(pill);
-      });
-
-      // Diff table header
-      const thead = document.getElementById('diff-table-header');
-      thead.innerHTML = '<th class="px-3 py-2 w-10 text-zinc-500 font-normal">#</th>';
-      const cols = data.columns || [];
-      cols.forEach(col => {
-        const th = document.createElement('th');
-        th.className = 'px-3 py-2 font-mono whitespace-nowrap font-normal text-zinc-300';
-        th.textContent = col;
-        thead.appendChild(th);
-      });
-
-      // Diff table rows
-      renderDiffTableRows(data.diff_table || [], cols);
-
-      // Unresolved issues
-      const unresCard = document.getElementById('unresolved-issues-card');
-      const unresList = document.getElementById('unresolved-issues-list');
-      if (data.unresolved_issues && data.unresolved_issues.length > 0) {
-        unresList.innerHTML = '';
-        data.unresolved_issues.forEach(iss => {
-          const li = document.createElement('li');
-          li.textContent = `${iss.column}: ${iss.issue} (${iss.unresolved_count} missing records preserved)`;
-          unresList.appendChild(li);
-        });
-        unresCard.classList.remove('hidden');
-      } else {
-        unresCard.classList.add('hidden');
-      }
-    }
-
-    function renderDiffTableRows(diffRows, cols) {
-      const tbody = document.getElementById('diff-table-body');
-      tbody.innerHTML = '';
-
-      diffRows.forEach(r => {
-        if (showChangedDiffOnly && r.status === 'unchanged') return;
-
-        const tr = document.createElement('tr');
-        tr.className = r.status === 'modified' ? 'bg-emerald-950/10' : (r.status === 'dropped' ? 'bg-rose-950/10' : 'hover:bg-surface-elevated/20 transition');
-
-        let rowHtml = `<td class="px-3 py-1.5 text-zinc-500">${r.row_index}</td>`;
-        cols.forEach(col => {
-          const cell = (r.cells && r.cells[col]) ? r.cells[col] : { original: '', cleaned: '', changed: false };
-          if (cell.changed) {
-            rowHtml += `<td class="px-3 py-1.5 cell-modified whitespace-nowrap" title="Original: ${cell.original !== null ? cell.original : 'NaN'}">${cell.cleaned !== null ? cell.cleaned : 'NaN'}</td>`;
-          } else {
-            rowHtml += `<td class="px-3 py-1.5 text-zinc-300 whitespace-nowrap">${cell.cleaned !== null ? cell.cleaned : ''}</td>`;
-          }
-        });
-        tr.innerHTML = rowHtml;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function toggleDiffFilter() {
-      showChangedDiffOnly = !showChangedDiffOnly;
-      const btn = document.getElementById('btn-diff-filter');
-      const lbl = document.getElementById('diff-filter-label');
-      if (showChangedDiffOnly) {
-        btn.className = 'px-3 py-1.5 rounded bg-blue-600 text-white border border-blue-500 text-xs transition';
-        lbl.textContent = 'Showing Changed Only';
-      } else {
-        btn.className = 'px-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-300 hover:text-white transition';
-        lbl.textContent = 'Show Changed Only';
-      }
-      if (currentDiffData) {
-        renderDiffTableRows(currentDiffData.diff_table || [], currentDiffData.columns || []);
-      }
-    }
-
-    // Stepwise Undo / Redo / Rollback
-    async function undoStep() {
-      if (!currentSessionId) return;
-      try {
-        const res = await fetch('/api/session/undo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: currentSessionId })
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          showToast(data.message);
-          renderDiffView(data);
-        } else {
-          showToast(data.message, true);
-        }
-      } catch (err) {
-        showToast(err.message, true);
-      }
-    }
-
-    async function redoStep() {
-      if (!currentSessionId) return;
-      try {
-        const res = await fetch('/api/session/redo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: currentSessionId })
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-          showToast(data.message);
-          renderDiffView(data);
-        } else {
-          showToast(data.message, true);
-        }
-      } catch (err) {
-        showToast(err.message, true);
-      }
-    }
-
-    async function rollbackAll() {
-      if (!currentSessionId) return;
-      try {
-        const res = await fetch('/api/session/rollback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: currentSessionId })
-        });
-        const data = await res.json();
-        showToast(data.message);
-        renderDiffView(data);
-      } catch (err) {
-        showToast(err.message, true);
-      }
-    }
-
-    // Downloads
-    function downloadCleanedCsv() {
-      if (!currentSessionId) return;
-      window.location.href = `/api/download/cleaned?session_id=${currentSessionId}`;
-    }
-
-    function downloadReportJson() {
-      if (!currentSessionId) return;
-      window.location.href = `/api/download/report?session_id=${currentSessionId}`;
-    }
-
-    // Standalone Python Script Exporter
-    function openPythonExportModal() {
-      if (!currentPlan) return;
-      const filename = currentFilePath ? currentFilePath.split('/').pop().split('\\').pop() : 'dataset.csv';
-      let script = `# DataRefine Standalone Pipeline\nimport pandas as pd\nimport numpy as np\n\n# 1. Load data\ndf = pd.read_csv("${filename}")\n\n`;
-
-      currentPlan.actions.forEach((act, idx) => {
-        script += `# Step ${idx + 1}: ${act.reasoning}\n`;
-        if (act.action === 'impute_missing') {
-          const col = act.column;
-          const m = act.params ? act.params.method : 'median';
-          if (m === 'median') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].median())\n\n`;
-          else if (m === 'mean') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mean())\n\n`;
-          else if (m === 'mode') script += `df['${col}'] = df['${col}'].fillna(df['${col}'].mode()[0])\n\n`;
-        } else if (act.action === 'normalize_whitespace') {
-          script += `df['${act.column}'] = df['${act.column}'].astype(str).str.strip().str.replace(r'\\s+', ' ', regex=True)\n\n`;
-        } else if (act.action === 'remove_duplicates') {
-          script += `df = df.drop_duplicates().reset_index(drop=True)\n\n`;
-        } else if (act.action === 'normalize_column_names') {
-          script += `df.columns = [c.lower().strip().replace(' ', '_').replace('-', '_') for c in df.columns]\n\n`;
-        }
-      });
-
-      script += `# Output cleaned artifact\ndf.to_csv("cleaned_${filename}", index=False)\n`;
-      document.getElementById('python-script-code').textContent = script;
-      openModal('modal-python-export');
-    }
-
-    function copyPythonScript() {
-      const code = document.getElementById('python-script-code').textContent;
-      navigator.clipboard.writeText(code);
-      showToast('Python script copied to clipboard.');
-    }
-
-    // Benchmark Quality Scoring
-    async function runBenchmarkEvaluation() {
-      if (!currentSessionId) {
-        showToast('Please profile and clean a dataset first.', true);
-        return;
-      }
-      const gtPath = document.getElementById('eval-gt-path').value;
-      const btn = document.getElementById('btn-eval');
-      btn.textContent = 'Scoring...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/evaluate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: currentSessionId,
-            ground_truth_path: gtPath
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Evaluation failed');
-
-        const ov = data.overall_metrics;
-        document.getElementById('eval-precision').textContent = `${(ov.precision * 100).toFixed(1)}%`;
-        document.getElementById('eval-recall').textContent = `${(ov.recall * 100).toFixed(1)}%`;
-        document.getElementById('eval-f1').textContent = `${(ov.f1_score * 100).toFixed(1)}%`;
-        document.getElementById('eval-accuracy').textContent = `${(ov.accuracy * 100).toFixed(1)}%`;
-
-        document.getElementById('eval-tp').textContent = ov.true_positives;
-        document.getElementById('eval-tn').textContent = ov.true_negatives;
-        document.getElementById('eval-fp').textContent = ov.false_positives;
-        document.getElementById('eval-fn').textContent = ov.false_negatives;
-
-        document.getElementById('eval-results-card').classList.remove('hidden');
-        showToast('Quality scorecard computed.');
-      } catch (err) {
-        showToast(err.message, true);
-      } finally {
-        btn.textContent = 'Run Scorecard';
-        btn.disabled = false;
-      }
-    }
-
-    function onProviderChange(p) {
-      document.getElementById('nav-active-provider').textContent = p;
-      const m = document.getElementById('settings-model');
-      const b = document.getElementById('settings-base-url');
-      if (p === 'gemini') { m.value = 'gemini-2.5-flash'; b.placeholder = ''; }
-      else if (p === 'openai') { m.value = 'gpt-4o-mini'; b.placeholder = 'https://api.openai.com/v1'; }
-      else if (p === 'anthropic') { m.value = 'claude-3-5-haiku-20241022'; b.placeholder = ''; }
-      else if (p === 'ollama') { m.value = 'llama3'; b.value = 'http://localhost:11434'; }
-      else if (p === 'mock') { m.value = 'mock-model'; }
-    }
-
-    // Keyboard Shortcuts (Ctrl+Z Undo, Ctrl+Y Redo)
-    window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        undoStep();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-        e.preventDefault();
-        redoStep();
-      }
-    });
-
-    // Boot
-    window.addEventListener('DOMContentLoaded', () => {
-      loadDiscoveredDatasets();
-    });
-  </script>
 </body>
 </html>
