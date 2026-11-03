@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataRefine — AI Data Cleaner & Quality Studio</title>
-  <meta name="description" content="DataRefine: Profile datasets, identify quality issues, and review intelligent cleaning recommendations before applying changes with deterministic Python execution.">
+  <title>DataRefine — AI Data Cleaner & Engineering Studio</title>
+  <meta name="description" content="DataRefine: Profile, understand and clean your datasets with AI-powered recommendations, deterministic transformations and complete control over every change.">
 
   <!-- Favicon: Precision Grid Mark -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23090a0f'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h16M13 7v18M19 7v18' stroke='%233b82f6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -62,27 +62,31 @@
   <header class="bg-surface-card/90 backdrop-blur-md border-b border-surface-border sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       
-      <!-- Brand Logo & Name -->
+      <!-- Brand Logo, Name & Subtitle -->
       <a href="/" class="flex items-center space-x-3 group">
         <svg class="w-7 h-7 text-blue-500 shrink-0 group-hover:text-blue-400 transition" viewBox="0 0 32 32" fill="none" stroke="currentColor">
           <rect width="32" height="32" rx="6" fill="#171c28" stroke="#1f2536" stroke-width="1"/>
           <path d="M8 11h16M8 16h16M8 21h16M13 8v16M19 8v16" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
-        <span class="text-base font-semibold tracking-tight text-white">DataRefine</span>
+        <div class="flex flex-col">
+          <span class="text-sm font-bold tracking-tight text-white leading-none">DataRefine</span>
+          <span class="text-[10px] text-zinc-500 font-medium">AI Data Cleaner & Engineering Studio</span>
+        </div>
       </a>
 
       <!-- Minimal Navigation Links -->
       <nav class="hidden md:flex items-center space-x-6 text-xs font-medium text-zinc-400">
         <a href="#features" class="hover:text-zinc-200 transition">Features</a>
         <a href="#how-it-works" class="hover:text-zinc-200 transition">How It Works</a>
-        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy</a>
+        <a href="#capabilities" class="hover:text-zinc-200 transition">39 Cleaning Operations</a>
+        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy & Safety</a>
         <a href="/docs" target="_blank" class="hover:text-zinc-200 transition">API Docs</a>
       </nav>
 
       <!-- Primary Call to Action -->
       <div class="flex items-center space-x-3">
         <a href="/app" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm flex items-center space-x-1.5">
-          <span>Start Cleaning</span>
+          <span>Get Started</span>
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
@@ -98,22 +102,23 @@
     <!-- HERO SECTION -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-16 text-center space-y-6">
       
-      <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated text-zinc-300 border border-surface-border">
-        <span>Deterministic Data Quality & AI-Assisted Cleaning</span>
+      <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated text-zinc-300 border border-surface-border space-x-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Deterministic Data Quality · Privacy-Aware AI Planning · 3-Tier Risk Guardrails</span>
       </div>
 
       <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight max-w-4xl mx-auto leading-tight sm:leading-tight">
-        Clean data. Build with confidence.
+        Transform Messy Data Into Analysis-Ready Data.
       </h1>
 
       <p class="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-        Profile datasets, identify quality issues and review intelligent cleaning recommendations before applying changes.
+        Profile, understand and clean your datasets with AI-powered recommendations, deterministic transformations and complete control over every change.
       </p>
 
       <!-- Hero Call-to-Actions -->
       <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <a href="/app" class="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center justify-center space-x-2 shadow-sm">
-          <span>Start Cleaning</span>
+          <span>Get Started</span>
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
@@ -152,16 +157,16 @@
               <span class="text-base font-semibold text-white font-mono mt-0.5 block">0 rows</span>
             </div>
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
-              <span class="text-zinc-500 text-[10px] block uppercase">Proposed Fixes</span>
-              <span class="text-base font-semibold text-blue-400 font-mono mt-0.5 block">4 operations</span>
+              <span class="text-zinc-500 text-[10px] block uppercase">Risk Guardrails</span>
+              <span class="text-base font-semibold text-blue-400 font-mono mt-0.5 block">Green · Yellow · Red</span>
             </div>
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
               <span class="text-zinc-500 text-[10px] block uppercase">Execution Engine</span>
-              <span class="text-base font-semibold text-emerald-400 font-mono mt-0.5 block">Pandas Vectorized</span>
+              <span class="text-base font-semibold text-emerald-400 font-mono mt-0.5 block">39 Tested Operations</span>
             </div>
           </div>
 
-          <!-- Mock Side-by-Side Visual Diff Table -->
+          <!-- Side-by-Side Visual Diff Preview -->
           <div class="overflow-x-auto rounded-lg border border-surface-border font-mono text-xs">
             <table class="w-full text-left border-collapse">
               <thead class="bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border">
@@ -212,80 +217,6 @@
 
     </section>
 
-    <!-- FEATURES SECTION -->
-    <section id="features" class="border-t border-surface-border bg-surface-base py-16 sm:py-24">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
-        
-        <div class="text-center space-y-3 max-w-3xl mx-auto">
-          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Core Capabilities</span>
-          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Built for serious data engineering</h2>
-          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-            DataRefine provides a robust, transparent pipeline designed to eliminate manual data-cleaning tedium without black-box code execution.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          
-          <!-- Feature 1: Dataset Profiling -->
-          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
-            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
-              1
-            </div>
-            <h3 class="text-sm font-semibold text-white">Dataset Profiling</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Inspect column structures, detect encoding and delimiters, calculate missing value ratios, identify duplicates, and sniff semantic types like emails, phone numbers, and dates.
-            </p>
-          </div>
-
-          <!-- Feature 2: Intelligent Cleaning Recommendations -->
-          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
-            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
-              2
-            </div>
-            <h3 class="text-sm font-semibold text-white">Intelligent Cleaning Recommendations</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Generate AI-assisted cleaning plans tailored to your schema metadata. Review and approve proposed operations individually with human-in-the-loop oversight.
-            </p>
-          </div>
-
-          <!-- Feature 3: Reliable Data Processing -->
-          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
-            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
-              3
-            </div>
-            <h3 class="text-sm font-semibold text-white">Reliable Data Processing</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Execute validated deterministic cleaning operations through tested Python routines. No arbitrary, unreviewed code is run against your data.
-            </p>
-          </div>
-
-          <!-- Feature 4: Side-by-Side Visual Diff -->
-          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3">
-            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
-              4
-            </div>
-            <h3 class="text-sm font-semibold text-white">Side-by-Side Visual Diff</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Inspect exactly what changed cell by cell. Highlight modified values in green with pre-cleaned hover tooltips and step-by-step undo and rollback capabilities.
-            </p>
-          </div>
-
-          <!-- Feature 5: Export & Benchmark Evaluation -->
-          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 lg:col-span-2">
-            <div class="w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border text-blue-400 flex items-center justify-center text-sm font-semibold">
-              5
-            </div>
-            <h3 class="text-sm font-semibold text-white">Export & Benchmark Evaluation</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Download cleaned datasets in standard CSV format, retrieve comprehensive JSON audit logs, export standalone Pandas scripts for automated batch jobs, or evaluate cleaning quality against ground-truth benchmarks.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-    </section>
-
     <!-- HOW IT WORKS SECTION -->
     <section id="how-it-works" class="border-t border-surface-border bg-surface-card/40 py-16 sm:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
@@ -294,7 +225,7 @@
           <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Workflow</span>
           <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">How It Works</h2>
           <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-            A transparent three-step process built around developer verification.
+            A transparent three-step engineering workflow built around human verification.
           </p>
         </div>
 
@@ -302,52 +233,262 @@
           
           <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
             <span class="text-xs font-mono text-zinc-500 font-semibold">01</span>
-            <h3 class="text-sm font-semibold text-white">Upload your CSV</h3>
+            <h3 class="text-sm font-semibold text-white">Upload & Profile</h3>
             <p class="text-xs text-zinc-400 leading-relaxed">
-              Drag and drop your dataset. DataRefine instantly profiles column structures, null counts, duplicate records, and data-quality anomalies.
+              Drag and drop your CSV dataset. DataRefine automatically profiles column structures, data types, missing value distributions, duplicates, and statistical anomalies without sending raw records.
             </p>
           </div>
 
           <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
             <span class="text-xs font-mono text-zinc-500 font-semibold">02</span>
-            <h3 class="text-sm font-semibold text-white">Review & apply recommendations</h3>
+            <h3 class="text-sm font-semibold text-white">Review & Clean</h3>
             <p class="text-xs text-zinc-400 leading-relaxed">
-              Inspect proposed cleaning operations. Approve or reject individual actions before deterministic Python functions execute the plan.
+              Inspect AI-generated recommendations categorized into GREEN (Safe Repair), YELLOW (Needs Review), and RED (Potentially Destructive). Approve individual operations before applying changes.
             </p>
           </div>
 
           <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-3 relative">
             <span class="text-xs font-mono text-zinc-500 font-semibold">03</span>
-            <h3 class="text-sm font-semibold text-white">Download your cleaned dataset</h3>
+            <h3 class="text-sm font-semibold text-white">Results & Export</h3>
             <p class="text-xs text-zinc-400 leading-relaxed">
-              Inspect side-by-side diffs, verify changes with step-by-step undo, and export clean CSVs or reusable Python ETL scripts.
+              Compare changes with the Side-by-Side Visual Diff, test rollback checkpoints, and download cleaned CSVs, JSON audit reports, or Benchmark Evaluation metrics.
             </p>
           </div>
 
         </div>
 
-        <!-- Section CTA -->
-        <div class="text-center pt-4">
-          <a href="/app" class="inline-flex items-center space-x-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm">
-            <span>Open DataRefine Workspace</span>
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </a>
+      </div>
+    </section>
+
+    <!-- KEY FEATURES SECTION -->
+    <section id="features" class="border-t border-surface-border bg-surface-base py-16 sm:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
+        
+        <div class="text-center space-y-3 max-w-3xl mx-auto">
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Core Architecture</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Key Features</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            DataRefine provides a robust, transparent AI Data Cleaner designed to eliminate manual data-cleaning tedium without black-box code execution.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">AI-Powered Cleaning Recommendations</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              High-accuracy recommendations generated from privacy-safe statistical profiles, governed by strict column contracts.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Deterministic Data Processing</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Transformations execute using tested Pandas and Python routines. No arbitrary, unreviewed code or hallucinated scripts run against your dataset.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Privacy-Aware AI Planning</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Raw cell values and category labels are withheld from LLM prompts. Only structural metadata and schema shapes are analyzed.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Automated Dataset Profiling</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Instant detection of missing rates, encoding issues, delimiters, numerical statistics, IQR outliers, and semantic hints.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Human-in-the-Loop Approval</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              3-tier risk system: GREEN (Safe Repair) pre-selected, YELLOW (Needs Review) highlighted, and RED (Potentially Destructive) unchecked by default.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Side-by-Side Visual Diff</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Inspect exactly what changed cell by cell. Highlight modified values in green with pre-cleaned hover tooltips and delta summaries.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Audit History & Rollback</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Every operation records an in-memory checkpoint. Undo steps, redo operations, or jump back to any previous state with full data integrity.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Data Quality Validation</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Automated post-cleaning checks verify that row counts, dtypes, and null reduction meet expected criteria before checkpoint approval.
+            </p>
+          </div>
+
+          <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
+            <h3 class="text-sm font-semibold text-white">Benchmark Evaluation & Export</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Download cleaned datasets in standard CSV format, retrieve comprehensive JSON audit reports, or run Benchmark Evaluation against ground truth.
+            </p>
+          </div>
+
         </div>
 
       </div>
     </section>
 
-    <!-- PRIVACY ARCHITECTURE SECTION -->
+    <!-- SUPPORTED CLEANING CAPABILITIES SECTION -->
+    <section id="capabilities" class="border-t border-surface-border bg-surface-card/30 py-16 sm:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
+        
+        <div class="text-center space-y-3 max-w-3xl mx-auto">
+          <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Library</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">39 Predefined Deterministic Operations</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            Every operation is registered in our strict schema, deterministic in Python, and guarded against unexpected data corruption.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 text-xs">
+          
+          <!-- Category 1: Text Cleaning -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Text Cleaning</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">7 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">normalize_text</code> (case)</li>
+              <li>• <code class="text-zinc-200">normalize_whitespace</code></li>
+              <li>• <code class="text-zinc-200">trim_whitespace</code></li>
+              <li>• <code class="text-zinc-200">remove_special_characters</code></li>
+              <li>• <code class="text-zinc-200">remove_non_printable_characters</code></li>
+              <li>• <code class="text-zinc-200">normalize_unicode</code></li>
+              <li>• <code class="text-zinc-200">replace_empty_strings</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 2: Data Type & Formatting -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Data Type & Format</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">8 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">convert_to_date</code></li>
+              <li>• <code class="text-zinc-200">standardize_date_format</code></li>
+              <li>• <code class="text-zinc-200">extract_date_components</code></li>
+              <li>• <code class="text-zinc-200">convert_to_numeric</code></li>
+              <li>• <code class="text-zinc-200">standardize_currency</code></li>
+              <li>• <code class="text-zinc-200">extract_numeric_values</code></li>
+              <li>• <code class="text-zinc-200">convert_to_boolean</code></li>
+              <li>• <code class="text-zinc-200">clean_phone_number</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 3: Numeric Cleaning -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Numeric Cleaning</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">5 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">round_numeric</code></li>
+              <li>• <code class="text-zinc-200">validate_numeric_ranges</code></li>
+              <li>• <code class="text-zinc-200">replace_negative_values</code></li>
+              <li>• <code class="text-zinc-200">convert_percentage</code></li>
+              <li>• <code class="text-zinc-200">clip_outliers</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 4: Missing Values -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Missing Values</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">4 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">impute_missing</code> (median/mode/mean)</li>
+              <li>• <code class="text-zinc-200">drop_missing_rows</code></li>
+              <li>• <code class="text-zinc-200">remove_empty_rows</code></li>
+              <li>• <code class="text-zinc-200">remove_high_missing_columns</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 5: Validation & Extraction -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Validation</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">4 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">validate_email</code></li>
+              <li>• <code class="text-zinc-200">extract_email</code></li>
+              <li>• <code class="text-zinc-200">validate_url</code></li>
+              <li>• <code class="text-zinc-200">detect_invalid_categories</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 6: Structural Operations -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Structural Cleaning</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">6 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">remove_column</code></li>
+              <li>• <code class="text-zinc-200">remove_constant_columns</code></li>
+              <li>• <code class="text-zinc-200">rename_column</code></li>
+              <li>• <code class="text-zinc-200">normalize_column_names</code></li>
+              <li>• <code class="text-zinc-200">split_column</code></li>
+              <li>• <code class="text-zinc-200">merge_columns</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 7: Value Mapping -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Value Mapping</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">3 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">standardize_categories</code></li>
+              <li>• <code class="text-zinc-200">remove_invalid_values</code></li>
+              <li>• <code class="text-zinc-200">map_values</code></li>
+            </ul>
+          </div>
+
+          <!-- Category 8: Deduplication -->
+          <div class="bg-surface-card p-5 rounded-xl border border-surface-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-white">Deduplication</span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">2 Actions</span>
+            </div>
+            <ul class="space-y-1.5 text-zinc-400">
+              <li>• <code class="text-zinc-200">remove_duplicates</code> (exact row)</li>
+              <li>• <code class="text-zinc-200">deduplicate_by_columns</code> (subset)</li>
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- PRIVACY & SAFETY SECTION -->
     <section id="privacy" class="border-t border-surface-border bg-surface-base py-16 sm:py-24">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 space-y-8">
         
         <div class="space-y-3">
           <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Security Architecture</span>
-          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Accurate, verifiable privacy</h2>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Accurate, verifiable privacy & safety</h2>
           <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-            DataRefine is architected specifically to prevent confidential data from leaving your environment.
+            DataRefine is architected specifically to keep confidential data in your environment.
           </p>
         </div>
 
@@ -355,7 +496,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             
             <div class="bg-surface-elevated p-4 rounded-lg border border-surface-border space-y-2">
-              <span class="font-semibold text-emerald-400 block">What is transmitted:</span>
+              <span class="font-semibold text-emerald-400 block">What is transmitted to AI:</span>
               <p class="text-zinc-400 leading-relaxed text-[11px]">
                 Only statistical schema metadata: Column headers, inferred data types, missing value percentages, and heuristic anomaly flags.
               </p>
@@ -370,11 +511,38 @@
 
           </div>
 
-          <p class="text-[11px] text-zinc-500 pt-2 border-t border-surface-border">
-            For completely air-gapped or on-premise requirements, DataRefine supports local models running via Ollama with zero external internet dependencies.
-          </p>
+          <div class="pt-3 border-t border-surface-border grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-zinc-400">
+            <div>
+              <span class="text-white font-medium block">Predefined Operations:</span>
+              No arbitrary code or dynamic SQL queries.
+            </div>
+            <div>
+              <span class="text-white font-medium block">Strict Validation:</span>
+              Pydantic type checks and Python local guardrails.
+            </div>
+            <div>
+              <span class="text-white font-medium block">Full Auditability:</span>
+              Step-by-step undo, redo, and state rollback.
+            </div>
+          </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- FINAL CALL TO ACTION -->
+    <section class="border-t border-surface-border bg-surface-card/60 py-16 text-center space-y-5">
+      <h2 class="text-2xl sm:text-3xl font-bold text-white">Ready to clean your data?</h2>
+      <p class="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto">
+        Profile your dataset now, review intelligent recommendations, and build clean pipelines with confidence.
+      </p>
+      <div class="pt-2">
+        <a href="/app" class="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition shadow-sm inline-flex items-center space-x-2">
+          <span>Start Cleaning</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
       </div>
     </section>
 
@@ -387,13 +555,13 @@
       <div class="flex items-center space-x-3">
         <span class="font-semibold text-zinc-300">DataRefine</span>
         <span>·</span>
-        <span>A deterministic, privacy-aware data quality and cleaning studio.</span>
+        <span>AI Data Cleaner & Engineering Studio</span>
       </div>
 
       <div class="flex items-center space-x-6 text-zinc-400">
         <a href="https://github.com/Ok-Sanjeev/ai-data-cleaner" target="_blank" class="hover:text-zinc-200 transition">GitHub</a>
         <a href="/docs" target="_blank" class="hover:text-zinc-200 transition">API Documentation</a>
-        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy Architecture</a>
+        <a href="#privacy" class="hover:text-zinc-200 transition">Privacy & Safety</a>
       </div>
 
     </div>

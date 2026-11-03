@@ -12,7 +12,7 @@ from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
-from actions import execute_action
+from actions import ACTION_METADATA, execute_action
 from ai_privacy import build_ai_safe_profile, remap_plan_columns
 from category_standardizer import generate_local_category_standardizations
 from profiler import profile_dataset
@@ -492,6 +492,78 @@ use column names remembered from examples or other datasets.
 
 
 # ============================================================
+# ACTION RISK CLASSIFICATION (GREEN, YELLOW, RED)
+# ============================================================
+
+def assign_action_risk(action: CleaningAction, profile: dict, df: Optional[pd.DataFrame] = None) -> CleaningAction:
+    """Classify action into GREEN (Safe Repair), YELLOW (Needs Review), or RED (Potentially Destructive)."""
+    meta = ACTION_METADATA.get(action.action, {})
+    col = action.column
+    col_profile = profile.get("column_profiles", {}).get(col, {}) if col and profile else {}
+    is_const = col_profile.get("constant_column", False)
+    is_empty = col_profile.get("empty_column", False)
+
+    # 1. RED: Potentially Destructive (Must be unchecked by default, require explicit approval)
+    if action.action in {"remove_column", "remove_constant_columns", "remove_high_missing_columns", "drop_missing_rows", "remove_invalid_values", "clip_outliers"}:
+        action.risk_level = "red"
+        action.risk_label = "Potentially Destructive"
+        if action.action in {"remove_column", "remove_constant_columns"} and is_const:
+            action.warning = (
+                f"Column '{col}' is constant across all records. It may contain important data-provenance, "
+                f"audit, or business rule metadata. Removing it will discard this context."
+            )
+            action.expected_impact = "1 column removed; all rows retained; original metadata discarded."
+        elif action.action == "remove_column" and is_empty:
+            action.warning = f"Column '{col}' is 100% empty (contains only missing/null values)."
+            action.expected_impact = f"1 empty column ('{col}') removed from dataset."
+        elif action.action == "drop_missing_rows":
+            action.warning = "Rows containing missing values will be permanently dropped from the dataset."
+            action.expected_impact = "Records with missing entries deleted."
+        elif action.action == "remove_invalid_values":
+            action.warning = "Specified invalid values will be replaced with null/missing indicators."
+            action.expected_impact = "Target cell values replaced with NA."
+        elif action.action == "clip_outliers":
+            action.warning = "Extreme values will be clipped to IQR boundaries; legitimate business extremes may be altered."
+            action.expected_impact = "Outlier numerical values compressed."
+        else:
+            action.warning = f"Executing {action.action} can permanently alter or delete records."
+            action.expected_impact = "Data permanently altered or removed."
+
+    # 2. YELLOW: Needs Review (Context-dependent transformations)
+    elif action.action in {
+        "impute_missing", "convert_to_date", "convert_to_numeric", "convert_to_boolean",
+        "standardize_categories", "map_values", "clean_phone_number", "replace_empty_strings",
+        "split_column", "merge_columns", "deduplicate_by_columns", "validate_numeric_ranges",
+        "replace_negative_values", "validate_email", "validate_url", "detect_invalid_categories", "rename_column"
+    }:
+        action.risk_level = "yellow"
+        action.risk_label = "Needs Review"
+        if action.action == "impute_missing":
+            method = action.params.get("method", "median")
+            action.warning = f"Imputing missing values with {method} alters data distribution."
+            action.expected_impact = f"Missing cells in '{col}' filled using {method}."
+        elif action.action in {"convert_to_date", "convert_to_numeric", "convert_to_boolean"}:
+            target_type = action.action.replace("convert_to_", "")
+            action.warning = f"Ambiguous values may fail conversion or alter data representation."
+            action.expected_impact = f"Column '{col}' converted to {target_type}."
+        elif action.action == "rename_column":
+            action.warning = f"Renaming affects queries and code referencing the original header '{col}'."
+            action.expected_impact = f"Column '{col}' renamed to '{action.params.get('new_name')}'."
+        else:
+            action.warning = "Review transformation parameters before applying."
+            action.expected_impact = f"Transformation applied to '{col or 'dataset'}'."
+
+    # 3. GREEN: Safe Repair (Low-risk deterministic operations, checked by default)
+    else:
+        action.risk_level = "green"
+        action.risk_label = "Safe Repair"
+        action.warning = None
+        action.expected_impact = f"Deterministic standardization applied to '{col or 'dataset'}'."
+
+    return action
+
+
+# ============================================================
 # LOCAL GUARDRAILS & PLAN SUMMARY SYNCHRONIZATION
 # ============================================================
 
@@ -726,6 +798,12 @@ def apply_local_guardrails(plan: CleaningPlan, df: pd.DataFrame, profile: dict) 
                 print(f"Local category assistant: proposed {cat_action.action} for '{cat_action.column}'")
     except Exception as err:
         print(f"Notice: local category harmonization skipped: {err}")
+
+    # ============================================================
+    # ASSIGN RISK CLASSIFICATION (GREEN, YELLOW, RED)
+    # ============================================================
+    for act in plan.actions:
+        assign_action_risk(act, profile, df)
 
     # ============================================================
     # SYNC PLAN SUMMARY WITH FINAL GUARDED ACTIONS
@@ -1179,19 +1257,44 @@ def build_cleaning_report(
     # 1. Unresolved missing values (URLs, contacts, identifiers, or unapproved)
     for col, count in cleaned_missing.items():
         if count > 0:
-            sem_type = column_profiles.get(col, {}).get("semantic_type", "")
+            col_info = column_profiles.get(col, {})
+            sem_type = col_info.get("semantic_type", "general")
+            dtype = str(df_cleaned[col].dtype) if col in df_cleaned.columns else "unknown"
+            pct = round((count / max(1, cleaned_rows)) * 100, 2)
+
             if sem_type == "url" or "url" in col.lower():
                 detail = f"{count} missing URL values preserved without synthetic imputation to avoid inventing fictitious web addresses."
+                remediation = "Preserve raw values without synthetic imputation to prevent fabricating fictitious web URLs."
+                risk = "yellow"
             elif sem_type in {"email", "phone_number", "government_or_identity_id", "person_name"}:
                 detail = f"{count} missing contact/identity values preserved without synthetic imputation to prevent fabricating personal data."
+                remediation = "Preserve raw values to prevent fabricating personal identity or contact records."
+                risk = "yellow"
+            elif pd.api.types.is_numeric_dtype(df_cleaned[col]) if col in df_cleaned.columns else False:
+                detail = f"{count} missing values remain unresolved; no imputation was approved for this column."
+                remediation = "Consider median or mean imputation upon review, or preserve as NA."
+                risk = "yellow"
             else:
                 detail = f"{count} missing values remain unresolved; no imputation was approved for this column."
+                remediation = "Consider mode imputation or explicit placeholder category upon user review."
+                risk = "yellow"
+
             unresolved_issues.append({
                 "issue_type": "missing_values",
                 "column": col,
                 "count": count,
+                "unresolved_count": count,
+                "missing_count": count,
+                "missing_percentage": pct,
+                "total_rows": cleaned_rows,
+                "dtype": dtype,
+                "semantic_type": sem_type,
+                "suggested_remediation": remediation,
+                "risk_level": risk,
                 "status": "unresolved_preserved",
+                "issue": f"{count} ({pct}%) missing records preserved",
                 "details": detail,
+                "explanation": f"Column '{col}' has {count} missing records ({pct}% of {cleaned_rows} total rows). {remediation}",
             })
 
     # 2. Flagged numerical outliers (preserved for human review)

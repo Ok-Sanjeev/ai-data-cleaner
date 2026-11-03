@@ -376,6 +376,16 @@ def api_profile(req: ProfileRequest):
     }
 
 
+@app.get("/api/actions/registry")
+def api_actions_registry():
+    """Return the complete metadata and categories of all supported deterministic cleaning actions."""
+    from actions import ACTION_METADATA
+    return {
+        "total_actions": len(ACTION_METADATA),
+        "actions": ACTION_METADATA,
+    }
+
+
 @app.post("/api/plan")
 def api_plan(req: PlanRequest):
     """Generate a privacy-safe cleaning plan using the requested LLM provider."""
@@ -412,13 +422,18 @@ def api_plan(req: PlanRequest):
 
     actions_list = []
     for idx, action in enumerate(plan.actions):
+        is_red = getattr(action, "risk_level", "yellow") == "red"
         actions_list.append({
             "id": idx,
             "action": action.action,
             "column": action.column,
             "params": action.params,
             "reasoning": action.reasoning,
-            "approved": True,  # Default approved
+            "risk_level": getattr(action, "risk_level", "yellow"),
+            "risk_label": getattr(action, "risk_label", "Needs Review"),
+            "warning": getattr(action, "warning", None),
+            "expected_impact": getattr(action, "expected_impact", None),
+            "approved": not is_red,  # RED actions are unchecked by default
         })
 
     return {
@@ -1550,6 +1565,8 @@ def home_page():
 
 
 @app.get("/app", response_class=HTMLResponse)
+@app.get("/app/review", response_class=HTMLResponse)
+@app.get("/app/results", response_class=HTMLResponse)
 @app.get("/ui", response_class=HTMLResponse)
 def workspace_page():
     """Serve the DataRefine application workspace with no-cache headers."""
