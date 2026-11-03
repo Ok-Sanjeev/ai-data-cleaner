@@ -165,9 +165,9 @@ The cleaning engine features a comprehensive registry of **52 deterministic oper
 |---|---|---|---|---|
 | `trim_whitespace` | 🟢 Green | Text Cleaning | `{}` | Removes leading and trailing whitespace characters. |
 | `remove_extra_spaces` | 🟢 Green | Text Cleaning | `{}` | Replaces multiple contiguous internal spaces with a single space. |
-| `standardize_case` | 🟢 Green | Text Cleaning | `case: "lower" \| "upper" \| "title"` | Normalizes casing while honoring protected domain acronyms. |
+| `standardize_case` | 🟢 Green | Text Cleaning | `case: "lower" / "upper" / "title"` | Normalizes casing while honoring protected domain acronyms. |
 | `normalize_whitespace` | 🟢 Green | Text Cleaning | `{}` | Cleans leading/trailing and repeated internal whitespace. |
-| `normalize_unicode` | 🟢 Green | Text Cleaning | `form: "NFKD" \| "NFC"` | Converts non-standard or accented Unicode into standardized forms. |
+| `normalize_unicode` | 🟢 Green | Text Cleaning | `form: "NFKD" / "NFC"` | Converts non-standard or accented Unicode into standardized forms. |
 | `remove_html_tags` | 🟢 Green | Text Cleaning | `{}` | Strips raw HTML tags from rich text and scraped columns. |
 | `remove_special_characters` | 🟢 Green | Text Cleaning | `characters: str` | Strips specified punctuation or unwanted symbols. |
 | `remove_non_printable` | 🟢 Green | Text Cleaning | `{}` | Removes ASCII control and non-printable binary characters. |
@@ -177,7 +177,7 @@ The cleaning engine features a comprehensive registry of **52 deterministic oper
 | `round_numeric` | 🟢 Green | Dates & Numbers | `decimals: int` | Rounds floating point values to the specified decimal precision. |
 | `standardize_currency` | 🟢 Green | Dates & Numbers | `{}` | Cleans currency codes, symbols, and standardizes numeric representation. |
 | `standardize_country_names` | 🟢 Green | Formatting | `{}` | Standardizes country identifiers to common English or ISO-3166 names. |
-| `impute_missing` | 🟡 Yellow | Imputation | `method: "median" \| "mean" \| "mode" \| "constant"` | Fills missing values. Guardrails enforce mode for categories and block IDs/URLs. |
+| `impute_missing` | 🟡 Yellow | Imputation | `method: "median" / "mean" / "mode" / "constant"` | Fills missing values. Guardrails enforce mode for categories and block IDs/URLs. |
 | `fill_with_constant` | 🟡 Yellow | Imputation | `value: Any` | Replaces null cells with a user-specified constant value. |
 | `fill_with_forward_value` | 🟡 Yellow | Imputation | `{}` | Propagates last valid observation forward (time-series safe). |
 | `fill_with_backward_value` | 🟡 Yellow | Imputation | `{}` | Propagates next valid observation backward (bfill). |
@@ -189,12 +189,12 @@ The cleaning engine features a comprehensive registry of **52 deterministic oper
 | `convert_to_boolean` | 🟡 Yellow | Data Types | `{}` | Standardizes `yes/no`, `true/false`, `1/0` into native boolean dtypes. |
 | `standardize_categories` | 🟡 Yellow | Categorical | `mapping: dict[str, str]` | Clusters misspellings locally using fuzzy matching without leaking raw values. |
 | `clip_outliers` | 🟡 Yellow | Outliers | `lower_percentile: float, upper_percentile: float` | Caps extreme statistical outliers at IQR bounds. |
-| `handle_infinite_values` | 🟡 Yellow | Numbers | `replacement: "nan" \| "max" \| "constant"` | Converts `inf` and `-inf` floating values into valid numeric representations. |
+| `handle_infinite_values` | 🟡 Yellow | Numbers | `replacement: "nan" / "max" / "constant"` | Converts `inf` and `-inf` floating values into valid numeric representations. |
 | `validate_date_range` | 🟡 Yellow | Dates | `min_date: str, max_date: str` | Identifies and sets out-of-range dates to `NaN`. |
-| `reorder_columns` | 🟡 Yellow | Structuring | `order: "alphabetical" \| list[str]` | Rearranges column sequences logically or alphabetically. |
+| `reorder_columns` | 🟡 Yellow | Structuring | `order: "alphabetical" or list[str]` | Rearranges column sequences logically or alphabetically. |
 | `extract_pattern` | 🟡 Yellow | Text Cleaning | `regex: str` | Extracts regex capture groups into clean target values. |
 | `remove_invalid_values` | 🟡 Yellow | Missing Values | `invalid_values: list` (non-empty) | Replaces known sentinel tokens (e.g., `["-999", "N/A", "null"]`) with `NaN`. |
-| `drop_missing_rows` | 🔴 Red | Structuring | `columns: list[str] \| threshold: float` | Drops rows with missing values. Requires explicit confirmation. |
+| `drop_missing_rows` | 🔴 Red | Structuring | `columns: list[str] or threshold: float` | Drops rows with missing values. Requires explicit confirmation. |
 | `remove_duplicates` | 🟢 Green / 🔴 Red | Structuring | `columns: list[str]` (optional) | Drops exact duplicate records. |
 | `remove_column` | 🔴 Red | Structuring | `{}` | Permanently drops unwanted or zero-variance columns. Contextualizes provenance metadata. |
 | `drop_columns_by_missing_threshold` | 🔴 Red | Structuring | `threshold_pct: float` | Discards columns exceeding a maximum missingness percentage (e.g. >90%). |
