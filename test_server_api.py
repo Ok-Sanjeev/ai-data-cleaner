@@ -311,3 +311,88 @@ def test_clean_with_zero_approved_actions(client):
     assert len(clean_data["diff_table"]) > 0
 
 
+def test_openrefine_api_endpoints(client):
+    """Test clustering, GREL transformation, facets, reconciliation, and recipe replay API routes."""
+    # Initialize session
+    prof_res = client.post("/api/profile", json={"filepath": "data/benchmark/dirty_sample.csv"})
+    assert prof_res.status_code == 200
+    session_id = prof_res.json()["session_id"]
+
+    # 1. Facet Compute
+    facet_res = client.post("/api/facets/compute", json={
+        "session_id": session_id,
+        "column": "status",
+        "facet_type": "text",
+    })
+    assert facet_res.status_code == 200
+    f_data = facet_res.json()
+    assert f_data["status"] == "success"
+    assert f_data["facet"]["facet_type"] == "text"
+    assert len(f_data["facet"]["choices"]) > 0
+
+    # 2. Dataset Explore
+    explore_res = client.post("/api/dataset/explore", json={
+        "session_id": session_id,
+        "global_search": "active",
+        "limit": 10,
+    })
+    assert explore_res.status_code == 200
+    exp_data = explore_res.json()
+    assert exp_data["matched_rows"] >= 1
+    assert len(exp_data["records"]) <= 10
+
+    # 3. GREL Preview & Apply
+    grel_prev = client.post("/api/grel/preview", json={
+        "session_id": session_id,
+        "column": "name",
+        "expression": "value.trim().toTitlecase()",
+        "sample_limit": 5,
+    })
+    assert grel_prev.status_code == 200
+    assert grel_prev.json()["success"] is True
+    assert len(grel_prev.json()["rows"]) == 5
+
+    grel_app = client.post("/api/grel/apply", json={
+        "session_id": session_id,
+        "column": "name",
+        "expression": "value.trim().toTitlecase()",
+    })
+    assert grel_app.status_code == 200
+    assert grel_app.json()["status"] == "success"
+    assert grel_app.json()["current_step"] == 1
+
+    # 4. Cluster Detect & Apply
+    clust_det = client.post("/api/cluster/detect", json={
+        "session_id": session_id,
+        "column": "status",
+        "method": "fingerprint",
+    })
+    assert clust_det.status_code == 200
+    c_data = clust_det.json()
+    assert c_data["status"] == "success"
+    assert "clusters" in c_data
+
+    # 5. Entity Reconciliation Match
+    rec_match = client.post("/api/reconcile/match", json={
+        "session_id": session_id,
+        "column": "status",
+        "catalog": "countries",
+    })
+    assert rec_match.status_code == 200
+    assert rec_match.json()["status"] == "success"
+
+    # 6. Workflow Recipe History & Replay
+    hist_res = client.get(f"/api/workflow/history?session_id={session_id}")
+    assert hist_res.status_code == 200
+    recipe = hist_res.json()["recipe"]
+    assert recipe["operations_count"] >= 1
+
+    replay_res = client.post("/api/workflow/apply_recipe", json={
+        "session_id": session_id,
+        "recipe": recipe,
+    })
+    assert replay_res.status_code == 200
+    assert replay_res.json()["status"] == "success"
+
+
+

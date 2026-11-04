@@ -9,7 +9,8 @@
   <img src="https://img.shields.io/badge/Docker-Production%20Ready-2496ED?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-145%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Pytest-170%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/OpenRefine-Clustering%20%7C%20Facets%20%7C%20GREL-teal" alt="OpenRefine">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
 
@@ -665,7 +666,24 @@ test_validation_retries.py ......                                        [100%]
 - [x] **Quality Measurement & Benchmark**: Ground-truth evaluation measuring cell-level precision, recall, and F1
 - [x] **Provider-Agnostic LLM Engine**: Multi-provider support for Google Gemini, OpenAI, Claude, and local Ollama/vLLM
 - [x] **Interactive Web UI & REST API**: FastAPI dashboard with distributions, side-by-side visual diffs, and one-click approvals
+- [x] **OpenRefine Clustering Studio**: Key-collision (Fingerprint, N-gram, Soundex, Metaphone) and edit distance (Levenshtein, Damerau)
+- [x] **Interactive Facets & Exploration**: Text, numeric, and date facets with real-time multi-column filtering and exploration grid
+- [x] **Safe GREL Expression Engine**: Sandboxed AST-parsed transformation language without arbitrary `eval`/`exec` risk
+- [x] **Entity Reconciliation**: Reference catalog matching (Countries, States, Currencies, Tech Roles, Custom) with confidence scoring
+- [x] **JSON Workflow Recipes**: Portable OpenRefine-compatible recipe export, schema validation, and sequential replay
 - [ ] **Out-of-Core Processing**: Integrate Polars / DuckDB for multi-gigabyte datasets (>10M rows)
+
+---
+
+## 🏛️ OpenRefine Integration & Attribution
+
+DataRefine incorporates core algorithmic methodologies from [OpenRefine](https://github.com/OpenRefine/OpenRefine):
+
+- **Clustering Algorithms**: OpenRefine's standard fingerprint, n-gram fingerprint, phonetic Soundex/Metaphone, and Levenshtein distance metrics.
+- **GREL-Inspired Syntax**: AST-sandboxed support for OpenRefine expression patterns (`value.trim()`, `value.toTitlecase()`, `cells['col']`, `if()`).
+- **Facet & Replay Architecture**: Choice frequencies, timeline histograms, and portable JSON recipe representation.
+
+*OpenRefine is licensed under the BSD 3-Clause License. DataRefine respects and adheres to all third-party license and attribution requirements.*
 
 ---
 

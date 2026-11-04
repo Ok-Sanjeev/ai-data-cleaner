@@ -79,3 +79,51 @@ def test_remap_plan_columns_rejects_unknown_column():
     plan = {"actions": [{"action": "convert_to_date", "column": "not_a_column"}]}
     with pytest.raises(ValueError, match="unknown column"):
         remap_plan_columns(plan, {"Join_Date": "Join_Date"})
+
+
+def test_validate_outbound_payload_rejects_raw_data_and_forbidden_keys():
+    from ai_privacy import validate_outbound_payload, PrivacyViolationError
+
+    # Passing payload with raw samples must raise PrivacyViolationError
+    bad_payload = {
+        "rows": 100,
+        "columns": 2,
+        "sample_values": ["secret_row_value", "123-45-6789"],
+    }
+    with pytest.raises(PrivacyViolationError):
+        validate_outbound_payload(bad_payload)
+
+    # Passing payload with cluster members or raw category list must be blocked
+    bad_cluster_payload = {
+        "rows": 50,
+        "columns": 1,
+        "column_profiles": {
+            "name": {
+                "dtype": "object",
+                "cluster_members": ["Alice", "Alicia"],
+            }
+        }
+    }
+    with pytest.raises(PrivacyViolationError):
+        validate_outbound_payload(bad_cluster_payload)
+
+    # Clean metadata profile passes without error
+    valid_payload = {
+        "rows": 100,
+        "columns": 2,
+        "duplicate_rows": 0,
+        "column_name_issue_count": 0,
+        "column_profiles": {
+            "age": {
+                "dtype": "int64",
+                "missing_count": 0,
+                "missing_percentage": 0.0,
+                "unique_count": 50,
+                "statistics": {"min": 18, "max": 65, "mean": 35.2},
+            }
+        },
+        "privacy_note": "Approved aggregate statistics only.",
+    }
+    # Should not raise
+    validate_outbound_payload(valid_payload)
+

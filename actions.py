@@ -68,6 +68,10 @@ ALLOWED_ACTIONS = {
     "extract_pattern",
     "standardize_phone_number",
     "standardize_country_names",
+    # OpenRefine-Inspired Capabilities
+    "grel_transform",
+    "merge_clusters",
+    "reconcile_column",
 }
 
 
@@ -1379,6 +1383,64 @@ def standardize_country_names(df: pd.DataFrame, column: str, target_format: str 
 
 
 # ============================================================
+# OPENREFINE-INSPIRED OPERATIONS
+# ============================================================
+
+def grel_transform(df: pd.DataFrame, column: str, expression: str, on_error: str = "keep") -> pd.DataFrame:
+    """Apply safe, restricted GREL-inspired transformation to a column."""
+    from grel_engine import execute_grel_transform
+    return execute_grel_transform(df, column, expression, on_error=on_error)
+
+
+def merge_clusters(
+    df: pd.DataFrame,
+    column: str,
+    clusters: Optional[List[Dict[str, Any]]] = None,
+    mapping: Optional[Dict[str, str]] = None,
+) -> pd.DataFrame:
+    """
+    Standardize text variants in a column to their selected canonical values.
+    Supports either an explicit mapping dict or a list of cluster objects:
+    [{"from": ["variant1", "variant2"], "to": "canonical"}]
+    """
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    repl_map: Dict[str, str] = {}
+    if mapping:
+        repl_map.update(mapping)
+    if clusters:
+        for c in clusters:
+            canonical = c.get("to") or c.get("canonical")
+            members = c.get("from") or c.get("members", [])
+            for m in members:
+                v = m.get("value") if isinstance(m, dict) else str(m)
+                if v and canonical:
+                    repl_map[str(v)] = str(canonical)
+
+    if repl_map:
+        s = df[column].astype(object)
+        df[column] = s.replace(repl_map)
+
+    return df
+
+
+def reconcile_column(
+    df: pd.DataFrame,
+    column: str,
+    mapping: Optional[Dict[str, str]] = None,
+) -> pd.DataFrame:
+    """Apply approved entity reconciliation mapping to a column."""
+    if column not in df.columns:
+        raise ValueError(f"Column '{column}' does not exist")
+    df = df.copy()
+    if mapping and isinstance(mapping, dict):
+        s = df[column].astype(object)
+        df[column] = s.replace(mapping)
+    return df
+
+
+# ============================================================
 # ACTION METADATA & RISK REGISTRY
 # ============================================================
 
@@ -1714,6 +1776,25 @@ ACTION_METADATA: Dict[str, Dict[str, Any]] = {
         "label": "Standardize Country Names",
         "description": "Map country codes and variations to canonical country names."
     },
+    # OpenRefine-Inspired Capabilities
+    "grel_transform": {
+        "category": "Transformation Engine",
+        "risk": "yellow",
+        "label": "GREL Expression Transform",
+        "description": "Transform column values using a safe, restricted GREL expression."
+    },
+    "merge_clusters": {
+        "category": "Clustering & Harmonization",
+        "risk": "green",
+        "label": "Merge Clusters",
+        "description": "Harmonize text variants in a column to their selected canonical values."
+    },
+    "reconcile_column": {
+        "category": "Reconciliation",
+        "risk": "yellow",
+        "label": "Reconcile Entity Column",
+        "description": "Standardize entity entries against validated reference catalogs."
+    },
 }
 
 
@@ -1778,6 +1859,10 @@ ACTION_REGISTRY = {
     "extract_pattern": extract_pattern,
     "standardize_phone_number": standardize_phone_number,
     "standardize_country_names": standardize_country_names,
+    # OpenRefine-Inspired Capabilities
+    "grel_transform": grel_transform,
+    "merge_clusters": merge_clusters,
+    "reconcile_column": reconcile_column,
 }
 
 
@@ -2070,6 +2155,29 @@ def execute_action(df, action):
             df,
             action.column,
             action.params.get("target_format", "name")
+        )
+
+    if action.action == "grel_transform":
+        return function(
+            df,
+            action.column,
+            action.params.get("expression", ""),
+            action.params.get("on_error", "keep")
+        )
+
+    if action.action == "merge_clusters":
+        return function(
+            df,
+            action.column,
+            action.params.get("clusters"),
+            action.params.get("mapping")
+        )
+
+    if action.action == "reconcile_column":
+        return function(
+            df,
+            action.column,
+            action.params.get("mapping", {})
         )
 
     raise ValueError(

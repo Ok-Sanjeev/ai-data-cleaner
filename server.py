@@ -32,8 +32,32 @@ from planner import (
     validate_cleaning_results,
 )
 from profiler import profile_dataset
-from schemas import CleaningAction, CleaningPlan
+from schemas import (
+    CleaningAction,
+    CleaningPlan,
+    ClusterDetectRequest,
+    ClusterApplyRequest,
+    GRELPreviewRequest,
+    GRELApplyRequest,
+    FacetComputeRequest,
+    ExploreRequest,
+    ReconcileRequest,
+    ReconcileApplyRequest,
+    RecipeApplyRequest,
+)
 from session import CleaningSession
+from openrefine_clustering import detect_clusters, SUPPORTED_CLUSTERING_METHODS
+from grel_engine import preview_grel, execute_grel_transform
+from facets import (
+    compute_text_facet,
+    compute_numeric_facet,
+    compute_date_facet,
+    compute_facet_auto,
+    explore_dataset,
+    apply_filters,
+)
+from reconciliation import reconcile_column_candidates, REFERENCE_CATALOGS
+from workflow_recipe import WorkflowRecipeManager
 
 
 app = FastAPI(
@@ -886,6 +910,319 @@ def download_report(session_id: str = Query(...)):
         media_type="application/json",
         filename=f"report_{session['run_id']}.json",
     )
+
+
+# ============================================================
+# OPENREFINE-INSPIRED API ENDPOINTS
+# ============================================================
+
+@app.post("/api/cluster/detect")
+def api_cluster_detect(req: ClusterDetectRequest):
+    """Detect similar string clusters in a column using OpenRefine algorithms."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    df = session["df_current"]
+    if req.column not in df.columns:
+        raise HTTPException(status_code=400, detail=f"Column '{req.column}' not in dataset.")
+
+    try:
+        clusters = detect_clusters(
+            series=df[req.column],
+            method=req.method,
+            params=req.params,
+        )
+        return {
+            "status": "success",
+            "column": req.column,
+            "method": req.method,
+            "cluster_count": len(clusters),
+            "clusters": clusters,
+        }
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=f"Clustering failed: {err}")
+
+
+@app.post("/api/cluster/apply")
+def api_cluster_apply(req: ClusterApplyRequest):
+    """Apply approved cluster merges to harmonize text variants to canonical forms."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    sess: CleaningSession = session["cleaning_session"]
+
+    action = CleaningAction(
+        action="merge_clusters",
+        column=req.column,
+        params={"clusters": req.clusters, "mapping": req.mapping},
+        reasoning=f"Harmonize text variants in '{req.column}' using OpenRefine clustering",
+    )
+    res = sess.apply_action(action)
+    df_current = sess.get_current_df()
+    session["df_current"] = df_current
+
+    diff_data = compute_side_by_side_diff(session["df_original"], df_current)
+    return {
+        "status": "success",
+        "message": f"Successfully merged clusters in '{req.column}'",
+        "current_step": sess.current_step,
+        "checkpoints": sess.get_history(),
+        "diff_summary": {
+            "rows_before": diff_data["rows_before"],
+            "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
+            "modified_cells_count": diff_data["modified_cells_count"],
+        },
+        "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
+    }
+
+
+@app.post("/api/grel/preview")
+def api_grel_preview(req: GRELPreviewRequest):
+    """Preview a safe, restricted GREL-inspired expression on sample rows."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    df = session["df_current"]
+    if req.column not in df.columns:
+        raise HTTPException(status_code=400, detail=f"Column '{req.column}' not in dataset.")
+
+    preview_res = preview_grel(
+        df=df,
+        column=req.column,
+        expression=req.expression,
+        sample_limit=req.sample_limit,
+    )
+    return preview_res
+
+
+@app.post("/api/grel/apply")
+def api_grel_apply(req: GRELApplyRequest):
+    """Apply a safe GREL transformation to a column and record a checkpoint."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    sess: CleaningSession = session["cleaning_session"]
+
+    action = CleaningAction(
+        action="grel_transform",
+        column=req.column,
+        params={"expression": req.expression, "on_error": req.on_error},
+        reasoning=f"GREL Transformation on '{req.column}': {req.expression}",
+    )
+    res = sess.apply_action(action)
+    df_current = sess.get_current_df()
+    session["df_current"] = df_current
+
+    diff_data = compute_side_by_side_diff(session["df_original"], df_current)
+    return {
+        "status": "success",
+        "message": f"Successfully applied GREL transformation to '{req.column}'",
+        "current_step": sess.current_step,
+        "checkpoints": sess.get_history(),
+        "diff_summary": {
+            "rows_before": diff_data["rows_before"],
+            "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
+            "modified_cells_count": diff_data["modified_cells_count"],
+        },
+        "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
+    }
+
+
+@app.post("/api/facets/compute")
+def api_facets_compute(req: FacetComputeRequest):
+    """Compute text, numeric, or date facets with value counts and distribution."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    df = session["df_current"]
+    if req.column not in df.columns:
+        raise HTTPException(status_code=400, detail=f"Column '{req.column}' not in dataset.")
+
+    filtered_df = apply_filters(df, filters=req.active_filters)
+    series = filtered_df[req.column]
+
+    facet = compute_facet_auto(
+        series=series,
+        facet_type=req.facet_type,
+        top_n=req.top_n,
+        bins_count=req.bins,
+        search_query=req.search,
+    )
+    return {
+        "status": "success",
+        "column": req.column,
+        "facet": facet,
+    }
+
+
+@app.post("/api/dataset/explore")
+def api_dataset_explore(req: ExploreRequest):
+    """Explore dataset with multi-column facet filtering, global search, sorting, and pagination."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    df = session["df_current"]
+
+    exp_res = explore_dataset(
+        df=df,
+        filters=req.filters,
+        global_search=req.global_search,
+        sort_by=req.sort_by,
+        sort_ascending=req.sort_ascending,
+        offset=req.offset,
+        limit=req.limit,
+    )
+    return exp_res
+
+
+@app.post("/api/reconcile/match")
+def api_reconcile_match(req: ReconcileRequest):
+    """Match messy column values against reference entity catalogs and compute similarity scores."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    df = session["df_current"]
+    if req.column not in df.columns:
+        raise HTTPException(status_code=400, detail=f"Column '{req.column}' not in dataset.")
+
+    try:
+        res = reconcile_column_candidates(
+            series=df[req.column],
+            catalog_name=req.catalog,
+            custom_entities=req.custom_entities,
+            match_threshold=req.threshold,
+        )
+        return {
+            "status": "success",
+            "column": req.column,
+            "catalog": req.catalog,
+            "result": res,
+        }
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=f"Reconciliation matching failed: {err}")
+
+
+@app.post("/api/reconcile/apply")
+def api_reconcile_apply(req: ReconcileApplyRequest):
+    """Apply approved entity mappings to standardize column values."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    sess: CleaningSession = session["cleaning_session"]
+
+    action = CleaningAction(
+        action="reconcile_column",
+        column=req.column,
+        params={"mapping": req.mapping, "catalog": req.catalog},
+        reasoning=f"Entity reconciliation against catalog '{req.catalog}' for '{req.column}'",
+    )
+    res = sess.apply_action(action)
+    df_current = sess.get_current_df()
+    session["df_current"] = df_current
+
+    diff_data = compute_side_by_side_diff(session["df_original"], df_current)
+    return {
+        "status": "success",
+        "message": f"Successfully reconciled '{req.column}' with {len(req.mapping)} canonical entities",
+        "current_step": sess.current_step,
+        "checkpoints": sess.get_history(),
+        "diff_summary": {
+            "rows_before": diff_data["rows_before"],
+            "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
+            "modified_cells_count": diff_data["modified_cells_count"],
+        },
+        "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
+    }
+
+
+@app.get("/api/workflow/history")
+def api_workflow_history(session_id: str = Query(...)):
+    """Retrieve executed operations serialized in OpenRefine JSON recipe format."""
+    if session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[session_id]
+    sess: CleaningSession = session["cleaning_session"]
+    recipe = WorkflowRecipeManager.export_recipe_from_history(sess.get_history())
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "recipe": recipe,
+    }
+
+
+@app.post("/api/workflow/export_recipe")
+def api_workflow_export_recipe(req: Dict[str, str]):
+    """Export the current session's operation history as a downloadable JSON recipe."""
+    session_id = req.get("session_id")
+    if not session_id or session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[session_id]
+    sess: CleaningSession = session["cleaning_session"]
+    recipe = WorkflowRecipeManager.export_recipe_from_history(sess.get_history())
+    return JSONResponse(
+        content=recipe,
+        headers={"Content-Disposition": f"attachment; filename=recipe_{session['run_id']}.json"},
+    )
+
+
+@app.post("/api/workflow/apply_recipe")
+def api_workflow_apply_recipe(req: RecipeApplyRequest):
+    """Import and sequentially replay an OpenRefine-compatible JSON recipe onto the active dataset."""
+    if req.session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    session = SESSIONS[req.session_id]
+    sess: CleaningSession = session["cleaning_session"]
+
+    valid, errors = WorkflowRecipeManager.validate_recipe(req.recipe)
+    if not valid:
+        raise HTTPException(status_code=400, detail=f"Recipe validation failed: {'; '.join(errors)}")
+
+    operations = req.recipe.get("operations", [])
+    applied_count = 0
+    errors_encountered = []
+
+    for idx, op in enumerate(operations):
+        try:
+            action_obj = CleaningAction(
+                action=op["action"],
+                column=op.get("column"),
+                params=op.get("params", {}),
+                reasoning=op.get("reasoning", f"Replayed recipe step {idx + 1}"),
+            )
+            sess.apply_action(action_obj)
+            applied_count += 1
+        except Exception as e:
+            errors_encountered.append(f"Step {idx + 1} ({op.get('action')}): {str(e)}")
+            if req.stop_on_error:
+                break
+
+    df_current = sess.get_current_df()
+    session["df_current"] = df_current
+    diff_data = compute_side_by_side_diff(session["df_original"], df_current)
+
+    return {
+        "status": "success" if not errors_encountered else "partial_success",
+        "applied_count": applied_count,
+        "total_operations": len(operations),
+        "errors": errors_encountered,
+        "current_step": sess.current_step,
+        "checkpoints": sess.get_history(),
+        "diff_summary": {
+            "rows_before": diff_data["rows_before"],
+            "rows_after": diff_data["rows_after"],
+            "rows_delta": diff_data["rows_delta"],
+            "modified_cells_count": diff_data["modified_cells_count"],
+        },
+        "diff_table": diff_data["row_diffs"],
+        "columns": diff_data["columns_after"],
+    }
+
 
 
 # ============================================================

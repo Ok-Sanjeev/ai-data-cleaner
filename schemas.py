@@ -65,6 +65,10 @@ ALLOWED_ACTIONS = Literal[
     "extract_pattern",
     "standardize_phone_number",
     "standardize_country_names",
+    # OpenRefine-Inspired Capabilities
+    "grel_transform",
+    "merge_clusters",
+    "reconcile_column",
 ]
 
 
@@ -134,6 +138,9 @@ class CleaningAction(BaseModel):
             "extract_pattern",
             "standardize_phone_number",
             "standardize_country_names",
+            "grel_transform",
+            "merge_clusters",
+            "reconcile_column",
         }
 
         if self.action in column_actions and not self.column:
@@ -243,6 +250,20 @@ class CleaningAction(BaseModel):
             if not isinstance(pat, str) or not pat:
                 raise ValueError("extract_pattern requires a non-empty string in params['regex_pattern']")
 
+        elif self.action == "grel_transform":
+            expr = self.params.get("expression")
+            if not isinstance(expr, str) or not expr.strip():
+                raise ValueError("grel_transform requires a non-empty params['expression'] string")
+
+        elif self.action == "merge_clusters":
+            if not self.params.get("clusters") and not self.params.get("mapping"):
+                raise ValueError("merge_clusters requires params['clusters'] or params['mapping']")
+
+        elif self.action == "reconcile_column":
+            mapping = self.params.get("mapping")
+            if not isinstance(mapping, dict) or not mapping:
+                raise ValueError("reconcile_column requires a non-empty params['mapping'] dictionary")
+
         return self
 
 
@@ -251,3 +272,77 @@ class CleaningPlan(BaseModel):
 
     summary: str
     actions: list[CleaningAction]
+
+
+# ============================================================
+# OPENREFINE-INSPIRED API REQUEST MODELS
+# ============================================================
+
+class ClusterDetectRequest(BaseModel):
+    session_id: str
+    column: str
+    method: str = "fingerprint"
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClusterApplyRequest(BaseModel):
+    session_id: str
+    column: str
+    clusters: list[dict[str, Any]] = Field(default_factory=list)
+    mapping: Optional[dict[str, str]] = None
+
+
+class GRELPreviewRequest(BaseModel):
+    session_id: str
+    column: str
+    expression: str
+    sample_limit: int = 15
+
+
+class GRELApplyRequest(BaseModel):
+    session_id: str
+    column: str
+    expression: str
+    on_error: str = "keep"
+
+
+class FacetComputeRequest(BaseModel):
+    session_id: str
+    column: str
+    facet_type: str = "auto"
+    top_n: int = 100
+    bins: int = 15
+    search: Optional[str] = None
+    active_filters: Optional[dict[str, Any]] = None
+
+
+class ExploreRequest(BaseModel):
+    session_id: str
+    filters: Optional[dict[str, Any]] = None
+    global_search: Optional[str] = None
+    sort_by: Optional[str] = None
+    sort_ascending: bool = True
+    offset: int = 0
+    limit: int = 50
+
+
+class ReconcileRequest(BaseModel):
+    session_id: str
+    column: str
+    catalog: str = "countries"
+    custom_entities: Optional[list[str]] = None
+    threshold: float = 0.75
+
+
+class ReconcileApplyRequest(BaseModel):
+    session_id: str
+    column: str
+    mapping: dict[str, str]
+    catalog: str = "reconciled"
+
+
+class RecipeApplyRequest(BaseModel):
+    session_id: str
+    recipe: dict[str, Any]
+    stop_on_error: bool = False
+

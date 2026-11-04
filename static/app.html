@@ -254,65 +254,412 @@
       <!-- Profile Results Container (Appears only after profiling completes) -->
       <div id="profile-results" class="hidden space-y-6">
         
-        <!-- Dataset Overview Summary Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Total Rows</span>
-            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-rows">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Columns</span>
-            <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-cols">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Duplicate Rows</span>
-            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-dups">-</p>
-          </div>
-          <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
-            <span class="text-[11px] font-medium text-zinc-400">Missing Values</span>
-            <p class="text-xl font-semibold font-mono mt-0.5" id="stat-missing">-</p>
-          </div>
-        </div>
-
-        <!-- Data Quality Observations Panel -->
-        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Data Quality Observations</h3>
-            <span id="issues-detected-badge" class="text-[11px] px-2 py-0.5 rounded font-mono"></span>
-          </div>
-          <div id="quality-findings-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Dataset Preview Table with Row Filter -->
-        <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Dataset Preview (First 15 Rows)</h3>
-              <p class="text-[11px] text-zinc-500 mt-0.5">Click any column header to view distribution stats, top values, and numeric bounds.</p>
-            </div>
-
-            <!-- Instant Search Input -->
-            <div class="relative w-full sm:w-64">
-              <input type="text" id="preview-search" placeholder="Filter rows in preview..." onkeyup="filterPreviewTable()" class="w-full pl-3 pr-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
-            </div>
-          </div>
-
-          <div class="overflow-x-auto max-h-[440px] overflow-y-auto rounded-lg border border-surface-border">
-            <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="preview-table">
-              <thead class="sticky top-0 bg-surface-elevated text-zinc-300 text-[11px] border-b border-surface-border select-none" id="preview-table-header"></thead>
-              <tbody id="preview-table-body" class="divide-y divide-surface-border font-mono"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Bottom Action CTA to Step 2 -->
-        <div class="flex justify-end pt-2">
-          <button onclick="goToStep(2); generatePlanIfNeeded();" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-            <span>Continue to Review & Clean</span>
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
+        <!-- OpenRefine Studio Tabs Navigation Bar -->
+        <div class="bg-surface-elevated/70 p-1.5 rounded-xl border border-surface-border flex items-center space-x-1.5 overflow-x-auto text-xs font-medium">
+          <button type="button" onclick="switchStudioTab('quality')" id="tab-btn-quality" class="px-3.5 py-1.5 rounded-lg bg-surface-card text-blue-400 border border-surface-border font-semibold flex items-center space-x-1.5 transition">
+            <span>📊 Quality & Profiling</span>
           </button>
+          <button type="button" onclick="switchStudioTab('facets')" id="tab-btn-facets" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
+            <span>🔍 Facet & Explore</span>
+          </button>
+          <button type="button" onclick="switchStudioTab('clusters')" id="tab-btn-clusters" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
+            <span>✨ Cluster & Harmonize</span>
+          </button>
+          <button type="button" onclick="switchStudioTab('grel')" id="tab-btn-grel" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
+            <span>⚡ GREL Transform</span>
+          </button>
+          <button type="button" onclick="switchStudioTab('reconcile')" id="tab-btn-reconcile" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
+            <span>🌐 Entity Reconcile</span>
+          </button>
+          <button type="button" onclick="switchStudioTab('recipe')" id="tab-btn-recipe" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
+            <span>📜 Workflow & Recipes</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: QUALITY & PROFILING (Default) -->
+        <div id="tab-view-quality" class="space-y-6">
+          <!-- Dataset Overview Summary Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+              <span class="text-[11px] font-medium text-zinc-400">Total Rows</span>
+              <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-rows">-</p>
+            </div>
+            <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+              <span class="text-[11px] font-medium text-zinc-400">Columns</span>
+              <p class="text-xl font-semibold text-white font-mono mt-0.5" id="stat-cols">-</p>
+            </div>
+            <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+              <span class="text-[11px] font-medium text-zinc-400">Duplicate Rows</span>
+              <p class="text-xl font-semibold font-mono mt-0.5" id="stat-dups">-</p>
+            </div>
+            <div class="bg-surface-card p-4 rounded-xl border border-surface-border">
+              <span class="text-[11px] font-medium text-zinc-400">Missing Values</span>
+              <p class="text-xl font-semibold font-mono mt-0.5" id="stat-missing">-</p>
+            </div>
+          </div>
+
+          <!-- Data Quality Observations Panel -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Data Quality Observations</h3>
+              <span id="issues-detected-badge" class="text-[11px] px-2 py-0.5 rounded font-mono"></span>
+            </div>
+            <div id="quality-findings-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
+          </div>
+
+          <!-- Dataset Preview Table with Row Filter -->
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Dataset Preview (First 15 Rows)</h3>
+                <p class="text-[11px] text-zinc-500 mt-0.5">Click any column header to view distribution stats, top values, and numeric bounds.</p>
+              </div>
+
+              <!-- Instant Search Input -->
+              <div class="relative w-full sm:w-64">
+                <input type="text" id="preview-search" placeholder="Filter rows in preview..." onkeyup="filterPreviewTable()" class="w-full pl-3 pr-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+
+            <div class="overflow-x-auto max-h-[440px] overflow-y-auto rounded-lg border border-surface-border">
+              <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="preview-table">
+                <thead class="sticky top-0 bg-surface-elevated text-zinc-300 text-[11px] border-b border-surface-border select-none" id="preview-table-header"></thead>
+                <tbody id="preview-table-body" class="divide-y divide-surface-border font-mono"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Bottom Action CTA to Step 2 -->
+          <div class="flex justify-end pt-2">
+            <button onclick="goToStep(2); generatePlanIfNeeded();" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+              <span>Continue to Review & Clean</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: FACETS & EXPLORE -->
+        <div id="tab-view-facets" class="hidden space-y-4">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <!-- Left Sidebar: Facet Builder (4 cols) -->
+            <div class="lg:col-span-4 space-y-4">
+              <div class="bg-surface-card rounded-xl border border-surface-border p-4 space-y-3.5">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Facet Builder</h3>
+                  <button type="button" onclick="clearFacetFilters()" class="text-[11px] text-zinc-400 hover:text-blue-400 transition">Reset All</button>
+                </div>
+                
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-medium text-zinc-400">Target Column</label>
+                  <select id="facet-column-select" onchange="computeCurrentFacet()" class="w-full px-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"></select>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-medium text-zinc-400">Facet Type</label>
+                  <div class="grid grid-cols-3 gap-1.5 text-xs">
+                    <button type="button" onclick="setFacetType('text')" id="facet-type-text" class="px-2.5 py-1 rounded bg-surface-elevated border border-blue-500/50 text-blue-400 text-center font-medium">Text</button>
+                    <button type="button" onclick="setFacetType('numeric')" id="facet-type-numeric" class="px-2.5 py-1 rounded bg-surface-elevated border border-surface-border text-zinc-400 text-center hover:text-zinc-200">Numeric</button>
+                    <button type="button" onclick="setFacetType('date')" id="facet-type-date" class="px-2.5 py-1 rounded bg-surface-elevated border border-surface-border text-zinc-400 text-center hover:text-zinc-200">Date</button>
+                  </div>
+                </div>
+
+                <div id="facet-loading" class="hidden text-center py-4">
+                  <div class="inline-block animate-spin text-blue-500 w-4 h-4 border-2 border-current border-t-transparent rounded-full"></div>
+                  <span class="text-[11px] text-zinc-400 ml-2">Calculating facet...</span>
+                </div>
+
+                <!-- Facet Result Container -->
+                <div id="facet-output" class="space-y-3 pt-2 border-t border-surface-border">
+                  <div id="facet-stats-summary" class="text-[11px] text-zinc-400 flex items-center justify-between"></div>
+                  
+                  <div id="facet-search-wrap" class="relative">
+                    <input type="text" id="facet-choices-search" oninput="filterFacetChoicesList()" placeholder="Filter choices..." class="w-full px-2.5 py-1 text-xs bg-surface-elevated border border-surface-border rounded text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono">
+                  </div>
+
+                  <div id="facet-choices-list" class="max-h-60 overflow-y-auto space-y-1 pr-1 divide-y divide-surface-border/50 text-xs"></div>
+                  <div id="facet-numeric-chart" class="hidden space-y-1.5"></div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Right Pane: Live Exploration Grid (8 cols) -->
+            <div class="lg:col-span-8 space-y-3">
+              <div class="bg-surface-card rounded-xl border border-surface-border p-4 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div class="flex items-center space-x-2">
+                    <span id="explore-matching-count" class="text-xs font-mono text-zinc-300 font-semibold">-</span>
+                    <span id="explore-filter-badge" class="hidden text-[10px] px-2 py-0.5 rounded font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">Filtered</span>
+                  </div>
+
+                  <div class="flex items-center space-x-2">
+                    <input type="text" id="explore-global-search" oninput="debounceExploreSearch()" placeholder="Global search..." class="w-40 sm:w-56 px-2.5 py-1 text-xs bg-surface-elevated border border-surface-border rounded text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono">
+                  </div>
+                </div>
+
+                <!-- Live Grid Table -->
+                <div class="overflow-x-auto max-h-[500px] overflow-y-auto rounded-lg border border-surface-border">
+                  <table class="w-full text-left text-xs text-zinc-300 border-collapse" id="explore-table">
+                    <thead class="sticky top-0 bg-surface-elevated text-zinc-300 text-[11px] border-b border-surface-border select-none" id="explore-table-header"></thead>
+                    <tbody id="explore-table-body" class="divide-y divide-surface-border font-mono text-[11px]"></tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="flex items-center justify-between pt-1 text-xs text-zinc-400">
+                  <span id="explore-page-info">Showing 0-0</span>
+                  <div class="flex items-center space-x-1.5">
+                    <button type="button" onclick="changeExplorePage(-1)" id="explore-prev-btn" class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border disabled:opacity-40">Previous</button>
+                    <button type="button" onclick="changeExplorePage(1)" id="explore-next-btn" class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-zinc-800 text-zinc-300 border border-surface-border disabled:opacity-40">Next</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: CLUSTER & HARMONIZE -->
+        <div id="tab-view-clusters" class="hidden space-y-4">
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+            <div>
+              <h3 class="text-sm font-semibold text-white">OpenRefine Clustering Studio</h3>
+              <p class="text-xs text-zinc-400 mt-0.5">Detect spelling variants, typos, and synonymous text entries using key collision and edit distance algorithms.</p>
+            </div>
+
+            <!-- Parameters Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3 bg-surface-elevated/40 p-3.5 rounded-lg border border-surface-border">
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">Column to Cluster</label>
+                <select id="cluster-column-select" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"></select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">Clustering Method</label>
+                <select id="cluster-method-select" onchange="toggleClusterMethodParams()" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none">
+                  <option value="fingerprint">Key Collision: Fingerprint</option>
+                  <option value="ngram_fingerprint">Key Collision: 2-Gram Fingerprint</option>
+                  <option value="soundex">Phonetic: Soundex</option>
+                  <option value="metaphone">Phonetic: Metaphone</option>
+                  <option value="levenshtein">Distance: Levenshtein</option>
+                  <option value="damerau_levenshtein">Distance: Damerau-Levenshtein</option>
+                </select>
+              </div>
+
+              <div id="cluster-param-wrap" class="space-y-1 hidden">
+                <label class="text-[11px] font-medium text-zinc-400" id="cluster-param-label">Max Edit Distance</label>
+                <input type="number" id="cluster-param-val" value="1" min="1" max="5" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none">
+              </div>
+
+              <div class="flex items-end">
+                <button type="button" onclick="runClusteringDetection()" id="btn-detect-clusters" class="w-full px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+                  <span id="btn-detect-clusters-text">Detect Clusters</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Clusters Output Area -->
+            <div id="cluster-results-wrap" class="space-y-3">
+              <div id="cluster-results-header" class="hidden flex items-center justify-between text-xs text-zinc-300">
+                <span id="cluster-count-label" class="font-semibold text-zinc-200"></span>
+                <div class="flex items-center space-x-2">
+                  <button type="button" onclick="toggleAllClusterChecks(true)" class="text-xs text-blue-400 hover:underline">Select All</button>
+                  <span class="text-zinc-600">|</span>
+                  <button type="button" onclick="toggleAllClusterChecks(false)" class="text-xs text-zinc-400 hover:underline">Deselect All</button>
+                </div>
+              </div>
+
+              <div id="cluster-cards-list" class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1"></div>
+
+              <div id="cluster-actions-footer" class="hidden flex justify-end pt-3 border-t border-surface-border">
+                <button type="button" onclick="applySelectedClusters()" id="btn-merge-clusters" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-sm transition">
+                  <span id="btn-merge-clusters-text">Merge Selected Clusters</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 4: GREL TRANSFORM -->
+        <div id="tab-view-grel" class="hidden space-y-4">
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+            <div>
+              <h3 class="text-sm font-semibold text-white">GREL (General Refine Expression Language) Studio</h3>
+              <p class="text-xs text-zinc-400 mt-0.5">Transform columns with safe, sandboxed Python-compatible expressions without arbitrary code execution risk.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">Target Column</label>
+                <select id="grel-column-select" class="w-full px-2.5 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"></select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">On Error Handling</label>
+                <select id="grel-error-select" class="w-full px-2.5 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none">
+                  <option value="keep">Keep original value</option>
+                  <option value="set_null">Set to null / NaN</option>
+                  <option value="set_empty">Set to empty string</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Expression Textarea -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] font-medium text-zinc-400">Expression (value = current cell)</label>
+                <span class="text-[10px] text-zinc-500 font-mono">AST Sandboxed</span>
+              </div>
+              <textarea id="grel-expression-input" rows="3" placeholder="value.trim().toTitlecase()" class="w-full p-3 rounded-lg bg-surface-elevated border border-surface-border text-xs text-emerald-400 font-mono focus:border-blue-500 focus:outline-none"></textarea>
+            </div>
+
+            <!-- Quick Snippets Pills -->
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">Quick GREL Snippets</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="insertGrelSnippet('value.toTitlecase()')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">toTitlecase()</button>
+                <button type="button" onclick="insertGrelSnippet('value.toLowercase()')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">toLowercase()</button>
+                <button type="button" onclick="insertGrelSnippet('value.trim()')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">trim()</button>
+                <button type="button" onclick="insertGrelSnippet('value.replace(\'old\', \'new\')')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">replace()</button>
+                <button type="button" onclick="insertGrelSnippet('value.split(\',\')[0]')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">split()[0]</button>
+                <button type="button" onclick="insertGrelSnippet('value.toNumber() * 1.18')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">toNumber() * 1.18</button>
+                <button type="button" onclick="insertGrelSnippet('round(value.toNumber(), 2)')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">round(val, 2)</button>
+                <button type="button" onclick="insertGrelSnippet('if(value == \'N/A\', null, value)')" class="px-2 py-0.5 rounded bg-surface-elevated hover:bg-zinc-800 text-[11px] font-mono text-zinc-300 border border-surface-border">if(val=='N/A', null, val)</button>
+              </div>
+            </div>
+
+            <!-- GREL Action Buttons -->
+            <div class="flex items-center space-x-2.5 pt-2">
+              <button type="button" onclick="previewGrelExpression()" id="btn-preview-grel" class="px-4 py-2 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-xs font-semibold text-zinc-200 border border-surface-border transition flex items-center space-x-1.5">
+                <span>Preview (15 Sample Rows)</span>
+              </button>
+              <button type="button" onclick="applyGrelTransformation()" id="btn-apply-grel" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition flex items-center space-x-1.5">
+                <span>Apply Transformation</span>
+              </button>
+            </div>
+
+            <!-- Preview Output Table -->
+            <div id="grel-preview-container" class="hidden space-y-2 pt-3 border-t border-surface-border">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Live Preview</h4>
+              <div class="overflow-x-auto rounded-lg border border-surface-border">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border font-mono">
+                    <tr>
+                      <th class="px-3 py-2 w-12">Row</th>
+                      <th class="px-3 py-2">Original Value</th>
+                      <th class="px-3 py-2">Transformed Value</th>
+                      <th class="px-3 py-2 w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="grel-preview-tbody" class="divide-y divide-surface-border font-mono text-[11px]"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 5: ENTITY RECONCILIATION -->
+        <div id="tab-view-reconcile" class="hidden space-y-4">
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+            <div>
+              <h3 class="text-sm font-semibold text-white">Entity Reconciliation</h3>
+              <p class="text-xs text-zinc-400 mt-0.5">Harmonize values against curated entity reference catalogs (Countries, States, Currencies, Tech Roles, or Custom Catalogs).</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-surface-elevated/40 p-3.5 rounded-lg border border-surface-border">
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">Column</label>
+                <select id="reconcile-column-select" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"></select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-[11px] font-medium text-zinc-400">Reference Catalog</label>
+                <select id="reconcile-catalog-select" onchange="toggleCustomCatalogInput()" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none">
+                  <option value="countries">Countries & ISO Aliases</option>
+                  <option value="us_states">US States & Postals</option>
+                  <option value="currencies">Currencies & Symbols</option>
+                  <option value="tech_roles">Tech Job Titles</option>
+                  <option value="custom">Custom Entity List</option>
+                </select>
+              </div>
+              <div class="flex items-end">
+                <button type="button" onclick="runEntityReconciliation()" id="btn-run-reconcile" class="w-full px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+                  <span id="btn-run-reconcile-text">Match Entities</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="custom-catalog-wrap" class="hidden space-y-1.5">
+              <label class="text-[11px] font-medium text-zinc-400">Custom Entities (comma or line separated)</label>
+              <textarea id="custom-catalog-input" rows="2" placeholder="Frontend Engineer, Backend Engineer, Data Scientist" class="w-full p-2.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono"></textarea>
+            </div>
+
+            <!-- Reconciliation Candidates Table -->
+            <div id="reconcile-output-wrap" class="hidden space-y-3">
+              <div class="flex items-center justify-between text-xs text-zinc-300">
+                <span id="reconcile-summary-text" class="font-medium"></span>
+              </div>
+              <div class="overflow-x-auto rounded-lg border border-surface-border max-h-96 overflow-y-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="sticky top-0 bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border font-mono">
+                    <tr>
+                      <th class="px-3 py-2 w-10 text-center"><input type="checkbox" id="reconcile-check-all" onchange="toggleAllReconcileChecks(this.checked)" checked></th>
+                      <th class="px-3 py-2">Original Value</th>
+                      <th class="px-3 py-2 w-20">Count</th>
+                      <th class="px-3 py-2">Suggested Canonical</th>
+                      <th class="px-3 py-2 w-28">Match Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reconcile-tbody" class="divide-y divide-surface-border font-mono text-[11px]"></tbody>
+                </table>
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <button type="button" onclick="applyEntityReconciliation()" id="btn-apply-reconcile" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-sm transition">
+                  <span>Apply Approved Reconciliations</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 6: RECIPES & WORKFLOW -->
+        <div id="tab-view-recipe" class="hidden space-y-4">
+          <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-white">OpenRefine-Compatible Recipe Engine</h3>
+                <p class="text-xs text-zinc-400 mt-0.5">Export operations as a portable JSON recipe or replay existing recipes sequentially.</p>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <button type="button" onclick="downloadWorkflowRecipe()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  <span>Export JSON Recipe</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Active JSON Recipe Box -->
+            <div class="space-y-1.5">
+              <label class="text-[11px] font-medium text-zinc-400 uppercase tracking-wider block">Session Recipe JSON</label>
+              <pre id="recipe-json-display" class="w-full p-3.5 rounded-lg bg-surface-elevated border border-surface-border text-xs text-blue-300 font-mono max-h-64 overflow-y-auto overflow-x-auto leading-relaxed">// No cleaning operations recorded yet.</pre>
+            </div>
+
+            <!-- Replay Recipe Box -->
+            <div class="pt-4 border-t border-surface-border space-y-2.5">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-zinc-300">Replay Recipe on Current Dataset</h4>
+              <textarea id="recipe-replay-input" rows="4" placeholder='{"operations": [{"action": "trim_whitespace", "column": "name"}]}' class="w-full p-3 rounded-lg bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono focus:border-blue-500 focus:outline-none"></textarea>
+              <div class="flex justify-end">
+                <button type="button" onclick="replayCustomRecipe()" id="btn-replay-recipe" class="px-4 py-2 rounded-lg bg-surface-elevated hover:bg-zinc-800 text-xs font-semibold text-zinc-200 border border-surface-border transition">
+                  Replay Recipe Steps
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>
@@ -951,6 +1298,7 @@
         renderPreviewTable(data.preview_rows, currentColumns);
 
         document.getElementById('profile-results').classList.remove('hidden');
+        populateStudioColumnDropdowns(currentColumns);
         showToast('Dataset profiled successfully.');
       } catch (err) {
         showToast(err.message, true);
@@ -1814,6 +2162,792 @@ if __name__ == '__main__':
       else if (val === 'ollama') modelInput.value = 'llama3.2';
       else if (val === 'mock') modelInput.value = 'mock-rule-engine';
     }
+
+    // ============================================================
+    // OPENREFINE STUDIO JAVASCRIPT LOGIC
+    // ============================================================
+
+    let currentStudioTab = 'quality';
+    let currentFacetType = 'text';
+    let activeFacetFilters = {};
+    let exploreOffset = 0;
+    const exploreLimit = 50;
+    let exploreSearchDebounceTimer = null;
+    let currentClustersData = [];
+    let currentReconcileCandidates = [];
+
+    function populateStudioColumnDropdowns(cols) {
+      const selects = [
+        document.getElementById('facet-column-select'),
+        document.getElementById('cluster-column-select'),
+        document.getElementById('grel-column-select'),
+        document.getElementById('reconcile-column-select'),
+      ];
+
+      selects.forEach(sel => {
+        if (!sel) return;
+        const prevVal = sel.value;
+        sel.innerHTML = '';
+        cols.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = `${c.name} (${c.dtype})`;
+          sel.appendChild(opt);
+        });
+        if (prevVal && cols.some(c => c.name === prevVal)) {
+          sel.value = prevVal;
+        }
+      });
+    }
+
+    function switchStudioTab(tab) {
+      currentStudioTab = tab;
+      const tabs = ['quality', 'facets', 'clusters', 'grel', 'reconcile', 'recipe'];
+
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const view = document.getElementById(`tab-view-${t}`);
+        if (!btn || !view) return;
+
+        if (t === tab) {
+          btn.className = 'px-3.5 py-1.5 rounded-lg bg-surface-card text-blue-400 border border-surface-border font-semibold flex items-center space-x-1.5 transition';
+          view.classList.remove('hidden');
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition';
+          view.classList.add('hidden');
+        }
+      });
+
+      if (tab === 'facets') {
+        computeCurrentFacet();
+        loadFacetExploreData();
+      } else if (tab === 'recipe') {
+        loadWorkflowRecipe();
+      }
+    }
+
+    // --- FACETS & EXPLORATION ---
+
+    function setFacetType(type) {
+      currentFacetType = type;
+      ['text', 'numeric', 'date'].forEach(t => {
+        const btn = document.getElementById(`facet-type-${t}`);
+        if (!btn) return;
+        if (t === type) {
+          btn.className = 'px-2.5 py-1 rounded bg-surface-elevated border border-blue-500/50 text-blue-400 text-center font-medium';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded bg-surface-elevated border border-surface-border text-zinc-400 text-center hover:text-zinc-200';
+        }
+      });
+      computeCurrentFacet();
+    }
+
+    async function computeCurrentFacet() {
+      if (!currentSessionId) return;
+      const colSelect = document.getElementById('facet-column-select');
+      if (!colSelect || !colSelect.value) return;
+
+      const column = colSelect.value;
+      const loading = document.getElementById('facet-loading');
+      if (loading) loading.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/facets/compute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: column,
+            facet_type: currentFacetType,
+            active_filters: activeFacetFilters,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Facet computation failed');
+        renderFacetOutput(data.facet, column);
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        if (loading) loading.classList.add('hidden');
+      }
+    }
+
+    function renderFacetOutput(facet, column) {
+      const summaryEl = document.getElementById('facet-stats-summary');
+      const listEl = document.getElementById('facet-choices-list');
+      const chartEl = document.getElementById('facet-numeric-chart');
+      const searchWrap = document.getElementById('facet-search-wrap');
+
+      summaryEl.innerHTML = `
+        <span>Total: <strong>${(facet.total_rows || 0).toLocaleString()}</strong></span>
+        <span>Nulls: <strong>${(facet.null_count || 0).toLocaleString()}</strong></span>
+      `;
+
+      if (facet.facet_type === 'text') {
+        searchWrap.classList.remove('hidden');
+        chartEl.classList.add('hidden');
+        listEl.classList.remove('hidden');
+        listEl.innerHTML = '';
+
+        const selectedSet = new Set((activeFacetFilters[column] && activeFacetFilters[column].selected) || []);
+
+        (facet.choices || []).forEach(c => {
+          const row = document.createElement('label');
+          row.className = 'flex items-center justify-between py-1 px-1.5 rounded hover:bg-surface-elevated cursor-pointer group text-zinc-300';
+          const isChecked = selectedSet.has(c.value);
+
+          row.innerHTML = `
+            <div class="flex items-center space-x-2 truncate">
+              <input type="checkbox" onchange="toggleFacetSelection('${column}', '${c.value.replace(/'/g, "\\'")}', this.checked)" ${isChecked ? 'checked' : ''} class="rounded border-zinc-700 bg-surface-elevated text-blue-600 focus:ring-0">
+              <span class="truncate font-mono">${c.value === '' ? '<span class="text-zinc-500 italic">(blank)</span>' : c.value}</span>
+            </div>
+            <span class="text-[10px] text-zinc-500 font-mono ml-2 shrink-0">${c.count.toLocaleString()}</span>
+          `;
+          listEl.appendChild(row);
+        });
+      } else if (facet.facet_type === 'numeric') {
+        searchWrap.classList.add('hidden');
+        listEl.classList.add('hidden');
+        chartEl.classList.remove('hidden');
+        chartEl.innerHTML = '';
+
+        const stats = facet.stats || facet;
+        chartEl.innerHTML = `
+          <div class="grid grid-cols-2 gap-2 text-[11px] font-mono text-zinc-300 bg-surface-elevated p-2 rounded">
+            <div>Min: <strong class="text-white">${stats.min ?? '-'}</strong></div>
+            <div>Max: <strong class="text-white">${stats.max ?? '-'}</strong></div>
+            <div>Mean: <strong class="text-white">${stats.mean ?? '-'}</strong></div>
+            <div>Median: <strong class="text-white">${stats.median ?? '-'}</strong></div>
+          </div>
+          <div class="space-y-1 pt-1.5 max-h-48 overflow-y-auto">
+            ${(facet.bins || []).map(b => {
+              const maxCount = Math.max(...(facet.bins.map(x => x.count) || [1]));
+              const pct = maxCount > 0 ? (b.count / maxCount) * 100 : 0;
+              return `
+                <div class="flex items-center space-x-2 text-[10px] font-mono">
+                  <span class="w-24 truncate text-zinc-400">${b.label}</span>
+                  <div class="flex-1 bg-surface-elevated h-2.5 rounded overflow-hidden">
+                    <div class="bg-blue-600 h-full rounded" style="width: ${pct}%"></div>
+                  </div>
+                  <span class="w-8 text-right text-zinc-300">${b.count}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      } else if (facet.facet_type === 'date') {
+        searchWrap.classList.add('hidden');
+        listEl.classList.remove('hidden');
+        chartEl.classList.add('hidden');
+        listEl.innerHTML = `
+          <div class="text-[11px] font-mono text-zinc-300 p-2 bg-surface-elevated rounded mb-2">
+            <div>Start: <strong class="text-white">${facet.min_date || '-'}</strong></div>
+            <div>End: <strong class="text-white">${facet.max_date || '-'}</strong></div>
+          </div>
+          ${(facet.timeline || []).map(t => `
+            <div class="flex items-center justify-between py-1 px-1.5 font-mono text-xs text-zinc-300">
+              <span>${t.period}</span>
+              <span class="text-[10px] text-zinc-500">${t.count.toLocaleString()}</span>
+            </div>
+          `).join('')}
+        `;
+      }
+    }
+
+    function filterFacetChoicesList() {
+      const q = (document.getElementById('facet-choices-search').value || '').toLowerCase();
+      const labels = document.querySelectorAll('#facet-choices-list label');
+      labels.forEach(lbl => {
+        const text = lbl.textContent.toLowerCase();
+        lbl.style.display = text.includes(q) ? 'flex' : 'none';
+      });
+    }
+
+    function toggleFacetSelection(col, val, checked) {
+      if (!activeFacetFilters[col]) {
+        activeFacetFilters[col] = { type: 'text', selected: [] };
+      }
+      const list = activeFacetFilters[col].selected;
+      if (checked) {
+        if (!list.includes(val)) list.push(val);
+      } else {
+        const idx = list.indexOf(val);
+        if (idx !== -1) list.splice(idx, 1);
+        if (list.length === 0) delete activeFacetFilters[col];
+      }
+
+      const hasFilters = Object.keys(activeFacetFilters).length > 0;
+      const badge = document.getElementById('explore-filter-badge');
+      if (badge) badge.classList.toggle('hidden', !hasFilters);
+
+      exploreOffset = 0;
+      loadFacetExploreData();
+    }
+
+    function clearFacetFilters() {
+      activeFacetFilters = {};
+      const badge = document.getElementById('explore-filter-badge');
+      if (badge) badge.classList.add('hidden');
+      exploreOffset = 0;
+      computeCurrentFacet();
+      loadFacetExploreData();
+    }
+
+    function debounceExploreSearch() {
+      clearTimeout(exploreSearchDebounceTimer);
+      exploreSearchDebounceTimer = setTimeout(() => {
+        exploreOffset = 0;
+        loadFacetExploreData();
+      }, 300);
+    }
+
+    async function loadFacetExploreData() {
+      if (!currentSessionId) return;
+      const globalSearch = (document.getElementById('explore-global-search') || {}).value || '';
+
+      try {
+        const res = await fetch('/api/dataset/explore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            filters: activeFacetFilters,
+            global_search: globalSearch,
+            offset: exploreOffset,
+            limit: exploreLimit,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Exploration failed');
+        renderExploreTable(data);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function renderExploreTable(data) {
+      const matchingCount = document.getElementById('explore-matching-count');
+      const pageInfo = document.getElementById('explore-page-info');
+      const thead = document.getElementById('explore-table-header');
+      const tbody = document.getElementById('explore-table-body');
+      const prevBtn = document.getElementById('explore-prev-btn');
+      const nextBtn = document.getElementById('explore-next-btn');
+
+      matchingCount.textContent = `Matching ${data.matched_rows.toLocaleString()} of ${data.total_rows.toLocaleString()} rows (${data.matched_percentage}%)`;
+      const start = data.matched_rows > 0 ? data.offset + 1 : 0;
+      const end = Math.min(data.matched_rows, data.offset + data.limit);
+      pageInfo.textContent = `Showing ${start}-${end} of ${data.matched_rows.toLocaleString()}`;
+
+      prevBtn.disabled = data.offset <= 0;
+      nextBtn.disabled = end >= data.matched_rows;
+
+      thead.innerHTML = '<th class="px-2.5 py-1.5 w-12 text-zinc-500 font-normal">#</th>' +
+        (data.columns || []).map(c => `
+          <th class="px-2.5 py-1.5 font-medium whitespace-nowrap text-zinc-300 font-mono text-[11px]">${c}</th>
+        `).join('');
+
+      tbody.innerHTML = '';
+      if (!data.records || data.records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${(data.columns || []).length + 1}" class="text-center py-6 text-zinc-500">No matching records found.</td></tr>`;
+        return;
+      }
+
+      data.records.forEach(rec => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-surface-elevated/60 transition';
+        let rowHtml = `<td class="px-2.5 py-1.5 text-zinc-600 font-mono">${rec._row_id}</td>`;
+        (data.columns || []).forEach(col => {
+          const val = rec[col];
+          const isNull = val === null || val === undefined;
+          rowHtml += `<td class="px-2.5 py-1.5 whitespace-nowrap ${isNull ? 'text-zinc-600 italic' : 'text-zinc-200'}">${isNull ? 'null' : String(val)}</td>`;
+        });
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function changeExplorePage(dir) {
+      exploreOffset = Math.max(0, exploreOffset + (dir * exploreLimit));
+      loadFacetExploreData();
+    }
+
+    // --- CLUSTERING STUDIO ---
+
+    function toggleClusterMethodParams() {
+      const method = document.getElementById('cluster-method-select').value;
+      const paramWrap = document.getElementById('cluster-param-wrap');
+      const paramLabel = document.getElementById('cluster-param-label');
+      const paramVal = document.getElementById('cluster-param-val');
+
+      if (method.includes('levenshtein')) {
+        paramWrap.classList.remove('hidden');
+        paramLabel.textContent = 'Max Distance (1-3)';
+        paramVal.value = '1';
+        paramVal.min = '1';
+        paramVal.max = '3';
+      } else if (method === 'ngram_fingerprint') {
+        paramWrap.classList.remove('hidden');
+        paramLabel.textContent = 'N-Gram Size';
+        paramVal.value = '2';
+        paramVal.min = '1';
+        paramVal.max = '4';
+      } else {
+        paramWrap.classList.add('hidden');
+      }
+    }
+
+    async function runClusteringDetection() {
+      if (!currentSessionId) return;
+      const col = document.getElementById('cluster-column-select').value;
+      const method = document.getElementById('cluster-method-select').value;
+      const btn = document.getElementById('btn-detect-clusters');
+      const btnText = document.getElementById('btn-detect-clusters-text');
+      btn.disabled = true;
+      btnText.textContent = 'Analyzing...';
+
+      const params = {};
+      const paramVal = parseInt(document.getElementById('cluster-param-val').value, 10);
+      if (method.includes('levenshtein')) {
+        params.max_distance = paramVal || 1;
+      } else if (method === 'ngram_fingerprint') {
+        params.ngram_size = paramVal || 2;
+      }
+
+      try {
+        const res = await fetch('/api/cluster/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            method: method,
+            params: params,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Clustering failed');
+
+        currentClustersData = data.clusters || [];
+        renderClustersOutput(currentClustersData);
+        showToast(`Detected ${currentClustersData.length} cluster(s).`);
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Detect Clusters';
+      }
+    }
+
+    function renderClustersOutput(clusters) {
+      const header = document.getElementById('cluster-results-header');
+      const list = document.getElementById('cluster-cards-list');
+      const footer = document.getElementById('cluster-actions-footer');
+      const label = document.getElementById('cluster-count-label');
+
+      list.innerHTML = '';
+
+      if (!clusters || clusters.length === 0) {
+        header.classList.add('hidden');
+        footer.classList.add('hidden');
+        list.innerHTML = `
+          <div class="text-center py-10 bg-surface-elevated/40 rounded-xl border border-surface-border text-zinc-400 text-xs">
+            No spelling or variant clusters detected in this column with the selected method.
+          </div>
+        `;
+        return;
+      }
+
+      header.classList.remove('hidden');
+      footer.classList.remove('hidden');
+      label.textContent = `Found ${clusters.length} Cluster(s) Across Target Column`;
+
+      clusters.forEach((c, idx) => {
+        const card = document.createElement('div');
+        card.className = 'bg-surface-elevated p-3.5 rounded-lg border border-surface-border space-y-2.5 text-xs';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="cluster-chk-${idx}" class="cluster-merge-chk rounded border-zinc-700 bg-surface-card text-emerald-500 focus:ring-0" checked>
+              <span class="font-semibold text-zinc-200">Cluster #${idx + 1}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-card font-mono text-zinc-400">${c.members.length} variants (${c.total_rows} rows)</span>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${Math.round(c.confidence * 100)}% match</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+            <div class="bg-surface-card/60 p-2 rounded border border-surface-border">
+              <span class="text-[10px] text-zinc-500 block mb-1 uppercase tracking-wider">Cluster Members</span>
+              <ul class="space-y-0.5 max-h-24 overflow-y-auto">
+                ${c.members.map(m => `
+                  <li class="flex items-center justify-between text-zinc-300">
+                    <span class="truncate">${m.value}</span>
+                    <span class="text-zinc-500 text-[10px] shrink-0 ml-1">(${m.count})</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+
+            <div class="space-y-1">
+              <span class="text-[10px] text-zinc-500 block uppercase tracking-wider">Canonical Value (To)</span>
+              <input type="text" id="cluster-canonical-${idx}" value="${c.proposed_canonical.replace(/"/g, '&quot;')}" class="w-full px-2.5 py-1.5 rounded bg-surface-card border border-surface-border text-emerald-400 font-mono text-xs focus:border-blue-500 focus:outline-none">
+              <span class="text-[10px] text-zinc-500">Edit canonical value if desired before merging.</span>
+            </div>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function toggleAllClusterChecks(checked) {
+      document.querySelectorAll('.cluster-merge-chk').forEach(c => c.checked = checked);
+    }
+
+    async function applySelectedClusters() {
+      if (!currentSessionId || currentClustersData.length === 0) return;
+      const col = document.getElementById('cluster-column-select').value;
+      const btn = document.getElementById('btn-merge-clusters');
+      const btnText = document.getElementById('btn-merge-clusters-text');
+
+      const clustersToMerge = [];
+      currentClustersData.forEach((c, idx) => {
+        const chk = document.getElementById(`cluster-chk-${idx}`);
+        const canonicalInput = document.getElementById(`cluster-canonical-${idx}`);
+        if (chk && chk.checked) {
+          clustersToMerge.push({
+            to: canonicalInput ? canonicalInput.value : c.proposed_canonical,
+            from: c.members.map(m => m.value),
+          });
+        }
+      });
+
+      if (clustersToMerge.length === 0) {
+        showToast('Please select at least one cluster to merge.', true);
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Merging...';
+
+      try {
+        const res = await fetch('/api/cluster/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            clusters: clustersToMerge,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Merge failed');
+
+        showToast(data.message || 'Clusters merged successfully.');
+        runClusteringDetection();
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Merge Selected Clusters';
+      }
+    }
+
+    // --- GREL TRANSFORMS ---
+
+    function insertGrelSnippet(snippet) {
+      const textarea = document.getElementById('grel-expression-input');
+      if (!textarea) return;
+      textarea.value = snippet;
+      textarea.focus();
+    }
+
+    async function previewGrelExpression() {
+      if (!currentSessionId) return;
+      const col = document.getElementById('grel-column-select').value;
+      const expr = document.getElementById('grel-expression-input').value.trim();
+      if (!expr) {
+        showToast('Please enter a GREL expression.', true);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/grel/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            expression: expr,
+            sample_limit: 15,
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(`Expression error: ${data.error_message}`, true);
+          return;
+        }
+
+        const container = document.getElementById('grel-preview-container');
+        const tbody = document.getElementById('grel-preview-tbody');
+        container.classList.remove('hidden');
+        tbody.innerHTML = '';
+
+        (data.rows || []).forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-surface-elevated/40';
+          const isErr = !!r.error;
+          tr.innerHTML = `
+            <td class="px-3 py-1.5 text-zinc-500">${r.row_index + 1}</td>
+            <td class="px-3 py-1.5 text-zinc-300 truncate">${r.original === null ? '<span class="italic text-zinc-600">null</span>' : r.original}</td>
+            <td class="px-3 py-1.5 font-medium ${isErr ? 'text-rose-400' : 'text-emerald-400'} truncate">${isErr ? r.error : (r.transformed === null ? '<span class="italic text-zinc-600">null</span>' : r.transformed)}</td>
+            <td class="px-3 py-1.5">
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-mono ${isErr ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
+                ${isErr ? 'Error' : 'OK'}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        showToast('Sample preview generated.');
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    async function applyGrelTransformation() {
+      if (!currentSessionId) return;
+      const col = document.getElementById('grel-column-select').value;
+      const expr = document.getElementById('grel-expression-input').value.trim();
+      const onError = document.getElementById('grel-error-select').value;
+      if (!expr) {
+        showToast('Please enter a GREL expression.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-apply-grel');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/grel/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            expression: expr,
+            on_error: onError,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'GREL transform failed');
+
+        showToast(data.message || 'Transformation applied successfully.');
+        previewGrelExpression();
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // --- RECONCILIATION ---
+
+    function toggleCustomCatalogInput() {
+      const cat = document.getElementById('reconcile-catalog-select').value;
+      const wrap = document.getElementById('custom-catalog-wrap');
+      if (cat === 'custom') {
+        wrap.classList.remove('hidden');
+      } else {
+        wrap.classList.add('hidden');
+      }
+    }
+
+    async function runEntityReconciliation() {
+      if (!currentSessionId) return;
+      const col = document.getElementById('reconcile-column-select').value;
+      const cat = document.getElementById('reconcile-catalog-select').value;
+      const btn = document.getElementById('btn-run-reconcile');
+      const btnText = document.getElementById('btn-run-reconcile-text');
+
+      let customList = null;
+      if (cat === 'custom') {
+        const raw = (document.getElementById('custom-catalog-input').value || '').trim();
+        customList = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Matching...';
+
+      try {
+        const res = await fetch('/api/reconcile/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            catalog: cat,
+            custom_entities: customList,
+            threshold: 0.70,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Reconciliation failed');
+
+        currentReconcileCandidates = (data.result && data.result.candidates) || [];
+        renderReconciliationOutput(data.result);
+        showToast(`Matched ${data.result.matched_count} of ${data.result.total_unique} distinct entities.`);
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Match Entities';
+      }
+    }
+
+    function renderReconciliationOutput(result) {
+      const wrap = document.getElementById('reconcile-output-wrap');
+      const summary = document.getElementById('reconcile-summary-text');
+      const tbody = document.getElementById('reconcile-tbody');
+
+      wrap.classList.remove('hidden');
+      summary.textContent = `Catalog: ${result.catalog} — ${result.matched_count} matched of ${result.total_unique} unique values`;
+      tbody.innerHTML = '';
+
+      (result.candidates || []).forEach((c, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-surface-elevated/40 text-xs';
+        const hasMatch = !!c.matched_canonical;
+        const scorePct = Math.round((c.score || 0) * 100);
+
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-center">
+            <input type="checkbox" id="rec-chk-${idx}" class="rec-apply-chk rounded border-zinc-700 bg-surface-card text-emerald-500 focus:ring-0" ${hasMatch ? 'checked' : ''} ${!hasMatch ? 'disabled' : ''}>
+          </td>
+          <td class="px-3 py-2 text-zinc-300 font-medium">${c.original}</td>
+          <td class="px-3 py-2 text-zinc-500 font-mono">${c.count}</td>
+          <td class="px-3 py-2">
+            <input type="text" id="rec-canonical-${idx}" value="${(c.matched_canonical || c.original).replace(/"/g, '&quot;')}" class="w-full px-2 py-1 rounded bg-surface-elevated border border-surface-border text-emerald-400 font-mono text-xs focus:border-blue-500 focus:outline-none">
+          </td>
+          <td class="px-3 py-2">
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded ${scorePct >= 95 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (scorePct >= 70 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-zinc-800 text-zinc-500')}">
+              ${scorePct > 0 ? `${scorePct}%` : 'No match'}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleAllReconcileChecks(checked) {
+      document.querySelectorAll('.rec-apply-chk:not(:disabled)').forEach(c => c.checked = checked);
+    }
+
+    async function applyEntityReconciliation() {
+      if (!currentSessionId || currentReconcileCandidates.length === 0) return;
+      const col = document.getElementById('reconcile-column-select').value;
+      const cat = document.getElementById('reconcile-catalog-select').value;
+      const mapping = {};
+
+      currentReconcileCandidates.forEach((c, idx) => {
+        const chk = document.getElementById(`rec-chk-${idx}`);
+        const canonicalInput = document.getElementById(`rec-canonical-${idx}`);
+        if (chk && chk.checked && canonicalInput && canonicalInput.value) {
+          mapping[c.original] = canonicalInput.value;
+        }
+      });
+
+      if (Object.keys(mapping).length === 0) {
+        showToast('No approved mappings selected.', true);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/reconcile/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            column: col,
+            mapping: mapping,
+            catalog: cat,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Reconciliation application failed');
+
+        showToast(data.message || 'Entities reconciled successfully.');
+        runEntityReconciliation();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    // --- RECIPES & WORKFLOW ---
+
+    async function loadWorkflowRecipe() {
+      if (!currentSessionId) return;
+      const display = document.getElementById('recipe-json-display');
+      try {
+        const res = await fetch(`/api/workflow/history?session_id=${currentSessionId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to fetch history');
+
+        display.textContent = JSON.stringify(data.recipe, null, 2);
+      } catch (err) {
+        display.textContent = `// Error loading recipe: ${err.message}`;
+      }
+    }
+
+    function downloadWorkflowRecipe() {
+      const text = document.getElementById('recipe-json-display').textContent;
+      const blob = new Blob([text], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `recipe_${currentSessionId ? currentSessionId.slice(0, 8) : 'export'}.json`;
+      a.click();
+      showToast('Recipe JSON downloaded.');
+    }
+
+    async function replayCustomRecipe() {
+      if (!currentSessionId) return;
+      const raw = (document.getElementById('recipe-replay-input').value || '').trim();
+      if (!raw) {
+        showToast('Please paste a JSON recipe to replay.', true);
+        return;
+      }
+
+      let recipeObj;
+      try {
+        recipeObj = JSON.parse(raw);
+      } catch (e) {
+        showToast('Invalid JSON in recipe.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-replay-recipe');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/workflow/apply_recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            recipe: recipeObj,
+            stop_on_error: false,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Replay failed');
+
+        showToast(`Replayed ${data.applied_count} of ${data.total_operations} operation(s) successfully.`);
+        loadWorkflowRecipe();
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {

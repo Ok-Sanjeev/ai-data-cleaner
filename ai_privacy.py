@@ -1,19 +1,118 @@
-"""Build a Gemini-safe profile while preserving useful column semantics.
+"""
+Build and validate Gemini-safe profiles while preserving useful column semantics.
 
-This module never places cell samples or category labels in the AI payload.
-Original column names are retained so the model can reason about fields such as
-email, phone_number, date_of_birth, and episode_duration_min.
+Strict Privacy Mandate:
+- Zero raw data leakage: Never send cell values, sample rows, category label dictionaries,
+  clusters, or full CSV data to external AI models.
+- Centralized outbound payload validation enforcing strictly allowlisted metadata.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, List, Set, Tuple
 
 
-_ALLOWED_DETAIL_KEYS = (
-    "dtype", "missing_count", "missing_percentage", "unique_count",
-    "empty_column", "constant_column", "semantic_hints", "semantic_type",
-    "sensitive_field", "statistics", "invalid_format_count",
-)
+class PrivacyViolationError(ValueError):
+    """Raised when an outbound payload destined for external AI violates privacy constraints."""
+    pass
+
+
+_ALLOWED_ROOT_KEYS: Set[str] = {
+    "rows",
+    "columns",
+    "duplicate_rows",
+    "column_name_issue_count",
+    "column_profiles",
+    "privacy_note",
+}
+
+_ALLOWED_DETAIL_KEYS: Set[str] = {
+    "dtype",
+    "missing_count",
+    "missing_percentage",
+    "unique_count",
+    "empty_column",
+    "constant_column",
+    "semantic_hints",
+    "semantic_type",
+    "sensitive_field",
+    "statistics",
+    "invalid_format_count",
+    "category_count",
+    "most_frequent_category_count",
+    "inconsistent_category_count",
+}
+
+_FORBIDDEN_KEY_PATTERNS: Set[str] = {
+    "sample",
+    "sample_values",
+    "value_counts",
+    "raw_data",
+    "rows_sample",
+    "cells",
+    "records",
+    "data",
+    "cluster_members",
+    "candidates",
+}
+
+
+def validate_outbound_payload(payload: Dict[str, Any]) -> None:
+    """
+    Centralized validation enforcing that NO raw row values, samples, or unauthorized
+    keys can be transmitted to external LLM providers.
+    """
+    if not isinstance(payload, dict):
+        raise PrivacyViolationError("Outbound AI payload must be a JSON dictionary.")
+
+    # 1. Enforce allowed root keys
+    for key in payload.keys():
+        if key not in _ALLOWED_ROOT_KEYS:
+            raise PrivacyViolationError(
+                f"Unauthorized root key '{key}' in outbound AI payload. "
+                f"Allowed keys are: {sorted(_ALLOWED_ROOT_KEYS)}"
+            )
+
+    column_profiles = payload.get("column_profiles", {})
+    if not isinstance(column_profiles, dict):
+        raise PrivacyViolationError("'column_profiles' must be a dictionary.")
+
+    # 2. Inspect each column profile
+    for col_name, col_meta in column_profiles.items():
+        if not isinstance(col_meta, dict):
+            raise PrivacyViolationError(f"Column profile for '{col_name}' must be a dictionary.")
+
+        for key, val in col_meta.items():
+            if key not in _ALLOWED_DETAIL_KEYS:
+                raise PrivacyViolationError(
+                    f"Unauthorized column metadata key '{key}' for column '{col_name}'. "
+                    f"Forbidden from AI payload."
+                )
+
+            # Check for forbidden patterns
+            lower_key = str(key).lower()
+            if any(forbidden in lower_key for forbidden in _FORBIDDEN_KEY_PATTERNS):
+                raise PrivacyViolationError(
+                    f"Forbidden data leakage key '{key}' detected in column '{col_name}'."
+                )
+
+            # If statistics, only numeric/null/bool allowed
+            if key == "statistics":
+                if not isinstance(val, dict):
+                    raise PrivacyViolationError(f"Column '{col_name}' statistics must be a dictionary.")
+                for stat_k, stat_v in val.items():
+                    if stat_v is not None and not isinstance(stat_v, (int, float, bool)):
+                        raise PrivacyViolationError(
+                            f"Non-numeric statistic '{stat_k}={stat_v}' found in column '{col_name}'. "
+                            f"Only aggregate numbers are permitted."
+                        )
+
+            # Ensure no lists of raw text values exist
+            if isinstance(val, (list, set, tuple)):
+                if key not in ("semantic_hints",):
+                    raise PrivacyViolationError(
+                        f"Non-scalar list key '{key}' found in column '{col_name}'. "
+                        f"Raw value arrays are strictly disallowed in AI payloads."
+                    )
 
 
 def build_ai_safe_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
@@ -60,6 +159,10 @@ def build_ai_safe_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], dict
             "No cell values, sample rows, category labels, or value-frequency keys are included."
         ),
     }
+
+    # Centralized Outbound Privacy Verification
+    validate_outbound_payload(safe_profile)
+
     identity_map = {str(name): str(name) for name in source_columns}
     return safe_profile, identity_map
 
