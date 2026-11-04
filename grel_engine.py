@@ -1,11 +1,11 @@
 """
-Safe, Restricted GREL-Inspired (General Refine Expression Language) Engine for DataRefine.
+Safe, Restricted AST-Sandboxed Expression Engine for DataRefine.
 
 Provides an AST-parsed, sandboxed expression evaluator without using arbitrary
 `eval` or `exec`. Strictly validates allowed nodes and forbids dunder attributes,
 imports, and system access.
 
-Supports OpenRefine-style syntax:
+Supports expressive data transformation syntax:
 - `value.toLowercase()`
 - `value.trim()`
 - `value.replace('foo', 'bar')`

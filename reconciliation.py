@@ -1,5 +1,5 @@
 """
-Entity Reconciliation Framework for DataRefine (OpenRefine-Inspired).
+Entity Reconciliation Framework for DataRefine.
 
 Matches messy column values against reference entity catalogs (countries,
 currencies, US states, tech job roles, or custom user lists) and suggests

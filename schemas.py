@@ -65,7 +65,7 @@ ALLOWED_ACTIONS = Literal[
     "extract_pattern",
     "standardize_phone_number",
     "standardize_country_names",
-    # OpenRefine-Inspired Capabilities
+    # Advanced Data Refinement Capabilities
     "grel_transform",
     "merge_clusters",
     "reconcile_column",
@@ -275,7 +275,7 @@ class CleaningPlan(BaseModel):
 
 
 # ============================================================
-# OPENREFINE-INSPIRED API REQUEST MODELS
+# DATAREFINE STUDIO API REQUEST MODELS
 # ============================================================
 
 class ClusterDetectRequest(BaseModel):

@@ -61,8 +61,8 @@ from workflow_recipe import WorkflowRecipeManager
 
 
 app = FastAPI(
-    title="DataRefine — AI Data Cleaner & Quality Studio",
-    description="Privacy-Aware AI Planning, Deterministic Data Cleaning, Visual Diffs & Checkpoint Rollback",
+    title="DataRefine — AI-Powered Data Preparation & Quality Platform",
+    description="Industrial Data Wrangling, Built Natively in Python. Deterministic Data Cleaning, Visual Diffs & Checkpoint Rollback",
     version="2.0.0",
 )
 
@@ -913,12 +913,12 @@ def download_report(session_id: str = Query(...)):
 
 
 # ============================================================
-# OPENREFINE-INSPIRED API ENDPOINTS
+# DATAREFINE STUDIO ENGINE API ENDPOINTS
 # ============================================================
 
 @app.post("/api/cluster/detect")
 def api_cluster_detect(req: ClusterDetectRequest):
-    """Detect similar string clusters in a column using OpenRefine algorithms."""
+    """Detect similar string clusters in a column using DataRefine clustering algorithms."""
     if req.session_id not in SESSIONS:
         raise HTTPException(status_code=404, detail="Session not found.")
     session = SESSIONS[req.session_id]
@@ -955,7 +955,7 @@ def api_cluster_apply(req: ClusterApplyRequest):
         action="merge_clusters",
         column=req.column,
         params={"clusters": req.clusters, "mapping": req.mapping},
-        reasoning=f"Harmonize text variants in '{req.column}' using OpenRefine clustering",
+        reasoning=f"Harmonize text variants in '{req.column}' using DataRefine clustering",
     )
     res = sess.apply_action(action)
     df_current = sess.get_current_df()
@@ -1143,7 +1143,7 @@ def api_reconcile_apply(req: ReconcileApplyRequest):
 
 @app.get("/api/workflow/history")
 def api_workflow_history(session_id: str = Query(...)):
-    """Retrieve executed operations serialized in OpenRefine JSON recipe format."""
+    """Retrieve executed operations serialized in DataRefine Workflow JSON recipe format."""
     if session_id not in SESSIONS:
         raise HTTPException(status_code=404, detail="Session not found.")
     session = SESSIONS[session_id]
@@ -1173,7 +1173,7 @@ def api_workflow_export_recipe(req: Dict[str, str]):
 
 @app.post("/api/workflow/apply_recipe")
 def api_workflow_apply_recipe(req: RecipeApplyRequest):
-    """Import and sequentially replay an OpenRefine-compatible JSON recipe onto the active dataset."""
+    """Import and sequentially replay a DataRefine Workflow JSON recipe onto the active dataset."""
     if req.session_id not in SESSIONS:
         raise HTTPException(status_code=404, detail="Session not found.")
     session = SESSIONS[req.session_id]

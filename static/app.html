@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataRefine — Workspace</title>
+  <title>DataRefine Studio — AI Data Cleaner & Data Refinement Platform</title>
   <meta name="description" content="DataRefine Workspace: Intelligent data quality, AI-assisted cleaning recommendations, and deterministic Pandas execution.">
 
   <!-- Favicon: Precision Grid Mark -->
@@ -254,7 +254,7 @@
       <!-- Profile Results Container (Appears only after profiling completes) -->
       <div id="profile-results" class="hidden space-y-6">
         
-        <!-- OpenRefine Studio Tabs Navigation Bar -->
+        <!-- DataRefine Studio Toolbar -->
         <div class="bg-surface-elevated/70 p-1.5 rounded-xl border border-surface-border flex items-center space-x-1.5 overflow-x-auto text-xs font-medium">
           <button type="button" onclick="switchStudioTab('quality')" id="tab-btn-quality" class="px-3.5 py-1.5 rounded-lg bg-surface-card text-blue-400 border border-surface-border font-semibold flex items-center space-x-1.5 transition">
             <span>📊 Quality & Profiling</span>
@@ -266,7 +266,7 @@
             <span>✨ Cluster & Harmonize</span>
           </button>
           <button type="button" onclick="switchStudioTab('grel')" id="tab-btn-grel" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
-            <span>⚡ GREL Transform</span>
+            <span>⚡ Expression Engine</span>
           </button>
           <button type="button" onclick="switchStudioTab('reconcile')" id="tab-btn-reconcile" class="px-3.5 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-surface-card flex items-center space-x-1.5 transition">
             <span>🌐 Entity Reconcile</span>
@@ -424,7 +424,7 @@
         <div id="tab-view-clusters" class="hidden space-y-4">
           <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
             <div>
-              <h3 class="text-sm font-semibold text-white">OpenRefine Clustering Studio</h3>
+              <h3 class="text-sm font-semibold text-white">DataRefine Clustering Studio</h3>
               <p class="text-xs text-zinc-400 mt-0.5">Detect spelling variants, typos, and synonymous text entries using key collision and edit distance algorithms.</p>
             </div>
 
@@ -630,7 +630,7 @@
           <div class="bg-surface-card rounded-xl border border-surface-border p-5 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 class="text-sm font-semibold text-white">OpenRefine-Compatible Recipe Engine</h3>
+                <h3 class="text-sm font-semibold text-white">DataRefine Workflow Recipe Engine</h3>
                 <p class="text-xs text-zinc-400 mt-0.5">Export operations as a portable JSON recipe or replay existing recipes sequentially.</p>
               </div>
 
@@ -2164,7 +2164,7 @@ if __name__ == '__main__':
     }
 
     // ============================================================
-    // OPENREFINE STUDIO JAVASCRIPT LOGIC
+    // DATAREFINE STUDIO JAVASCRIPT LOGIC
     // ============================================================
 
     let currentStudioTab = 'quality';

@@ -1,5 +1,5 @@
 """
-OpenRefine-Inspired Faceting and Multi-Column Data Exploration Engine for DataRefine.
+Multi-Column Faceting and Data Exploration Engine for DataRefine.
 
 Supports:
 - Text Facet: Value counts, frequency distribution, blank counts, search, and selection filters.

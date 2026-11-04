@@ -68,7 +68,7 @@ ALLOWED_ACTIONS = {
     "extract_pattern",
     "standardize_phone_number",
     "standardize_country_names",
-    # OpenRefine-Inspired Capabilities
+    # Advanced Data Refinement Capabilities
     "grel_transform",
     "merge_clusters",
     "reconcile_column",
@@ -1383,11 +1383,11 @@ def standardize_country_names(df: pd.DataFrame, column: str, target_format: str 
 
 
 # ============================================================
-# OPENREFINE-INSPIRED OPERATIONS
+# ADVANCED DATA REFINEMENT OPERATIONS
 # ============================================================
 
 def grel_transform(df: pd.DataFrame, column: str, expression: str, on_error: str = "keep") -> pd.DataFrame:
-    """Apply safe, restricted GREL-inspired transformation to a column."""
+    """Apply safe, restricted expression transformation to a column."""
     from grel_engine import execute_grel_transform
     return execute_grel_transform(df, column, expression, on_error=on_error)
 
@@ -1776,12 +1776,12 @@ ACTION_METADATA: Dict[str, Dict[str, Any]] = {
         "label": "Standardize Country Names",
         "description": "Map country codes and variations to canonical country names."
     },
-    # OpenRefine-Inspired Capabilities
+    # Advanced Data Refinement Capabilities
     "grel_transform": {
         "category": "Transformation Engine",
         "risk": "yellow",
-        "label": "GREL Expression Transform",
-        "description": "Transform column values using a safe, restricted GREL expression."
+        "label": "Safe Expression Transform",
+        "description": "Transform column values using a safe, restricted AST expression."
     },
     "merge_clusters": {
         "category": "Clustering & Harmonization",
@@ -1859,7 +1859,7 @@ ACTION_REGISTRY = {
     "extract_pattern": extract_pattern,
     "standardize_phone_number": standardize_phone_number,
     "standardize_country_names": standardize_country_names,
-    # OpenRefine-Inspired Capabilities
+    # Advanced Data Refinement Capabilities
     "grel_transform": grel_transform,
     "merge_clusters": merge_clusters,
     "reconcile_column": reconcile_column,

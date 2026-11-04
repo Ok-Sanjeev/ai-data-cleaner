@@ -1,5 +1,5 @@
 """
-Unit tests for OpenRefine clustering and merging algorithms in DataRefine.
+Unit tests for key-collision and edit-distance clustering in DataRefine.
 """
 
 import pandas as pd

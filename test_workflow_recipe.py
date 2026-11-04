@@ -1,5 +1,5 @@
 """
-Unit tests for OpenRefine-compatible JSON recipe management and replay.
+Unit tests for DataRefine JSON recipe management and sequential replay.
 """
 
 import pandas as pd

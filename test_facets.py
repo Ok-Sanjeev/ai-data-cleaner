@@ -1,5 +1,5 @@
 """
-Unit tests for OpenRefine-inspired facets and multi-column filtering in DataRefine.
+Unit tests for multi-column facets and dataset exploration in DataRefine.
 """
 
 import pandas as pd

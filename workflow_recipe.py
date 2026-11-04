@@ -1,5 +1,5 @@
 """
-OpenRefine-Compatible Workflow Recipe & Replay Engine for DataRefine.
+DataRefine Workflow Recipe & Replay Engine.
 
 Supports:
 - Exporting session cleaning history as a portable, serializable JSON recipe.
@@ -19,7 +19,7 @@ from actions import execute_action
 from schemas import CleaningAction
 
 
-# Map DataRefine actions to OpenRefine operation types
+# Map DataRefine actions to workflow operation types
 ACTION_TO_OP_TYPE = {
     "trim_whitespace": "core/text-transform",
     "normalize_whitespace": "core/text-transform",
@@ -45,7 +45,7 @@ class WorkflowRecipeManager:
 
     @staticmethod
     def export_recipe_from_history(history: List[Dict[str, Any]], title: str = "DataRefine Recipe") -> Dict[str, Any]:
-        """Convert session execution history into an OpenRefine-compatible JSON recipe."""
+        """Convert session execution history into a reusable DataRefine JSON recipe."""
         operations = []
         for step in history:
             action_name = step.get("action")

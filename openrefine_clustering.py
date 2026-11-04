@@ -1,7 +1,7 @@
 """
-OpenRefine-Inspired Clustering and Merging Engine for DataRefine.
+Advanced Text Clustering and Value Harmonization Engine for DataRefine.
 
-Implements OpenRefine's core clustering algorithms:
+Implements core key-collision and edit-distance clustering algorithms:
 1. Key Collision:
    - Fingerprint: whitespace normalization, lowercase, punctuation removal, sorted unique tokens.
    - N-gram Fingerprint: sorted unique character n-grams.
@@ -32,7 +32,7 @@ import pandas as pd
 
 def fingerprint(text: str) -> str:
     """
-    OpenRefine Standard Fingerprint algorithm.
+    Standard Key Collision Fingerprint algorithm.
     1. Normalize Unicode (NFKD) and strip accents.
     2. Lowercase and strip leading/trailing whitespace.
     3. Remove punctuation and control characters.
@@ -61,7 +61,7 @@ def fingerprint(text: str) -> str:
 
 def ngram_fingerprint(text: str, n: int = 2) -> str:
     """
-    OpenRefine N-Gram Fingerprint algorithm.
+    N-Gram Fingerprint algorithm.
     1. Normalize Unicode, lowercase, remove punctuation and whitespace.
     2. Extract all character n-grams of size n.
     3. Deduplicate, sort alphabetically, and join.
@@ -538,7 +538,7 @@ def detect_clusters(
     params: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Run the requested OpenRefine clustering algorithm on a pandas Series.
+    Run the requested clustering algorithm on a pandas Series.
     Returns serialized list of clusters ready for UI review and approval.
     """
     params = params or {}
