@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -278,6 +278,24 @@ class CleaningPlan(BaseModel):
 # DATAREFINE STUDIO API REQUEST MODELS
 # ============================================================
 
+class ClusterMemberSchema(BaseModel):
+    value: str
+    count: int
+
+
+class ClusterResultSchema(BaseModel):
+    cluster_id: str
+    method: str
+    members: list[ClusterMemberSchema]
+    values: list[ClusterMemberSchema]
+    size: int
+    total_rows: int
+    proposed_canonical: str
+    canonical: str
+    confidence: float
+    key: Optional[str] = None
+
+
 class ClusterDetectRequest(BaseModel):
     session_id: str
     column: str
@@ -318,7 +336,7 @@ class FacetComputeRequest(BaseModel):
 
 class ExploreRequest(BaseModel):
     session_id: str
-    filters: Optional[dict[str, Any]] = None
+    filters: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
     global_search: Optional[str] = None
     sort_by: Optional[str] = None
     sort_ascending: bool = True

@@ -181,7 +181,7 @@
             <p class="text-xs text-zinc-400 mt-0.5">Upload a CSV file for deep structural profiling, type inference, missing value detection, and anomaly classification.</p>
           </div>
           <div class="flex items-center space-x-2 text-[11px] font-mono text-zinc-500">
-            <span class="px-2 py-0.5 rounded bg-surface-elevated border border-surface-border">Max: 100MB</span>
+            <span class="px-2 py-0.5 rounded bg-surface-elevated border border-surface-border">Max: 50MB</span>
             <span class="px-2 py-0.5 rounded bg-surface-elevated border border-surface-border">UTF-8 / ASCII</span>
           </div>
         </div>
@@ -238,34 +238,43 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             
-            <!-- Sample 1 -->
-            <div onclick="selectSampleByName('Messy_Employee_dataset.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-blue-500/40 cursor-pointer transition space-y-2 group">
+            <!-- Sample 1: Real-World 23k Rows -->
+            <div onclick="selectSampleByName('indian_tech_jobs_2026.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-blue-500/40 cursor-pointer transition space-y-2 group relative overflow-hidden">
               <div class="flex items-center justify-between">
-                <span class="font-medium text-zinc-200 group-hover:text-blue-400 transition font-mono">Employee Records</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950/30 text-blue-400 border border-blue-900/40 font-mono">117 KB</span>
+                <span class="font-medium text-zinc-200 group-hover:text-blue-400 transition font-mono">Tech Jobs Market</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950/40 text-blue-300 border border-blue-800/50 font-mono font-semibold">23,201 rows</span>
               </div>
-              <p class="text-[11px] text-zinc-400 leading-relaxed">Casing inconsistencies, missing department values, dirty phone numbers, and unparsed dates.</p>
-              <span class="text-[11px] text-blue-400 font-medium inline-block">Load & Profile →</span>
+              <p class="text-[11px] text-zinc-400 leading-relaxed">Real scraped tech hiring dataset (32 cols, 14 MB) with city clusters (Bengaluru/Bangalore), unstandardized salaries, and raw skills.</p>
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-blue-400 font-medium inline-block">Load & Profile →</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono">REAL-WORLD</span>
+              </div>
             </div>
 
-            <!-- Sample 2 -->
-            <div onclick="selectSampleByName('test_customers.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-purple-500/40 cursor-pointer transition space-y-2 group">
+            <!-- Sample 2: Real-World 33k Rows -->
+            <div onclick="selectSampleByName('ott_viewer_dropoff_retention_us_v1.0.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-purple-500/40 cursor-pointer transition space-y-2 group relative overflow-hidden">
               <div class="flex items-center justify-between">
-                <span class="font-medium text-zinc-200 group-hover:text-purple-400 transition font-mono">Retail Customers</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950/30 text-purple-400 border border-purple-900/40 font-mono">12 KB</span>
+                <span class="font-medium text-zinc-200 group-hover:text-purple-400 transition font-mono">OTT Viewer Retention</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-800/50 font-mono font-semibold">33,171 rows</span>
               </div>
-              <p class="text-[11px] text-zinc-400 leading-relaxed">Duplicate customer rows, mixed currency symbols, and whitespace drift in categorical columns.</p>
-              <span class="text-[11px] text-purple-400 font-medium inline-block">Load & Profile →</span>
+              <p class="text-[11px] text-zinc-400 leading-relaxed">Real streaming platform telemetry (23 cols, 3.5 MB) across Netflix, Prime & Hulu with viewer drop-off probabilities and pacing scores.</p>
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-purple-400 font-medium inline-block">Load & Profile →</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono">REAL-WORLD</span>
+              </div>
             </div>
 
-            <!-- Sample 3 -->
-            <div onclick="selectSampleByName('dirty_sample.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-emerald-500/40 cursor-pointer transition space-y-2 group">
+            <!-- Sample 3: Real-World Employee Records -->
+            <div onclick="selectSampleByName('Messy_Employee_dataset.csv')" class="p-3.5 rounded-lg bg-surface-elevated hover:bg-surface-card border border-surface-border hover:border-emerald-500/40 cursor-pointer transition space-y-2 group">
               <div class="flex items-center justify-between">
-                <span class="font-medium text-zinc-200 group-hover:text-emerald-400 transition font-mono">Benchmark Dataset</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/30 text-emerald-400 border border-emerald-900/40 font-mono">1 KB</span>
+                <span class="font-medium text-zinc-200 group-hover:text-emerald-400 transition font-mono">Employee Records</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/30 text-emerald-400 border border-emerald-900/40 font-mono">1,020 rows</span>
               </div>
-              <p class="text-[11px] text-zinc-400 leading-relaxed">Gold-standard benchmark sample containing controlled nulls, sentinel values, and duplicates.</p>
-              <span class="text-[11px] text-emerald-400 font-medium inline-block">Load & Profile →</span>
+              <p class="text-[11px] text-zinc-400 leading-relaxed">Casing inconsistencies, missing department values, dirty phone numbers, and unparsed dates for rapid benchmark testing.</p>
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-emerald-400 font-medium inline-block">Load & Profile →</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">117 KB</span>
+              </div>
             </div>
 
           </div>
@@ -1473,7 +1482,7 @@
       }
       selectedFileObject = null;
       document.getElementById('selected-file-name').textContent = filename;
-      document.getElementById('selected-file-size').textContent = 'Demonstration dataset · Ready to profile';
+      document.getElementById('selected-file-size').textContent = 'Demonstration dataset · Profiling in progress...';
       document.getElementById('file-selected-card').classList.remove('hidden');
       document.getElementById('dropzone').classList.add('hidden');
       profileDataset();
@@ -1490,6 +1499,8 @@
       document.getElementById('profile-results').classList.add('hidden');
       document.getElementById('file-selected-card').classList.add('hidden');
       document.getElementById('dropzone').classList.remove('hidden');
+      const explainer = document.getElementById('first-time-explainer');
+      if (explainer) explainer.classList.remove('hidden');
       document.getElementById('session-badge').classList.add('hidden');
       document.getElementById('session-badge').classList.remove('flex');
       goToStep(1);
@@ -1506,7 +1517,11 @@
       document.getElementById('profile-loading').classList.remove('hidden');
       document.getElementById('profile-results').classList.add('hidden');
       const btn = document.getElementById('btn-start-profile');
-      if (btn) btn.disabled = true;
+      const btnText = document.getElementById('btn-start-profile-text');
+      if (btn) {
+        btn.disabled = true;
+        if (btnText) btnText.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> Profiling...';
+      }
 
       try {
         let filepath = currentFilePath;
@@ -1542,6 +1557,7 @@
         // Populate Hero Dataset Info
         const dispName = (filepath || '').split('/').pop().split('\\').pop() || 'dataset.csv';
         document.getElementById('profile-dataset-filename').textContent = dispName;
+        document.getElementById('selected-file-size').textContent = `${(data.summary.rows || 0).toLocaleString()} rows · ${(data.summary.columns || 0)} cols · Profiled`;
         document.getElementById('profile-dataset-delimiter').textContent = `Delimiter: '${data.summary.delimiter || ','}'`;
         document.getElementById('profile-dataset-encoding').textContent = (data.summary.encoding || 'UTF-8').toUpperCase();
 
@@ -1593,12 +1609,26 @@
 
         document.getElementById('profile-results').classList.remove('hidden');
         populateStudioColumnDropdowns(currentColumns);
+
+        // Hide first-time explainer so results take focus
+        const explainer = document.getElementById('first-time-explainer');
+        if (explainer) explainer.classList.add('hidden');
+
+        // Smooth scroll to profile results
+        setTimeout(() => {
+          const resultsEl = document.getElementById('profile-results');
+          if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
         showToast('Dataset profiled successfully.');
       } catch (err) {
         showToast(err.message, true);
       } finally {
         document.getElementById('profile-loading').classList.add('hidden');
-        if (btn) btn.disabled = false;
+        if (btn) {
+          btn.disabled = false;
+          if (btnText) btnText.textContent = 'Re-profile Dataset';
+        }
       }
     }
 
@@ -1689,7 +1719,7 @@
           if (isNull) {
             rowHtml += `<td class="px-3 py-2 text-rose-400/80 italic whitespace-nowrap">null</td>`;
           } else {
-            rowHtml += `<td class="px-3 py-2 text-zinc-300 whitespace-nowrap">${val}</td>`;
+            rowHtml += `<td class="px-3 py-2 text-zinc-300 whitespace-nowrap">${escapeHtml(String(val))}</td>`;
           }
         });
         tr.innerHTML = rowHtml;
@@ -2580,8 +2610,8 @@
       const searchWrap = document.getElementById('facet-search-wrap');
 
       summary.innerHTML = `
-        <span>${facet.column} (${facet.facet_type})</span>
-        <span>${facet.choices ? facet.choices.length : 0} unique · ${facet.null_count || 0} null</span>
+        <span>${facet.column || ''} (${facet.facet_type})</span>
+        <span>${facet.choices ? facet.choices.length : (facet.bins ? facet.bins.length : 0)} entries · ${facet.null_count || 0} null</span>
       `;
 
       if (facet.facet_type === 'text') {
@@ -2595,12 +2625,13 @@
           const item = document.createElement('div');
           item.className = `py-1 px-1.5 flex items-center justify-between text-xs cursor-pointer hover:bg-surface-elevated rounded ${isSelected ? 'bg-blue-950/30 text-blue-300' : 'text-zinc-300'}`;
           item.onclick = () => toggleFacetChoiceFilter(facet.column, ch.value);
+          const pct = ch.percentage !== undefined ? ch.percentage : 0;
           item.innerHTML = `
             <div class="flex items-center space-x-1.5 truncate">
               <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-3.5 h-3.5 rounded text-blue-600 bg-surface-elevated border-zinc-700 pointer-events-none">
               <span class="truncate max-w-[180px] font-mono">${escapeHtml(ch.value)}</span>
             </div>
-            <span class="text-[11px] text-zinc-500 font-mono">${ch.count} (${ch.percentage}%)</span>
+            <span class="text-[11px] text-zinc-500 font-mono">${ch.count} (${pct}%)</span>
           `;
           list.appendChild(item);
         });
@@ -2632,10 +2663,12 @@
         list.classList.remove('hidden');
         list.innerHTML = '';
 
-        (facet.years || []).forEach(y => {
+        const dateItems = facet.years || facet.timeline || [];
+        dateItems.forEach(y => {
           const row = document.createElement('div');
           row.className = 'py-1 flex justify-between text-xs text-zinc-300 font-mono';
-          row.innerHTML = `<span>Year ${y.year}</span><span class="text-zinc-500">${y.count}</span>`;
+          const label = y.year || y.period || 'Period';
+          row.innerHTML = `<span>${label}</span><span class="text-zinc-500">${y.count}</span>`;
           list.appendChild(row);
         });
       }
@@ -2842,22 +2875,29 @@
         const card = document.createElement('div');
         card.className = 'bg-surface-elevated p-3.5 rounded-xl border border-surface-border space-y-2.5 text-xs';
 
-        const valuesHtml = (cl.values || []).map(v => `
-          <span class="px-2 py-0.5 rounded bg-surface-card border border-surface-border text-zinc-200 font-mono text-[11px]">
-            ${escapeHtml(v.value)} <span class="text-zinc-500">(${v.count})</span>
-          </span>
-        `).join(' ');
+        const membersList = cl.values || cl.members || [];
+        const clusterSize = cl.size || membersList.length || 0;
+
+        const valuesHtml = membersList.map(v => {
+          const valStr = typeof v === 'object' ? v.value : v;
+          const countNum = typeof v === 'object' && v.count !== undefined ? v.count : '';
+          return `
+            <span class="px-2 py-0.5 rounded bg-surface-card border border-surface-border text-zinc-200 font-mono text-[11px]">
+              ${escapeHtml(String(valStr))} ${countNum !== '' ? `<span class="text-zinc-500">(${countNum})</span>` : ''}
+            </span>
+          `;
+        }).join(' ');
 
         card.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <input type="checkbox" id="cluster-chk-${idx}" checked class="cluster-chk w-4 h-4 rounded text-blue-600 bg-surface-card border-zinc-700">
               <span class="font-semibold text-white">Cluster #${idx + 1}</span>
-              <span class="text-[10px] text-zinc-500 font-mono">(${cl.size} variants · ${cl.total_rows} rows)</span>
+              <span class="text-[10px] text-zinc-500 font-mono">(${clusterSize} variants · ${cl.total_rows || 0} rows)</span>
             </div>
             <div class="flex items-center space-x-1.5">
               <span class="text-[11px] text-zinc-400">Canonical:</span>
-              <input type="text" id="cluster-canon-${idx}" value="${escapeHtml(cl.canonical || cl.proposed_canonical)}" class="px-2 py-0.5 rounded bg-surface-card border border-surface-border text-xs text-emerald-400 font-mono font-medium focus:border-blue-500 focus:outline-none">
+              <input type="text" id="cluster-canon-${idx}" value="${escapeHtml(cl.canonical || cl.proposed_canonical || '')}" class="px-2 py-0.5 rounded bg-surface-card border border-surface-border text-xs text-emerald-400 font-mono font-medium focus:border-blue-500 focus:outline-none">
             </div>
           </div>
           <div class="flex flex-wrap gap-1.5 pt-1">
@@ -2882,11 +2922,15 @@
       detectedClustersList.forEach((cl, idx) => {
         const chk = document.getElementById(`cluster-chk-${idx}`);
         if (chk && chk.checked) {
-          const canon = (document.getElementById(`cluster-canon-${idx}`)?.value || cl.proposed_canonical).trim();
-          (cl.values || []).forEach(v => {
-            mapping[v.value] = canon;
+          const canon = (document.getElementById(`cluster-canon-${idx}`)?.value || cl.proposed_canonical || '').trim();
+          const membersList = cl.values || cl.members || [];
+          const fromVals = [];
+          membersList.forEach(v => {
+            const strVal = typeof v === 'object' ? v.value : v;
+            mapping[strVal] = canon;
+            fromVals.push(strVal);
           });
-          approvedClusters.push({ from: cl.values.map(x => x.value), to: canon });
+          approvedClusters.push({ from: fromVals, to: canon });
         }
       });
 
@@ -3066,21 +3110,37 @@
 
       candidates.forEach((cand, idx) => {
         const tr = document.createElement('tr');
-        const best = cand.best_candidate;
-        const score = best ? (best.score * 100).toFixed(0) : 0;
+        const origVal = cand.original || cand.value || '';
+        const canonVal = cand.matched_canonical || (cand.best_candidate ? cand.best_candidate.canonical : origVal);
+        const rawScore = cand.score !== undefined ? cand.score : (cand.best_candidate ? cand.best_candidate.score : 0);
+        const score = Math.round(rawScore * 100);
+        const isMatched = cand.matched_canonical || cand.best_candidate;
+        const matchType = cand.best_candidate ? cand.best_candidate.match_type : (score >= 95 ? 'exact' : 'fuzzy');
         const scoreColor = score >= 90 ? 'text-emerald-400' : (score >= 75 ? 'text-blue-400' : 'text-amber-400');
+
+        let altsHtml = '';
+        if (cand.alternatives && cand.alternatives.length > 0) {
+          const options = cand.alternatives.map(a => `<option value="${escapeHtml(a.canonical || a.name)}">${escapeHtml(a.canonical || a.name)} (${Math.round((a.score || 0)*100)}%)</option>`).join('');
+          altsHtml = `
+            <select onchange="document.getElementById('rec-val-${idx}').value = this.value" class="mt-1 px-1.5 py-0.5 rounded bg-surface-card border border-surface-border text-[10px] text-zinc-400 font-mono focus:outline-none">
+              <option value="${escapeHtml(canonVal)}">Suggested: ${escapeHtml(canonVal)}</option>
+              ${options}
+            </select>
+          `;
+        }
 
         tr.innerHTML = `
           <td class="px-3 py-2 text-center">
-            <input type="checkbox" id="rec-chk-${idx}" class="rec-chk w-4 h-4 rounded text-blue-600 bg-surface-card border-zinc-700" ${best ? 'checked' : ''}>
+            <input type="checkbox" id="rec-chk-${idx}" class="rec-chk w-4 h-4 rounded text-blue-600 bg-surface-card border-zinc-700" ${isMatched ? 'checked' : ''}>
           </td>
-          <td class="px-3 py-2 font-mono text-zinc-200">${escapeHtml(cand.value)}</td>
-          <td class="px-3 py-2 text-zinc-500 font-mono">${cand.count}</td>
+          <td class="px-3 py-2 font-mono text-zinc-200">${escapeHtml(origVal)}</td>
+          <td class="px-3 py-2 text-zinc-500 font-mono">${cand.count || 1}</td>
           <td class="px-3 py-2">
-            <input type="text" id="rec-val-${idx}" value="${escapeHtml(best ? best.canonical : cand.value)}" class="w-full px-2 py-0.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono">
+            <input type="text" id="rec-val-${idx}" value="${escapeHtml(canonVal)}" class="w-full px-2 py-0.5 rounded bg-surface-elevated border border-surface-border text-xs text-zinc-200 font-mono">
+            ${altsHtml}
           </td>
           <td class="px-3 py-2 font-mono font-semibold ${scoreColor}">
-            ${best ? `${score}% (${best.match_type})` : '<span class="text-zinc-600 font-normal">No match</span>'}
+            ${isMatched ? `${score}% (${matchType})` : '<span class="text-zinc-600 font-normal">No match</span>'}
           </td>
         `;
         tbody.appendChild(tr);
@@ -3099,8 +3159,9 @@
       reconcileCandidatesList.forEach((cand, idx) => {
         const chk = document.getElementById(`rec-chk-${idx}`);
         if (chk && chk.checked) {
-          const canon = (document.getElementById(`rec-val-${idx}`)?.value || cand.value).trim();
-          mapping[cand.value] = canon;
+          const origVal = cand.original || cand.value;
+          const canon = (document.getElementById(`rec-val-${idx}`)?.value || cand.matched_canonical || origVal).trim();
+          mapping[origVal] = canon;
         }
       });
 
@@ -3195,7 +3256,11 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Replay failed');
 
-        showToast(`Successfully replayed ${data.applied_count || 0} recipe operations.`);
+        if (data.errors && data.errors.length > 0) {
+          showToast(`Replayed ${data.applied_count || 0} operations. ${data.errors.length} failed: ${data.errors.join('; ')}`, true);
+        } else {
+          showToast(`Successfully replayed all ${data.applied_count || 0} recipe operations.`);
+        }
         loadWorkflowHistory();
       } catch (err) {
         showToast(err.message, true);

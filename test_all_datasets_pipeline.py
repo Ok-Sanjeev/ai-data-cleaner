@@ -134,7 +134,18 @@ def test_pipeline_on_messy_employee_dataset(tmp_path):
 
 
 def test_pipeline_on_cleaned_data(tmp_path):
-    val, before, after, actions = run_pipeline_for_dataset("data/cleaned_data.csv", tmp_path)
+    target_path = "data/cleaned_data.csv"
+    if not os.path.exists(target_path):
+        clean_df = pd.DataFrame({
+            "id": [1, 2, 3, 4],
+            "name": ["Alice", "Bob", "Charlie", "Diana"],
+            "score": [88.5, 92.0, 79.5, 95.0],
+            "status": ["Active", "Active", "Inactive", "Pending"],
+        })
+        target_path = str(tmp_path / "cleaned_data.csv")
+        clean_df.to_csv(target_path, index=False)
+
+    val, before, after, actions = run_pipeline_for_dataset(target_path, tmp_path)
     assert val["overall"] is True
     assert after == before
 
@@ -148,12 +159,34 @@ def test_pipeline_on_indian_tech_jobs(tmp_path):
     assert val["all_actions_succeeded"] is True
 
 
+@pytest.mark.skipif(
+    not os.path.exists("data/ott_viewer_dropoff_retention_us_v1.0.csv"),
+    reason="Large git-ignored OTT dataset not present locally",
+)
 def test_pipeline_on_ott_viewer_dropoff(tmp_path):
     val, before, after, actions = run_pipeline_for_dataset("data/ott_viewer_dropoff_retention_us_v1.0.csv", tmp_path)
     assert val["overall"] is True
     assert before == 33171
     assert after <= before
     assert val["all_actions_succeeded"] is True
+
+
+def test_pipeline_on_ott_schema_fixture(tmp_path):
+    """Self-contained CI test ensuring OTT streaming schema executes safely without external files."""
+    ott_fixture = pd.DataFrame({
+        "show_id": [101, 102, 103, 104, 105],
+        "title": ["Show A", "Show B", "Show C", "Show A", "Show D"],
+        "platform": ["Netflix", "Hulu", "Netflix ", None, "Prime"],
+        "episode_duration_min": [45, 50, None, 45, 60],
+        "drop_off_probability": [0.22, 0.45, 0.65, 0.22, 0.15],
+        "dataset_version": ["v1.0", "v1.0", "v1.0", "v1.0", "v1.0"],
+    })
+    csv_path = str(tmp_path / "ott_fixture.csv")
+    ott_fixture.to_csv(csv_path, index=False)
+    val, before, after, actions = run_pipeline_for_dataset(csv_path, tmp_path)
+    assert val["overall"] is True
+    assert before == 5
+    assert after == 5
 
 
 @pytest.mark.parametrize("bad_file,expected_error", [

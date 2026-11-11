@@ -8,10 +8,13 @@ Provides:
 
 import json
 import os
+import re
+import secrets
 import shutil
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -66,11 +69,30 @@ app = FastAPI(
     version="2.0.0",
 )
 
+# Security Constants & Approved Base Directories
+BASE_DIR = Path(__file__).resolve().parent
+ALLOWED_DATA_DIRS = [
+    (BASE_DIR / "data").resolve(),
+    (BASE_DIR / "data" / "uploads").resolve(),
+    (BASE_DIR / "data" / "benchmark").resolve(),
+    (BASE_DIR / "data" / "robustness_tests").resolve(),
+]
+
+MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+MAX_DATASET_ROWS = 500_000
+MAX_DATASET_COLUMNS = 500
+SESSION_MAX_AGE_SECONDS = 4 * 3600  # 4 hours
+MAX_ACTIVE_SESSIONS = 50
+
+# Standards-compliant CORS configuration
+ALLOWED_ORIGINS = [orig.strip() for orig in os.getenv("ALLOWED_ORIGINS", "*").split(",") if orig.strip()]
+ALLOW_CREDENTIALS = True if "*" not in ALLOWED_ORIGINS else False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=ALLOW_CREDENTIALS,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -83,6 +105,78 @@ if os.path.exists(STATIC_DIR):
 
 UPLOAD_DIR = os.path.join("data", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def resolve_safe_dataset_path(client_path: str) -> Path:
+    """
+    Safely resolve a client-supplied dataset filepath.
+    Enforces strict confinement to approved dataset directories.
+    Prevents path traversal, arbitrary file reading, and invalid extensions.
+    """
+    if not client_path or not isinstance(client_path, str):
+        raise HTTPException(status_code=400, detail="Invalid filepath provided.")
+
+    if "\x00" in client_path:
+        raise HTTPException(status_code=400, detail="Path contains invalid characters.")
+
+    raw_path = Path(client_path.strip())
+    if not raw_path.is_absolute():
+        resolved_path = (BASE_DIR / raw_path).resolve()
+    else:
+        resolved_path = raw_path.resolve()
+
+    # Jail check: must reside inside one of the approved directories
+    is_allowed = False
+    for allowed_root in ALLOWED_DATA_DIRS:
+        try:
+            resolved_path.relative_to(allowed_root)
+            is_allowed = True
+            break
+        except ValueError:
+            continue
+
+    if not is_allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden: Path traverses outside approved data directories."
+        )
+
+    if not resolved_path.exists() or not resolved_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Dataset file not found: {client_path}")
+
+    if resolved_path.suffix.lower() != ".csv":
+        raise HTTPException(status_code=400, detail="Only .csv files are supported.")
+
+    return resolved_path
+
+
+def sanitize_filename(filename: str) -> str:
+    """Sanitize uploaded filename to prevent directory traversal and unsafe characters."""
+    base = os.path.basename(filename)
+    sanitized = re.sub(r"[^\w\.\-]", "_", base)
+    if not sanitized.lower().endswith(".csv"):
+        sanitized += ".csv"
+    return sanitized
+
+
+def _cleanup_stale_sessions() -> None:
+    """Prune expired sessions to prevent unbounded memory growth."""
+    now = datetime.now().timestamp()
+    expired = []
+    for sid, sdata in SESSIONS.items():
+        created_time = sdata.get("created_timestamp", now)
+        if now - created_time > SESSION_MAX_AGE_SECONDS:
+            expired.append(sid)
+    for sid in expired:
+        SESSIONS.pop(sid, None)
+
+    if len(SESSIONS) > MAX_ACTIVE_SESSIONS:
+        sorted_sessions = sorted(
+            SESSIONS.items(),
+            key=lambda item: item[1].get("created_timestamp", 0)
+        )
+        for sid, _ in sorted_sessions[:len(SESSIONS) - MAX_ACTIVE_SESSIONS]:
+            SESSIONS.pop(sid, None)
 
 
 # ============================================================
@@ -390,49 +484,109 @@ def list_datasets():
 
 @app.post("/api/upload")
 async def upload_dataset(file: UploadFile = File(...)):
-    """Upload a CSV dataset and create an active session."""
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+    """Upload a CSV dataset with strict size, filename, and format security validation."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files (.csv) are supported.")
 
-    file_id = uuid.uuid4().hex[:8]
-    safe_name = f"{file_id}_{os.path.basename(file.filename)}"
-    dest_path = os.path.join(UPLOAD_DIR, safe_name)
+    safe_name = sanitize_filename(file.filename)
+    file_id = secrets.token_hex(6)
+    dest_filename = f"{file_id}_{safe_name}"
+    dest_path = (Path(UPLOAD_DIR) / dest_filename).resolve()
 
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    bytes_read = 0
+    chunk_size = 1024 * 1024  # 1 MB chunk
+    try:
+        with open(dest_path, "wb") as buffer:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_read += len(chunk)
+                if bytes_read > MAX_UPLOAD_SIZE_BYTES:
+                    buffer.close()
+                    if dest_path.exists():
+                        dest_path.unlink()
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Uploaded file exceeds maximum allowed size ({MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)}MB)."
+                    )
+                buffer.write(chunk)
+    except HTTPException:
+        raise
+    except Exception as e:
+        if dest_path.exists():
+            dest_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Failed to save upload: {e}")
 
-    return {"message": "Upload successful", "filepath": dest_path.replace("\\", "/")}
+    # Validate that it is parseable as CSV
+    try:
+        sample_df = pd.read_csv(dest_path, nrows=5)
+        if sample_df.empty and sample_df.columns.empty:
+            dest_path.unlink()
+            raise HTTPException(status_code=400, detail="Uploaded CSV file is empty.")
+    except Exception as err:
+        if dest_path.exists():
+            dest_path.unlink()
+        raise HTTPException(status_code=400, detail=f"Invalid or corrupted CSV format: {err}")
+
+    rel_path = str(dest_path.relative_to(BASE_DIR)).replace("\\", "/")
+    return {
+        "message": "Upload successful",
+        "filepath": rel_path,
+        "filename": safe_name,
+        "size_bytes": bytes_read,
+    }
 
 
 @app.post("/api/profile")
 def api_profile(req: ProfileRequest):
     """Profile a dataset, compute distributions, and initialize session state."""
-    filepath = req.filepath
-    if not filepath and req.session_id and req.session_id in SESSIONS:
-        filepath = SESSIONS[req.session_id]["filepath"]
+    filepath_str = req.filepath
+    if not filepath_str and req.session_id and req.session_id in SESSIONS:
+        filepath_str = SESSIONS[req.session_id]["filepath"]
 
-    if not filepath or not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail=f"File not found: {filepath}")
+    if not filepath_str:
+        raise HTTPException(status_code=400, detail="Filepath or active session_id is required.")
+
+    # Validate and securely resolve path within approved dataset directories
+    safe_path = resolve_safe_dataset_path(filepath_str)
 
     try:
-        df, profile = profile_dataset(filepath)
+        df, profile = profile_dataset(str(safe_path))
     except Exception as err:
         raise HTTPException(status_code=400, detail=f"Profiling failed: {err}")
 
+    # Enforce row and column safety limits
+    if len(df) > MAX_DATASET_ROWS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dataset has {len(df):,} rows, exceeding maximum supported limit of {MAX_DATASET_ROWS:,} rows."
+        )
+    if len(df.columns) > MAX_DATASET_COLUMNS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dataset has {len(df.columns)} columns, exceeding maximum supported limit of {MAX_DATASET_COLUMNS} columns."
+        )
+
+    _cleanup_stale_sessions()
+
     session_id = req.session_id or str(uuid.uuid4())
+    session_token = secrets.token_urlsafe(32)
     run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
     run_dir = os.path.join("runs", run_id)
     os.makedirs(run_dir, exist_ok=True)
 
-    cleaning_session = CleaningSession(df)
+    cleaning_session = CleaningSession(df.copy(deep=True))
     distributions = compute_column_distributions(df)
 
     # Save to session cache
     SESSIONS[session_id] = {
         "session_id": session_id,
+        "session_token": session_token,
+        "created_timestamp": datetime.now().timestamp(),
         "run_id": run_id,
         "run_dir": run_dir,
-        "filepath": filepath,
+        "filepath": str(safe_path),
         "df_original": df.copy(deep=True),
         "df_current": df.copy(deep=True),
         "profile": profile,
@@ -468,15 +622,22 @@ def api_profile(req: ProfileRequest):
     for _, row in preview_df.iterrows():
         preview_records.append({col: sanitize_value_for_json(val) for col, val in row.items()})
 
+    total_missing = sum(d.get("null_count", 0) for d in distributions.values())
+    total_cells = len(df) * len(df.columns)
+    missing_pct = round((total_missing / total_cells * 100), 2) if total_cells > 0 else 0.0
+
     return {
         "session_id": session_id,
-        "filepath": filepath,
-        "dataset_name": os.path.basename(filepath),
+        "filepath": str(safe_path).replace("\\", "/"),
+        "dataset_name": safe_path.name,
         "summary": {
             "rows": len(df),
             "columns": len(df.columns),
             "duplicate_rows": profile.get("duplicate_rows", 0),
-            "total_missing_cells": sum(d.get("null_count", 0) for d in distributions.values()),
+            "total_missing_cells": total_missing,
+            "missing_cells_percentage": missing_pct,
+            "delimiter": profile.get("delimiter", ","),
+            "encoding": profile.get("encoding", "utf-8"),
         },
         "columns": columns_summary,
         "preview_rows": preview_records,

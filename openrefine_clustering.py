@@ -82,8 +82,24 @@ def ngram_fingerprint(text: str, n: int = 2) -> str:
 
 def soundex(text: str) -> str:
     """
-    Traditional Soundex phonetic encoding (American Soundex).
-    Retains first letter and encodes consonants into digits 1-6.
+    Standard American Soundex phonetic encoding (National Archives / NARA standard).
+    Retains the first letter and encodes consonants into digits 1-6.
+
+    Rules:
+    - Retain first letter (uppercase).
+    - Consonant mapping:
+        B, F, P, V -> 1
+        C, G, J, K, Q, S, X, Z -> 2
+        D, T -> 3
+        L -> 4
+        M, N -> 5
+        R -> 6
+    - Vowels (A, E, I, O, U, Y) do not receive a digit, but act as separators
+      between consonants sharing the same code.
+    - H and W do NOT act as separators between consonants sharing the same code.
+      If H or W separates two consonants with the same code, the second is ignored.
+    - Adjacent duplicate consonant codes are collapsed.
+    - Padded with trailing zeros or truncated to exactly 4 characters (e.g. 'A261').
     """
     if not isinstance(text, str) or not text.strip():
         return ""
@@ -101,25 +117,31 @@ def soundex(text: str) -> str:
         "M": "5", "N": "5",
         "R": "6",
     }
+    vowels = {"A", "E", "I", "O", "U", "Y"}
 
     digits = []
-    prev_code = mapping.get(first_letter, "")
+    last_code = mapping.get(first_letter, "")
 
     for char in text[1:]:
-        code = mapping.get(char, "")
-        if code and code != prev_code:
-            digits.append(code)
-        prev_code = code
+        if char in mapping:
+            code = mapping[char]
+            if code != last_code:
+                digits.append(code)
+            last_code = code
+        elif char in vowels:
+            # Vowels separate consonants, resetting last_code
+            last_code = ""
+        elif char in ("H", "W"):
+            # H and W do NOT separate consonants; last_code is preserved!
+            pass
 
-    # Pad or truncate to 3 digits (total 4 characters)
-    soundex_code = (first_letter + "".join(digits) + "000")[:4]
-    return soundex_code
+    return (first_letter + "".join(digits) + "000")[:4]
 
 
 def metaphone(text: str) -> str:
     """
-    Simplified Metaphone algorithm for English phonetic matching.
-    Transforms words into phonetic consonant keys.
+    Philips Metaphone phonetic encoding algorithm for English text clustering.
+    Transforms words into phonetic consonant keys based on standard English pronunciation rules.
     """
     if not isinstance(text, str) or not text.strip():
         return ""
@@ -128,7 +150,6 @@ def metaphone(text: str) -> str:
     if not words:
         return ""
 
-    # Encode first major word or join keys
     encoded_tokens = []
     for word in words[:3]:
         key = _metaphone_word(word)
@@ -139,16 +160,25 @@ def metaphone(text: str) -> str:
 
 
 def _metaphone_word(w: str) -> str:
-    """Encode single word via core Metaphone rules."""
+    """Encode single word via core Metaphone rules with duplicate consonant reduction."""
     if not w:
         return ""
 
-    # Drop initial letter for KN, GN, PN, AE, WR
+    # Drop initial letter for KN, GN, PN, AE, WR; WH -> W
     if len(w) >= 2:
         if w[:2] in ("KN", "GN", "PN", "AE", "WR"):
             w = w[1:]
+        elif w[:2] == "WH":
+            w = "W" + w[2:]
 
-    # Rule transformations
+    # Deduplicate adjacent identical consonants (except C which can be CC -> KS or K)
+    deduped = []
+    for idx, char in enumerate(w):
+        if idx > 0 and char == w[idx - 1] and char != "C":
+            continue
+        deduped.append(char)
+    w = "".join(deduped)
+
     res = []
     i = 0
     length = len(w)
@@ -162,6 +192,7 @@ def _metaphone_word(w: str) -> str:
             if i == 0:
                 res.append(ch)
         elif ch == "B":
+            # Silent in MB at end of word
             if not (i == length - 1 and prev == "M"):
                 res.append("B")
         elif ch == "C":
@@ -169,7 +200,12 @@ def _metaphone_word(w: str) -> str:
                 res.append("X")
                 i += 1
             elif nxt in ("I", "E", "Y"):
-                res.append("S")
+                # Silent C in SC followed by I/E/Y (e.g. SCENE)
+                if prev != "S":
+                    res.append("S")
+            elif nxt == "C":
+                res.append("KS")
+                i += 1
             else:
                 res.append("K")
         elif ch == "D":
@@ -181,12 +217,19 @@ def _metaphone_word(w: str) -> str:
         elif ch == "F":
             res.append("F")
         elif ch == "G":
-            if nxt == "H" and i + 2 < length and w[i + 2] in ("A", "E", "I", "O", "U"):
-                res.append("K")
-                i += 1
+            if nxt == "H":
+                if i + 2 < length and w[i + 2] in ("A", "E", "I", "O", "U"):
+                    res.append("K")
+                    i += 1
+                else:
+                    # Silent GH
+                    i += 1
             elif nxt in ("I", "E", "Y"):
                 res.append("J")
-            elif nxt != "N":
+            elif nxt == "N" and (i + 1 == length - 1 or (i + 3 < length and w[i + 1:i + 4] == "NED")):
+                # Silent GN
+                pass
+            else:
                 res.append("K")
         elif ch == "H":
             if nxt in ("A", "E", "I", "O", "U") and prev not in ("C", "S", "P", "T", "G"):
@@ -228,6 +271,9 @@ def _metaphone_word(w: str) -> str:
             elif nxt == "I" and i + 2 < length and w[i + 2] in ("O", "A"):
                 res.append("X")
                 i += 1
+            elif nxt == "C" and i + 2 < length and w[i + 2] == "H":
+                res.append("X")
+                i += 2
             else:
                 res.append("T")
         elif ch == "V":
@@ -361,10 +407,13 @@ class ClusterResult:
     key: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        members_data = [asdict(m) for m in self.members]
         return {
             "cluster_id": self.cluster_id,
             "method": self.method,
-            "members": [asdict(m) for m in self.members],
+            "members": members_data,
+            "values": members_data,
+            "size": len(self.members),
             "total_rows": self.total_rows,
             "proposed_canonical": self.proposed_canonical,
             "canonical": self.proposed_canonical,
@@ -439,6 +488,12 @@ def cluster_by_key_collision(
     return sorted(clusters, key=lambda c: (-c.total_rows, -len(c.members)))
 
 
+# Limits for distance-based clustering scalability and resource protection
+MAX_UNIQUE_VALUES_DISTANCE = 3000
+MAX_STRING_LENGTH_DISTANCE = 150
+MAX_PAIRWISE_COMPARISONS = 250_000
+
+
 def cluster_by_distance(
     value_counts: Dict[str, int],
     max_distance: int = 1,
@@ -447,21 +502,36 @@ def cluster_by_distance(
     method_name: str = "levenshtein",
 ) -> List[ClusterResult]:
     """
-    Cluster unique values using distance threshold with length-bucket optimization.
+    Cluster unique values using complete-linkage distance clustering with length pruning.
+
+    Clustering Semantics:
+    - Seed Selection: The most frequent unassigned value acts as the cluster seed / medoid.
+    - Complete-Linkage Guarantee: To prevent transitive chaining/drift (e.g. 'cat' -> 'bat'
+      -> 'bad' -> 'bed'), every member added to a cluster must satisfy the distance and similarity
+      thresholds against the seed and all already-admitted cluster members.
+    - Scalability Controls:
+      - Limits unique values evaluated to top MAX_UNIQUE_VALUES_DISTANCE.
+      - Skips strings exceeding MAX_STRING_LENGTH_DISTANCE characters.
+      - Enforces length-difference pruning (|len(a) - len(b)| <= max_distance).
+      - Caps total pairwise distance calculations at MAX_PAIRWISE_COMPARISONS.
     """
     dist_func = damerau_levenshtein_distance if use_damerau else levenshtein_distance
-    val_items = [(str(val), count) for val, count in value_counts.items() if str(val).strip()]
+    val_items = [
+        (str(val), count) for val, count in value_counts.items()
+        if str(val).strip() and len(str(val)) <= MAX_STRING_LENGTH_DISTANCE
+    ]
     if len(val_items) <= 1:
         return []
 
-    # Sort by frequency descending
+    # Sort by frequency descending and cap at max unique values
     val_items.sort(key=lambda x: -x[1])
+    val_items = val_items[:MAX_UNIQUE_VALUES_DISTANCE]
     n = len(val_items)
 
-    # Disjoint-set / graph clustering
-    assigned = set()
+    assigned: Set[str] = set()
     clusters: List[ClusterResult] = []
     idx = 1
+    evaluations_count = 0
 
     for i in range(n):
         val_i, count_i = val_items[i]
@@ -469,9 +539,13 @@ def cluster_by_distance(
             continue
 
         cluster_members = [(val_i, count_i)]
+        cluster_val_strs = [val_i.lower()]
         len_i = len(val_i)
 
         for j in range(i + 1, n):
+            if evaluations_count >= MAX_PAIRWISE_COMPARISONS:
+                break
+
             val_j, count_j = val_items[j]
             if val_j in assigned:
                 continue
@@ -480,12 +554,29 @@ def cluster_by_distance(
             if abs(len(val_j) - len_i) > max_distance:
                 continue
 
-            # Case-normalized distance
-            dist = dist_func(val_i.lower(), val_j.lower())
-            if dist <= max_distance:
-                score = similarity_score(val_i.lower(), val_j.lower(), dist_func)
-                if score >= min_similarity:
-                    cluster_members.append((val_j, count_j))
+            val_j_lower = val_j.lower()
+
+            # Check distance against cluster seed
+            evaluations_count += 1
+            dist = dist_func(cluster_val_strs[0], val_j_lower)
+            if dist > max_distance:
+                continue
+
+            score = similarity_score(cluster_val_strs[0], val_j_lower, dist_func)
+            if score < min_similarity:
+                continue
+
+            # Complete-linkage check: ensure val_j is within threshold of ALL current members
+            is_compatible_with_all = True
+            for existing_val in cluster_val_strs[1:]:
+                evaluations_count += 1
+                if dist_func(existing_val, val_j_lower) > max_distance:
+                    is_compatible_with_all = False
+                    break
+
+            if is_compatible_with_all:
+                cluster_members.append((val_j, count_j))
+                cluster_val_strs.append(val_j_lower)
 
         if len(cluster_members) > 1:
             for member, _ in cluster_members:
@@ -494,7 +585,7 @@ def cluster_by_distance(
             total_rows = sum(cnt for _, cnt in cluster_members)
             canonical = _select_canonical(cluster_members)
 
-            # Confidence calculation
+            # Confidence calculation across all cluster pairs
             val_strs = [v for v, _ in cluster_members]
             sims = [
                 similarity_score(val_strs[a].lower(), val_strs[b].lower(), dist_func)

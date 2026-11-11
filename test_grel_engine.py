@@ -47,6 +47,41 @@ def test_grel_conditional_if():
     assert c.evaluate("N/A") is None
     assert c.evaluate("valid") == "VALID"
 
+    # Lazy evaluation: untaken branches must NEVER execute or cause exceptions
+    # 1. When value is None, value.split(',') must not be evaluated
+    c_lazy = CompiledGRELExpression("if(value == null, 'DEFAULT', value.split(',')[0])")
+    assert c_lazy.evaluate(None) == "DEFAULT"
+    assert c_lazy.evaluate("apple,banana") == "apple"
+
+    # 2. When denominator is 0, division by zero must not execute in the else branch
+    c_div = CompiledGRELExpression("if(value == 0, 0, 100 / value)")
+    assert c_div.evaluate(0) == 0
+    assert c_div.evaluate(10) == 10.0
+
+
+def test_grel_quote_preservation():
+    # String literals containing 'null', 'true', 'false', or 'if(' must remain intact
+    c = CompiledGRELExpression("value.replace('null', 'absent')")
+    assert c.evaluate("null value") == "absent value"
+
+    c2 = CompiledGRELExpression("value == 'true'")
+    assert c2.evaluate("true") is True
+    assert c2.evaluate("false") is False
+
+    c3 = CompiledGRELExpression("if(value == 'if(test)', 'matched', 'other')")
+    assert c3.evaluate("if(test)") == "matched"
+
+
+def test_grel_regex_safety_and_limits():
+    # Catastrophic backtracking regex is blocked
+    with pytest.raises(GRELSecurityError):
+        c = CompiledGRELExpression("value.replaceRegex('(a+)+', 'b')")
+        c.evaluate("aaaaaaaaaaaa")
+
+    # Excessive expression length is blocked
+    with pytest.raises(GRELSecurityError):
+        CompiledGRELExpression("value" + " + 1" * 350)
+
 
 def test_grel_row_cells_access():
     c = CompiledGRELExpression("cells['first_name'] + ' ' + cells['last_name']")

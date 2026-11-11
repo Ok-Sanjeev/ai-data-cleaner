@@ -38,13 +38,19 @@ def compute_text_facet(
     counts = non_null.value_counts()
     unique_count = len(counts)
 
+    col_name = str(series.name) if series.name is not None else ""
     choices = [
-        {"value": val, "count": int(cnt)}
+        {
+            "value": val,
+            "count": int(cnt),
+            "percentage": round((cnt / total) * 100, 1) if total > 0 else 0.0,
+        }
         for val, cnt in counts.head(top_n).items()
     ]
 
     return {
         "facet_type": "text",
+        "column": col_name,
         "total_rows": total,
         "null_count": null_count,
         "blank_count": blank_count,
@@ -66,9 +72,11 @@ def compute_numeric_facet(
     numeric_series = pd.to_numeric(series, errors="coerce").dropna()
     valid_count = len(numeric_series)
 
+    col_name = str(series.name) if series.name is not None else ""
     if valid_count == 0:
         return {
             "facet_type": "numeric",
+            "column": col_name,
             "total_rows": total,
             "null_count": null_count,
             "valid_count": 0,
@@ -114,6 +122,7 @@ def compute_numeric_facet(
 
     return {
         "facet_type": "numeric",
+        "column": col_name,
         "total_rows": total,
         "null_count": null_count,
         "valid_count": valid_count,
@@ -139,15 +148,18 @@ def compute_date_facet(
     date_series = pd.to_datetime(series, errors="coerce").dropna()
     valid_count = len(date_series)
 
+    col_name = str(series.name) if series.name is not None else ""
     if valid_count == 0:
         return {
             "facet_type": "date",
+            "column": col_name,
             "total_rows": total,
             "null_count": null_count,
             "valid_count": 0,
             "min_date": None,
             "max_date": None,
             "timeline": [],
+            "years": [],
         }
 
     min_date = date_series.min()
@@ -172,6 +184,7 @@ def compute_date_facet(
 
     return {
         "facet_type": "date",
+        "column": col_name,
         "total_rows": total,
         "null_count": null_count,
         "valid_count": valid_count,
@@ -179,6 +192,7 @@ def compute_date_facet(
         "min_date": min_date.strftime("%Y-%m-%d"),
         "max_date": max_date.strftime("%Y-%m-%d"),
         "timeline": timeline[:50],
+        "years": [{"year": item["period"], "count": item["count"]} for item in timeline[:50]],
     }
 
 
@@ -188,30 +202,38 @@ def compute_date_facet(
 
 def apply_filters(
     df: pd.DataFrame,
-    filters: Optional[Dict[str, Dict[str, Any]]] = None,
+    filters: Optional[Union[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]] = None,
     global_search: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Filter a DataFrame according to multiple column facets and search queries.
-
-    Filter specification format:
-    {
-      "column_name": {
-        "type": "text" | "numeric" | "date",
-        "selected": list[str],          # for text facet
-        "invert": bool,                  # invert selection
-        "include_null": bool,
-        "include_blank": bool,
-        "min": float,                    # for numeric / date
-        "max": float,
-        "start_date": str,               # for date
-        "end_date": str,
-        "search": str,                   # text contains query
-      }
-    }
+    Seamlessly accepts either dictionary-format or list-format filter specifications.
     """
     if df.empty:
         return df
+
+    # Normalize list-based filter specifications (from frontend API calls)
+    normalized_filters: Dict[str, Dict[str, Any]] = {}
+    if isinstance(filters, list):
+        for f_item in filters:
+            if isinstance(f_item, dict) and "column" in f_item:
+                col = f_item["column"]
+                vals = f_item.get("values") or f_item.get("selected") or []
+                mode = f_item.get("mode", "include")
+                normalized_filters[col] = {
+                    "type": f_item.get("type", "text"),
+                    "selected": vals,
+                    "invert": (mode == "exclude") or f_item.get("invert", False),
+                    "include_null": f_item.get("include_null", False),
+                    "include_blank": f_item.get("include_blank", False),
+                    "min": f_item.get("min"),
+                    "max": f_item.get("max"),
+                    "start_date": f_item.get("start_date"),
+                    "end_date": f_item.get("end_date"),
+                    "search": f_item.get("search"),
+                }
+    elif isinstance(filters, dict):
+        normalized_filters = filters
 
     mask = pd.Series(True, index=df.index)
 
@@ -225,8 +247,8 @@ def apply_filters(
         mask &= search_mask
 
     # 2. Specific column facet filters
-    if filters:
-        for col, flt in filters.items():
+    if normalized_filters:
+        for col, flt in normalized_filters.items():
             if col not in df.columns:
                 continue
 
@@ -300,7 +322,7 @@ def apply_filters(
 
 def explore_dataset(
     df: pd.DataFrame,
-    filters: Optional[Dict[str, Dict[str, Any]]] = None,
+    filters: Optional[Union[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]] = None,
     global_search: Optional[str] = None,
     sort_by: Optional[str] = None,
     sort_ascending: bool = True,

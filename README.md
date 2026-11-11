@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Docker-Production%20Ready-2496ED?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenAI%20%7C%20Claude%20%7C%20Ollama-purple" alt="LLM Providers">
   <img src="https://img.shields.io/badge/Pydantic%20v2-Schema%20Validation-E92063" alt="Pydantic">
-  <img src="https://img.shields.io/badge/Pytest-170%20Passed-0A9EDC?logo=pytest" alt="Pytest">
+  <img src="https://img.shields.io/badge/Pytest-186%20Passed-0A9EDC?logo=pytest" alt="Pytest">
   <img src="https://img.shields.io/badge/DataRefine-Clustering%20%7C%20Facets%20%7C%20Expressions-teal" alt="DataRefine Studio">
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success" alt="Status">
 </p>
@@ -466,35 +466,49 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed configuration, environment varia
 ai-data-cleaner/
 │
 ├── actions.py                     # Deterministic execution functions (vectorized)
-├── ai_privacy.py                  # Profile sanitization & token mapping
+├── ai_privacy.py                  # Profile sanitization, token mapping, & PII checks
 ├── approval_selection.py          # Input parser for approval gate
 ├── approval_utils.py              # CLI label formatting utilities
 ├── category_standardizer.py       # Offline local fuzzy-matching category clusterer
 ├── evaluator.py                   # Precision/Recall/F1 cleaning quality evaluator
+├── facets.py                      # Interactive text, numeric, & date facet exploration engine
+├── grel_engine.py                 # Safe AST-sandboxed GREL-inspired expression engine
 ├── llm_providers.py               # Provider-agnostic LLM layer (Gemini, OpenAI, Claude, Ollama)
+├── openrefine_clustering.py       # Fingerprint, N-gram, Soundex, Metaphone & distance clustering
 ├── planner.py                     # Main orchestrator, CLI parser, & safety guardrails
 ├── profiler.py                    # CSV profiler, type inferencer, & format sniffer
 ├── recommendation_guardrails.py   # Text-normalization & acronym protectors
-├── schemas.py                     # Pydantic models (CleaningAction, CleaningPlan)
-├── server.py                      # FastAPI backend service & interactive Web UI
+├── reconciliation.py              # Entity reconciliation & canonical candidate scoring
+├── schemas.py                     # Pydantic models (CleaningAction, CleaningPlan, Studio schemas)
+├── server.py                      # FastAPI backend service, security controls, & interactive Web UI
 ├── session.py                     # Transactional checkpoint, undo, & rollback engine
+├── workflow_recipe.py             # Portable DataRefine Workflow JSON export & sequential replay
 │
 ├── test_actions.py                # Unit tests for transformations
-├── test_ai_privacy.py             # Privacy leak prevention tests
+├── test_ai_privacy.py             # Privacy leak prevention & PII scanning tests
 ├── test_all_datasets_pipeline.py  # End-to-end multi-dataset test harness
 ├── test_approval_selection.py     # Approval input validation tests
 ├── test_approval_utils.py         # Label generation tests
 ├── test_category_standardizer.py  # Local category harmonization tests
 ├── test_evaluation.py             # Precision, recall, F1, & benchmark tests
+├── test_expanded_actions.py       # Extended deterministic operations tests
+├── test_facets.py                 # Multi-column faceting & filter tests
+├── test_grel_engine.py            # AST expression sandboxing, quoting, lazy eval & ReDoS tests
 ├── test_llm_providers.py          # Provider abstraction tests (Gemini, Claude, OpenAI, Ollama)
+├── test_openrefine_clustering.py  # Soundex, Metaphone, N-gram & complete-linkage clustering tests
+├── test_ott_viewer_accuracy.py    # Large-scale streaming telemetry profiling & accuracy tests
 ├── test_planner_safety_rules.py   # Safety prompt requirement tests
 ├── test_profiler.py               # Profiler & CSV structure tests
 ├── test_recommendation_guardrails.py # Text & date safety guardrail tests
+├── test_reconciliation.py         # Entity reconciliation matching & schema tests
+├── test_risk_classifications.py   # Green/Yellow/Red action tier classification tests
 ├── test_rollback.py               # Stepwise undo, redo, & rollback tests
 ├── test_schemas.py                # Pydantic schema validation tests
+├── test_security.py               # Path traversal, upload validation & CORS security tests
 ├── test_semantic_detection.py     # Regex & semantic type detection tests
 ├── test_server_api.py             # FastAPI REST endpoints & Web UI tests
 ├── test_validation_retries.py     # Retry loop & unresolved issue tests
+├── test_workflow_recipe.py        # Portable JSON recipe export & error handling tests
 │
 ├── data/                          # Input datasets (original data is NEVER overwritten)
 │   ├── benchmark/                 # Evaluation gold standard & dirty pairs
@@ -608,36 +622,11 @@ python .\evaluator.py -d .\data\benchmark\dirty_sample.csv -c .\runs\run_xxx\cle
 
 ## 🧪 Automated Testing
 
-The project contains a comprehensive automated test suite with **102 passing tests** covering every layer of the architecture:
+The project contains a comprehensive automated test suite with **186 passing tests** across 24 test modules covering every layer of the architecture (security hardening, clustering algorithms, AST expression sandboxing, facets, entity reconciliation, AI privacy firewall, API endpoints, and end-to-end multi-dataset pipelines):
 
 ```powershell
-python -m pytest -v
-```
-
-### Current Test Suite Status
-
-```text
-============================= test session starts =============================
-collected 102 items
-
-test_actions.py ........                                                 [  7%]
-test_ai_privacy.py ......                                                [ 13%]
-test_all_datasets_pipeline.py ........                                   [ 21%]
-test_approval_selection.py .........                                     [ 30%]
-test_approval_utils.py ....                                              [ 34%]
-test_category_standardizer.py ..                                         [ 36%]
-test_evaluation.py ....                                                  [ 40%]
-test_llm_providers.py .......                                            [ 47%]
-test_planner_safety_rules.py ..                                          [ 49%]
-test_profiler.py .........                                               [ 57%]
-test_recommendation_guardrails.py .....                                  [ 62%]
-test_rollback.py .......                                                 [ 69%]
-test_schemas.py ................                                         [ 85%]
-test_semantic_detection.py .....                                         [ 90%]
-test_server_api.py ....                                                  [ 94%]
-test_validation_retries.py ......                                        [100%]
-
-============================ 102 passed in 39.81s =============================
+python -m pytest -q
+# 186 passed (100% pass rate)
 ```
 
 ### Multi-Dataset Test Matrix

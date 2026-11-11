@@ -18,6 +18,10 @@ def client():
     return TestClient(app)
 
 
+@pytest.mark.skipif(
+    not os.path.exists(OTT_FILE),
+    reason="Large git-ignored OTT reference CSV not present locally",
+)
 def test_reference_csv_profiling_and_quality_categories():
     """Verify OTT viewer reference dataset has exact 33,171 rows, zero missing, and numerical dtypes."""
     assert os.path.exists(OTT_FILE), f"Reference CSV not found at {OTT_FILE}"
@@ -57,6 +61,10 @@ def test_reference_csv_profiling_and_quality_categories():
     assert "show_id" in summary["statistical_outliers"]["affected_columns"]
 
 
+@pytest.mark.skipif(
+    not os.path.exists(OTT_FILE),
+    reason="Large git-ignored OTT reference CSV not present locally",
+)
 def test_cleaning_pipeline_accuracy_on_reference_dataset(client):
     """Run full session cleaning on reference dataset and verify metrics accuracy."""
     assert os.path.exists(OTT_FILE)
@@ -171,3 +179,24 @@ def test_cleaning_pipeline_accuracy_on_reference_dataset(client):
     df_exported = pd.read_csv(cleaned_path)
     assert df_exported.shape == (33171, 21)
     assert df_exported.isna().sum().sum() == 0
+
+
+def test_self_contained_outlier_vs_missing_separation(tmp_path):
+    """Ensure profiler separates IQR statistical outliers from missing values cleanly without external files."""
+    fixture_df = pd.DataFrame({
+        "show_id": [101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
+        "platform": ["Netflix", "Netflix", "Hulu", "Prime", "Netflix", "Hulu", "Prime", "Netflix", "Hulu", "Netflix"],
+        "watch_pct": [65.0, 65.0, 68.0, 68.0, 70.0, 70.0, 71.0, 71.0, 66.0, 9999.0],
+    })
+    csv_file = str(tmp_path / "ott_outlier_check.csv")
+    fixture_df.to_csv(csv_file, index=False)
+
+    df, profile = profile_dataset(csv_file)
+    assert profile["rows"] == 10
+    watch_prof = profile["column_profiles"]["watch_pct"]
+    assert watch_prof["missing_count"] == 0
+    assert watch_prof["quality_categories"]["missing_values"]["count"] == 0
+    assert watch_prof["quality_categories"]["statistical_outliers"]["count"] == 1
+    assert profile["quality_categories_summary"]["missing_values"]["total_count"] == 0
+    assert profile["quality_categories_summary"]["statistical_outliers"]["total_count"] >= 1
+

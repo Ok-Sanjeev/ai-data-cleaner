@@ -16,33 +16,38 @@ from facets import (
 
 
 def test_text_facet():
-    series = pd.Series(["US", "US", "CA", "UK", None, ""])
+    series = pd.Series(["US", "US", "CA", "UK", None, ""], name="country")
     res = compute_text_facet(series)
     assert res["facet_type"] == "text"
+    assert res["column"] == "country"
     assert res["total_rows"] == 6
     assert res["null_count"] == 1
     assert res["blank_count"] == 1
-    # Check choices
+    # Check choices and percentages
     top_choice = res["choices"][0]
     assert top_choice["value"] == "US"
     assert top_choice["count"] == 2
+    assert top_choice["percentage"] == 33.3
 
 
 def test_numeric_facet():
-    series = pd.Series([10, 20, 30, 40, 50, None])
+    series = pd.Series([10, 20, 30, 40, 50, None], name="salary")
     res = compute_numeric_facet(series, bins_count=5)
     assert res["facet_type"] == "numeric"
+    assert res["column"] == "salary"
     assert res["stats"]["min"] == 10.0
     assert res["stats"]["max"] == 50.0
     assert len(res["bins"]) > 0
 
 
 def test_date_facet():
-    series = pd.Series(["2024-01-01", "2024-02-01", "2024-03-01", None])
+    series = pd.Series(["2024-01-01", "2024-02-01", "2024-03-01", None], name="join_date")
     res = compute_date_facet(series)
     assert res["facet_type"] == "date"
+    assert res["column"] == "join_date"
     assert res["valid_date_count"] == 3
     assert res["null_count"] == 1
+    assert len(res["years"]) > 0
 
 
 def test_multi_column_filter_and_explore():
@@ -65,3 +70,11 @@ def test_multi_column_filter_and_explore():
     exp = explore_dataset(df, filters=filters, sort_by="age", sort_ascending=False)
     assert exp["matched_rows"] == 2
     assert exp["records"][0]["name"] == "Charlie"  # 30 > 25
+
+    # Test list-format filters (as sent by UI)
+    list_filters = [
+        {"column": "country", "values": ["US", "CA"]},
+        {"column": "age", "min": 25, "max": 40, "type": "numeric"},
+    ]
+    exp_list = explore_dataset(df, filters=list_filters)
+    assert exp_list["matched_rows"] == 2

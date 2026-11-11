@@ -8,12 +8,35 @@ Strict Privacy Mandate:
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Set, Tuple
 
 
 class PrivacyViolationError(ValueError):
     """Raised when an outbound payload destined for external AI violates privacy constraints."""
     pass
+
+
+PII_EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
+PII_PHONE_PATTERN = re.compile(r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b")
+PII_SSN_PATTERN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+
+
+def _check_no_pii_strings(obj: Any) -> None:
+    """Scan strings recursively to ensure no raw email, phone, or SSN values leak to external AI."""
+    if isinstance(obj, str):
+        if PII_EMAIL_PATTERN.search(obj):
+            raise PrivacyViolationError(f"Potential raw email address detected in outbound AI payload: {obj}")
+        if PII_SSN_PATTERN.search(obj):
+            raise PrivacyViolationError(f"Potential SSN detected in outbound AI payload: {obj}")
+        if PII_PHONE_PATTERN.search(obj):
+            raise PrivacyViolationError(f"Potential raw phone number detected in outbound AI payload: {obj}")
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            _check_no_pii_strings(v)
+    elif isinstance(obj, (list, tuple, set)):
+        for item in obj:
+            _check_no_pii_strings(item)
 
 
 _ALLOWED_ROOT_KEYS: Set[str] = {
@@ -113,6 +136,9 @@ def validate_outbound_payload(payload: Dict[str, Any]) -> None:
                         f"Non-scalar list key '{key}' found in column '{col_name}'. "
                         f"Raw value arrays are strictly disallowed in AI payloads."
                     )
+
+    # 3. Deep regex scan to prevent raw PII (emails, SSNs, phone numbers) in payload
+    _check_no_pii_strings(payload)
 
 
 def build_ai_safe_profile(profile: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:

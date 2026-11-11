@@ -159,10 +159,17 @@ def reconcile_column_values(
             matched_canonical = alias_lookup[val_lower]
             results.append({
                 "original": orig_val,
+                "value": orig_val,
                 "count": count,
                 "matched_canonical": matched_canonical,
+                "canonical": matched_canonical,
                 "score": 1.0,
                 "auto_match": True,
+                "best_candidate": {
+                    "canonical": matched_canonical,
+                    "score": 1.0,
+                    "match_type": "exact_alias",
+                },
                 "alternatives": [],
             })
             continue
@@ -172,10 +179,17 @@ def reconcile_column_values(
             matched_canonical = fingerprint_lookup[val_fp]
             results.append({
                 "original": orig_val,
+                "value": orig_val,
                 "count": count,
                 "matched_canonical": matched_canonical,
+                "canonical": matched_canonical,
                 "score": 0.95,
                 "auto_match": True,
+                "best_candidate": {
+                    "canonical": matched_canonical,
+                    "score": 0.95,
+                    "match_type": "fingerprint",
+                },
                 "alternatives": [],
             })
             continue
@@ -202,26 +216,36 @@ def reconcile_column_values(
             for c, s in scored_candidates:
                 if c not in seen:
                     seen.add(c)
-                    deduped.append({"name": c, "score": s})
+                    deduped.append({"name": c, "canonical": c, "score": s})
 
             best = deduped[0]
             is_auto = best["score"] >= auto_match_threshold
 
             results.append({
                 "original": orig_val,
+                "value": orig_val,
                 "count": count,
                 "matched_canonical": best["name"],
+                "canonical": best["name"],
                 "score": best["score"],
                 "auto_match": is_auto,
+                "best_candidate": {
+                    "canonical": best["name"],
+                    "score": best["score"],
+                    "match_type": "fuzzy_similarity",
+                },
                 "alternatives": deduped[1:4],
             })
         else:
             results.append({
                 "original": orig_val,
+                "value": orig_val,
                 "count": count,
                 "matched_canonical": None,
+                "canonical": None,
                 "score": 0.0,
                 "auto_match": False,
+                "best_candidate": None,
                 "alternatives": [],
             })
 

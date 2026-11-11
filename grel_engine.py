@@ -98,6 +98,26 @@ FORBIDDEN_ATTRIBUTES = {
     "mro",
 }
 
+MAX_EXPRESSION_LENGTH = 1000
+MAX_REGEX_PATTERN_LENGTH = 200
+
+
+def _validate_regex_safety(pattern: str) -> None:
+    """Enforce regex safety limits to prevent ReDoS and resource exhaustion."""
+    if not isinstance(pattern, str):
+        return
+    if len(pattern) > MAX_REGEX_PATTERN_LENGTH:
+        raise GRELSecurityError(
+            f"Regex pattern exceeds maximum allowed length of {MAX_REGEX_PATTERN_LENGTH} characters."
+        )
+    # Detect dangerous nested quantifiers causing catastrophic backtracking, e.g. (a+)+ or (.*a)+
+    if re.search(r"(\([^\)]*[\+\*]\)[\+\*])", pattern):
+        raise GRELSecurityError("Dangerous nested quantifier detected in regex (potential ReDoS risk).")
+    try:
+        re.compile(pattern)
+    except re.error as e:
+        raise GRELSyntaxError(f"Invalid regular expression: {e}")
+
 
 # =====================================================================
 # SAFE WRAPPER OBJECTS FOR GREL METHOD CHAINING
@@ -189,11 +209,13 @@ class GRELValueWrapper:
     def replaceRegex(self, pattern: str, repl: str) -> str:
         if self._val is None:
             return ""
+        _validate_regex_safety(str(pattern))
         return re.sub(str(pattern), str(repl), str(self._val))
 
     def match(self, pattern: str) -> List[str]:
         if self._val is None:
             return []
+        _validate_regex_safety(str(pattern))
         m = re.findall(str(pattern), str(self._val))
         return [str(x) for x in m]
 
@@ -448,6 +470,21 @@ class SafeGRELVisitor:
         raise GRELExecutionError(f"Unknown GREL property or method '{attr}'.")
 
     def eval_Call(self, node: ast.Call) -> Any:
+        # Lazy branch evaluation for if / _grel_if conditionals: prevents eager evaluation errors
+        if isinstance(node.func, ast.Name) and node.func.id in ("if", "_grel_if"):
+            if not node.args:
+                raise GRELSyntaxError("if() requires at least a condition and then-expression.")
+            cond_val = self.eval(node.args[0])
+            cond_bool = cond_val._val if isinstance(cond_val, GRELValueWrapper) else cond_val
+            if bool(cond_bool):
+                if len(node.args) > 1:
+                    return self.eval(node.args[1])
+                return None
+            else:
+                if len(node.args) > 2:
+                    return self.eval(node.args[2])
+                return None
+
         func = self.eval(node.func)
         args = [self.eval(arg) for arg in node.args]
         kwargs = {kw.arg: self.eval(kw.value) for kw in node.keywords}
@@ -459,6 +496,8 @@ class SafeGRELVisitor:
             # Unwrap GRELValueWrapper if native function expects primitive
             unwrapped_args = [a._val if isinstance(a, GRELValueWrapper) else a for a in args]
             return func(*unwrapped_args, **kwargs)
+        except (GRELSecurityError, GRELSyntaxError):
+            raise
         except Exception as e:
             raise GRELExecutionError(f"Error calling function: {e}")
 
@@ -548,12 +587,15 @@ class CompiledGRELExpression:
     """Pre-compiles and validates an AST expression for fast, safe evaluation."""
 
     def __init__(self, expression: str):
-        self.raw_expression = expression.strip()
-        if not self.raw_expression:
+        if not isinstance(expression, str) or not expression.strip():
             raise GRELSyntaxError("Expression cannot be empty.")
+        self.raw_expression = expression.strip()
+        if len(self.raw_expression) > MAX_EXPRESSION_LENGTH:
+            raise GRELSecurityError(
+                f"Expression length ({len(self.raw_expression)}) exceeds maximum allowed {MAX_EXPRESSION_LENGTH} characters."
+            )
 
-        # OpenRefine compatibility normalization:
-        # e.g., 'null' -> 'None', 'true' -> 'True', 'false' -> 'False'
+        # OpenRefine compatibility normalization: quote-aware
         normalized = self._normalize_syntax(self.raw_expression)
 
         try:
@@ -564,13 +606,33 @@ class CompiledGRELExpression:
         self._validate_ast(self.parsed_ast)
 
     def _normalize_syntax(self, expr: str) -> str:
-        """Translate OpenRefine idiosyncrasies into standard parseable Python AST."""
-        # Replace unquoted null, true, false with Python equivalents
-        expr = re.sub(r"\bnull\b", "None", expr)
-        expr = re.sub(r"\btrue\b", "True", expr)
-        expr = re.sub(r"\bfalse\b", "False", expr)
-        expr = re.sub(r"\bif\s*\(", "_grel_if(", expr)
-        return expr
+        """
+        Translate OpenRefine idiosyncrasies into standard parseable Python AST.
+        Quote-aware: strictly preserves string literals inside single and double quotes.
+        """
+        def replacer(match: re.Match) -> str:
+            # Group 1: Quoted string literal -> preserve exactly
+            if match.group(1):
+                return match.group(1)
+            # Group 2: if( -> _grel_if(
+            if match.group(2):
+                return "_grel_if("
+            # Group 3: keywords null, true, false
+            word = match.group(3)
+            if word == "null":
+                return "None"
+            elif word == "true":
+                return "True"
+            elif word == "false":
+                return "False"
+            return match.group(0)
+
+        pattern = re.compile(
+            r"('(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\")|"  # Group 1: strings
+            r"(\bif\s*\()|"                              # Group 2: if(
+            r"\b(null|true|false)\b"                     # Group 3: keywords
+        )
+        return pattern.sub(replacer, expr)
 
     def _validate_ast(self, node: ast.AST):
         """Recursively ensure every node belongs to the whitelist and has no dunder access."""

@@ -123,6 +123,17 @@ docker run -d -p 8000:8000 \
 
 ---
 
+## 🔒 Security & Resource Controls
+
+DataRefine includes built-in security hardening in [`server.py`](server.py):
+
+- **Strict File Root Jail (`ALLOWED_DATA_DIRS`)**: Client-supplied dataset file paths are validated by `resolve_safe_dataset_path()` and strictly confined to approved `data/` subdirectories (`data`, `data/uploads`, `data/benchmark`, `data/robustness_tests`), blocking path traversal and arbitrary file reads.
+- **Upload & Dataset Limits**: Maximum upload size is enforced at 50 MB (`MAX_UPLOAD_SIZE_BYTES`), and profiled datasets are bounded to `500,000` rows (`MAX_DATASET_ROWS`) and `500` columns (`MAX_DATASET_COLUMNS`) to guard against memory exhaustion.
+- **CORS Policy (`ALLOWED_ORIGINS`)**: Defaults to wildcard `*` with `allow_credentials=False`. For production domains requiring credentials, explicitly configure `ALLOWED_ORIGINS` as a comma-separated list of trusted origins.
+- **Single-Node In-Memory Sessions**: Active workspace state is held in memory (`SESSIONS`, max `50` sessions / `4 hours` TTL). Multi-worker or multi-tenant cloud deployments require sticky sessions or an external session store (e.g., Redis) plus authentication middleware.
+
+---
+
 ## 🔍 Healthcheck & Verification
 
 Verify the deployment is healthy:

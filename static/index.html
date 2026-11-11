@@ -118,7 +118,7 @@
         <span class="text-zinc-600">·</span>
         <span>AST-Sandboxed Expressions</span>
         <span class="text-zinc-600">·</span>
-        <span class="text-blue-400 font-mono">170 Tests Passing (100%)</span>
+        <span class="text-blue-400 font-mono">186 Tests Passing (100%)</span>
       </div>
 
       <!-- Headline -->
@@ -156,7 +156,7 @@
               <span class="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
               <span class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></span>
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
-              <span class="ml-2 text-zinc-300">customer_records_dirty.csv · 3,420 rows · 14 columns</span>
+              <span class="ml-2 text-zinc-300">indian_tech_jobs_2026.csv · 23,201 rows · 32 columns</span>
             </div>
             <div class="flex items-center space-x-2 text-[11px] font-sans">
               <span class="text-emerald-400 bg-emerald-950/30 border border-emerald-800/40 px-2.5 py-0.5 rounded font-mono">
@@ -194,13 +194,13 @@
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
               <span class="text-zinc-500 text-[10px] block uppercase font-mono">Missing Values</span>
-              <span class="text-base font-semibold text-white font-mono mt-0.5 block">184 cells</span>
+              <span class="text-base font-semibold text-white font-mono mt-0.5 block">3,412 cells</span>
               <span class="text-[10px] text-zinc-500">Imputed & Replaced</span>
             </div>
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
               <span class="text-zinc-500 text-[10px] block uppercase font-mono">Text Clusters</span>
-              <span class="text-base font-semibold text-purple-400 font-mono mt-0.5 block">14 Groups Found</span>
-              <span class="text-[10px] text-zinc-500">Fingerprint & Metaphone</span>
+              <span class="text-base font-semibold text-purple-400 font-mono mt-0.5 block">38 Groups Found</span>
+              <span class="text-[10px] text-zinc-500">Bengaluru / Bangalore</span>
             </div>
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
               <span class="text-zinc-500 text-[10px] block uppercase font-mono">Expression Transforms</span>
@@ -209,7 +209,7 @@
             </div>
             <div class="bg-surface-elevated p-3 rounded-lg border border-surface-border">
               <span class="text-zinc-500 text-[10px] block uppercase font-mono">Safety & Test Suite</span>
-              <span class="text-base font-semibold text-emerald-400 font-mono mt-0.5 block">170 Tests Passing</span>
+              <span class="text-base font-semibold text-emerald-400 font-mono mt-0.5 block">186 Tests Passing</span>
               <span class="text-[10px] text-zinc-500">100% Pass Rate</span>
             </div>
           </div>
@@ -220,41 +220,55 @@
               <thead class="bg-surface-elevated text-zinc-400 text-[11px] border-b border-surface-border">
                 <tr>
                   <th class="px-3 py-2 text-zinc-500 font-normal">#</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">customer_id</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">city (Clustered)</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">role (Formatted)</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">country (Reconciled)</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">join_date</th>
-                  <th class="px-3 py-2 font-normal text-zinc-300">spend_usd</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">job_id</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">job_title</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">company_name</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">location (Clustered)</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">role_category (Reconciled)</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">experience_raw</th>
+                  <th class="px-3 py-2 font-normal text-zinc-300">salary_raw</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-surface-border text-zinc-300 text-[11px]">
                 <tr class="hover:bg-surface-elevated/30">
                   <td class="px-3 py-2 text-zinc-500">0</td>
-                  <td class="px-3 py-2">CUST-8101</td>
-                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">New York <span class="text-[9px] text-zinc-500 font-sans">(was "new-york!")</span></td>
-                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40">Data Engineer</td>
-                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">United States [US]</td>
-                  <td class="px-3 py-2">2024-03-15</td>
-                  <td class="px-3 py-2 font-medium">$4,120.00</td>
+                  <td class="px-3 py-2">1</td>
+                  <td class="px-3 py-2 font-medium">Data Scientist</td>
+                  <td class="px-3 py-2">Cisco</td>
+                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">Bengaluru <span class="text-[9px] text-zinc-500 font-sans">(was "Bangalore")</span></td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">Business Intelligence [Reconciled]</td>
+                  <td class="px-3 py-2">7-10 Yrs</td>
+                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40 font-medium">₹18-24 LPA <span class="text-[9px] text-zinc-500 font-sans">(Imputed)</span></td>
                 </tr>
                 <tr class="hover:bg-surface-elevated/30">
                   <td class="px-3 py-2 text-zinc-500">1</td>
-                  <td class="px-3 py-2">CUST-8102</td>
-                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">San Francisco <span class="text-[9px] text-zinc-500 font-sans">(was "SF, CA")</span></td>
-                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40">ML Architect</td>
-                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">United States [US]</td>
-                  <td class="px-3 py-2">2024-04-01</td>
-                  <td class="px-3 py-2 font-medium">$9,850.50</td>
+                  <td class="px-3 py-2">2</td>
+                  <td class="px-3 py-2 font-medium">Data Scientist</td>
+                  <td class="px-3 py-2">Caterpillar Inc</td>
+                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">Bengaluru <span class="text-[9px] text-zinc-500 font-sans">(was "Bangalore")</span></td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">AI/ML/DL [Reconciled]</td>
+                  <td class="px-3 py-2">4-8 Yrs</td>
+                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40 font-medium">₹15-20 LPA <span class="text-[9px] text-zinc-500 font-sans">(Imputed)</span></td>
                 </tr>
                 <tr class="hover:bg-surface-elevated/30">
                   <td class="px-3 py-2 text-zinc-500">2</td>
-                  <td class="px-3 py-2">CUST-8103</td>
-                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">London <span class="text-[9px] text-zinc-500 font-sans">(was "london uk")</span></td>
-                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40">Backend Developer</td>
-                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">United Kingdom [GB]</td>
-                  <td class="px-3 py-2">2024-04-12</td>
-                  <td class="px-3 py-2 font-medium">$2,450.00</td>
+                  <td class="px-3 py-2">3</td>
+                  <td class="px-3 py-2 font-medium">Analytics Data Scientist</td>
+                  <td class="px-3 py-2">Foreign IT Consulting MNC</td>
+                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">Hyderabad <span class="text-[9px] text-zinc-500 font-sans">(was "hyderabad, chennai")</span></td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">Data Science [Reconciled]</td>
+                  <td class="px-3 py-2">4-9 Yrs</td>
+                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40 font-medium">₹22-28 LPA <span class="text-[9px] text-zinc-500 font-sans">(Imputed)</span></td>
+                </tr>
+                <tr class="hover:bg-surface-elevated/30">
+                  <td class="px-3 py-2 text-zinc-500">3</td>
+                  <td class="px-3 py-2">5</td>
+                  <td class="px-3 py-2 font-medium">Sr. AI Engineer</td>
+                  <td class="px-3 py-2">Fortune 500 Product MNC</td>
+                  <td class="px-3 py-2 bg-purple-950/20 text-purple-300 border-b border-purple-500/40">Pune <span class="text-[9px] text-zinc-500 font-sans">(was "pune, maharashtra")</span></td>
+                  <td class="px-3 py-2 bg-emerald-950/20 text-emerald-400 border-b border-emerald-500/40">AI/ML/DL [Reconciled]</td>
+                  <td class="px-3 py-2">5-10 Yrs</td>
+                  <td class="px-3 py-2 bg-blue-950/20 text-blue-300 border-b border-blue-500/40 font-medium">₹30-40 LPA <span class="text-[9px] text-zinc-500 font-sans">(Imputed)</span></td>
                 </tr>
               </tbody>
             </table>
@@ -575,7 +589,7 @@
           <div class="bg-surface-card rounded-xl border border-surface-border p-6 space-y-2">
             <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
               <span class="text-blue-400">🧪</span>
-              <span>170 Automated Unit & API Tests</span>
+              <span>186 Automated Unit & API Tests</span>
             </h3>
             <p class="text-xs text-zinc-400 leading-relaxed">
               Rigorous test-driven engineering covering clustering algorithms, AST security, facet calculations, entity reconciliation, AI privacy gates, and endpoints.

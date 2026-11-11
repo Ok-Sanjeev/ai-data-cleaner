@@ -127,3 +127,35 @@ def test_validate_outbound_payload_rejects_raw_data_and_forbidden_keys():
     # Should not raise
     validate_outbound_payload(valid_payload)
 
+
+def test_validate_outbound_payload_detects_pii_strings():
+    from ai_privacy import validate_outbound_payload, PrivacyViolationError
+
+    # Email pattern inside metadata
+    bad_email_payload = {
+        "rows": 10,
+        "columns": 1,
+        "column_profiles": {
+            "contact": {
+                "dtype": "string",
+                "semantic_hints": ["user@domain.com"],
+            }
+        }
+    }
+    with pytest.raises(PrivacyViolationError, match="email"):
+        validate_outbound_payload(bad_email_payload)
+
+    # SSN pattern inside metadata
+    bad_ssn_payload = {
+        "rows": 10,
+        "columns": 1,
+        "column_profiles": {
+            "tax_id": {
+                "dtype": "string",
+                "semantic_hints": ["123-45-6789"],
+            }
+        }
+    }
+    with pytest.raises(PrivacyViolationError, match="SSN"):
+        validate_outbound_payload(bad_ssn_payload)
+

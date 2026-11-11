@@ -52,3 +52,32 @@ def test_recipe_replay():
     assert list(cleaned_df["name"]) == ["alice", "bob", "charlie"]
     assert report["executed_count"] == 2
 
+
+def test_recipe_replay_missing_column_and_partial_failure():
+    # Dataset lacks 'missing_col' referenced in recipe step 2
+    df = pd.DataFrame({
+        "name": [" alice ", "  bob  "],
+    })
+    recipe = {
+        "operations": [
+            {"action": "trim_whitespace", "column": "name", "params": {}},
+            {"action": "normalize_text", "column": "nonexistent_column", "params": {"case": "upper"}},
+            {"action": "normalize_text", "column": "name", "params": {"case": "upper"}},
+        ]
+    }
+
+    # With stop_on_error=False, it should execute steps 1 & 3, reporting failure on step 2
+    cleaned_df, report = WorkflowRecipeManager.replay_recipe(df, recipe, stop_on_error=False)
+    assert list(cleaned_df["name"]) == ["ALICE", "BOB"]
+    assert report["successful_steps"] == 2
+    assert report["failed_steps"] == 1
+    assert report["step_results"][1]["status"] == "failed"
+    assert "error" in report["step_results"][1]
+
+    # With stop_on_error=True, it should stop after step 2 failure
+    df2 = pd.DataFrame({"name": [" alice ", "  bob  "]})
+    cleaned_df2, report2 = WorkflowRecipeManager.replay_recipe(df2, recipe, stop_on_error=True)
+    assert report2["successful_steps"] == 1
+    assert report2["failed_steps"] == 1
+    assert len(report2["step_results"]) == 2  # Step 3 was never attempted
+
